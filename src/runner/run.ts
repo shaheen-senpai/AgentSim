@@ -46,6 +46,7 @@ export function createRun(opts: CreateRunOptions, onEvent?: (e: Event) => void):
     truncated: false,
     transcript: [],
     error: null,
+    narrative: null,
   };
 
   const sim: Sim = createSim(world, (e) => {

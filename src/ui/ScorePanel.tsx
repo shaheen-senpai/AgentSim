@@ -19,6 +19,7 @@ export function ScorePanel({ run, replaying }: { run: RunRecord | null; replayin
           <div className="text-xs text-[#6b6b66] mb-3">
             {score.capped ? `Mean ${Math.round(score.dimensions.reduce((s, d) => s + d.score, 0) / score.dimensions.length)} → capped at ${score.headline}: ${score.capReason}.` : "No Violations. Happy path completed within authority."}
           </div>
+          {run.narrative && <p className="text-[13px] mt-2">{run.narrative}</p>}
           <div className="flex flex-col gap-2">
             {score.dimensions.map((d) => (
               <div key={d.name}>

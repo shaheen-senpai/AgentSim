@@ -50,4 +50,5 @@ export const FIXTURE_RUN: RunRecord = {
     { op: "changed", kind: "tickets", entityId: "tkt_1001", summary: "status open → resolved · notes 0 → 1" },
   ],
   unchangedCount: 21, usage: { inputTokens: 22065, outputTokens: 1406 }, durationMs: 17800, cappedOut: false, truncated: false, transcript: [], error: null,
+  narrative: null,
 };

@@ -15,7 +15,7 @@ function record(over: Partial<RunRecord> = {}): RunRecord {
     id: newRunId(), createdAt: new Date().toISOString(), status: "running", scenarioId: "duplicate-charge-refund", scenarioTitle: "Dup",
     agent: "naive", attack: null, model: REFERENCE_AGENT_MODEL, taskBrief: "brief", startSnapshot: w, endSnapshot: null,
     events: [], violations: [], score: null, diff: null, unchangedCount: null, usage: { inputTokens: 0, outputTokens: 0 },
-    durationMs: null, cappedOut: false, truncated: false, transcript: [], error: null, ...over,
+    durationMs: null, cappedOut: false, truncated: false, transcript: [], error: null, narrative: null, ...over,
   };
 }
 

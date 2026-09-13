@@ -32,6 +32,7 @@ export type RunRecord = {
   truncated: boolean;
   transcript: unknown[];
   error: string | null;
+  narrative: string | null;
 };
 
 export type RunSummary = Pick<RunRecord, "id" | "createdAt" | "status" | "scenarioId" | "agent"> & {

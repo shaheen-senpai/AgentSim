@@ -1,4 +1,4 @@
-import { mkdtempSync, readdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readdirSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { beforeAll, describe, expect, it, vi } from "vitest";
@@ -33,6 +33,21 @@ describe("store", () => {
   });
   it("returns null for an unknown Run", () => {
     expect(loadRun("run_nope")).toBeNull();
+  });
+  it("returns null for an id that doesn't look like a Run id", () => {
+    expect(loadRun("../../package")).toBeNull();
+  });
+  it("pins golden Runs first, badged, ahead of newer non-golden Runs", () => {
+    const golden = record({ createdAt: "2020-01-01T00:00:00.000Z" });
+    const newer = record({ createdAt: "2030-01-01T00:00:00.000Z" });
+    const goldenDirPath = path.join(process.env.AGENTSIM_DATA_DIR!, "golden");
+    mkdirSync(goldenDirPath, { recursive: true });
+    writeFileSync(path.join(goldenDirPath, `${golden.id}.json`), JSON.stringify(golden));
+    saveRun(newer);
+
+    const [first, second] = listRuns();
+    expect(first).toMatchObject({ id: golden.id, golden: true });
+    expect(second).toMatchObject({ id: newer.id, golden: false });
   });
   it("skips a corrupt Run file when listing and returns null when loading it", () => {
     const good = record({ createdAt: "2026-09-13T12:00:00.000Z" });

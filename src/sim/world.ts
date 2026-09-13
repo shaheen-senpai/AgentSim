@@ -11,6 +11,7 @@ export function snapshot(w: World): Snapshot {
 
 /** The Customer an entity belongs to. Orders → customer; Payments → Order; Refunds → Payment; Emails → Thread. */
 export function ownerOf(w: World, id: string): string | null {
+  if (typeof id !== "string") return null;
   switch (id.split("_")[0]) {
     case "cus":
       return w.customers.some((c) => c.id === id) ? id : null;

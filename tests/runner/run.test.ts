@@ -56,4 +56,16 @@ describe("createRun + finishRun", () => {
     expect(loadRun(run.id)).toMatchObject({ status: "failed", error: "boom" });
     expect(loadRun(run.id)?.durationMs).toBeGreaterThanOrEqual(0);
   });
+  it("a post-finish Event cannot resurrect a finished Run", async () => {
+    const { run, sim } = createRun({ scenarioId: "duplicate-charge-refund", agent: "byo" });
+    await sim.execute("get_ticket", { ticket_id: "tkt_1001" });
+    finishRun(run.id);
+    const eventsAtFinish = loadRun(run.id)?.events.length;
+
+    await sim.execute("get_ticket", { ticket_id: "tkt_1001" });
+
+    const after = loadRun(run.id);
+    expect(after?.status).toBe("completed");
+    expect(after?.events.length).toBe(eventsAtFinish);
+  });
 });

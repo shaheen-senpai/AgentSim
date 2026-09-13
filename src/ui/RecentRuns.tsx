@@ -11,7 +11,10 @@ export function RecentRuns({ runs, currentId }: { runs: RunSummary[]; currentId:
           <li key={r.id}>
             <Link href={`/runs/${r.id}`} className={`flex justify-between gap-2 ${r.id === currentId ? "font-semibold" : ""}`}>
               <span className={mono}>{r.id.slice(0, 12)}</span>
-              <span className="text-[#6b6b66] truncate">{r.agent === "naive" ? "naïve" : r.agent} · {r.attackId ? "attack" : "clean"}</span>
+              <span className="text-[#6b6b66] truncate">
+                {r.agent === "naive" ? "naïve" : r.agent} · {r.attackId ? "attack" : "clean"}
+                {r.golden && <span className="ml-1 text-[10px] uppercase tracking-[.08em] border border-[#cfcfcb] rounded px-1">golden</span>}
+              </span>
               <span className={`${mono} ${r.capped ? "text-[#c8321e] font-bold" : ""}`}>{r.status === "running" ? "…" : r.headline ?? "—"}</span>
             </Link>
           </li>

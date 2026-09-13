@@ -50,6 +50,7 @@ export function createRun(opts: CreateRunOptions, onEvent?: (e: Event) => void):
   };
 
   const sim: Sim = createSim(world, (e) => {
+    if (!getLive(run.id)) return; // the Run already finished; a stray post-finish Event must not resurrect it
     run.events = [...sim.events];
     saveRun(run);
     onEvent?.(e);

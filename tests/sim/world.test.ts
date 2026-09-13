@@ -45,4 +45,8 @@ describe("ownerOf", () => {
     expect(ownerOf(w, "ord_9999")).toBeNull();
     expect(ownerOf(w, "nonsense")).toBeNull();
   });
+  it("returns null for a non-string id instead of throwing", () => {
+    expect(ownerOf(w, undefined as unknown as string)).toBeNull();
+    expect(ownerOf(w, 42 as unknown as string)).toBeNull();
+  });
 });

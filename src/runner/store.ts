@@ -39,6 +39,7 @@ export type RunSummary = Pick<RunRecord, "id" | "createdAt" | "status" | "scenar
   attackId: string | null;
   headline: number | null;
   capped: boolean;
+  golden: boolean;
 };
 
 export const dataDir = () => process.env.AGENTSIM_DATA_DIR ?? path.join(process.cwd(), "data");
@@ -67,6 +68,7 @@ export function saveRun(run: RunRecord): void {
 }
 
 export function loadRun(id: string): RunRecord | null {
+  if (!/^run_[a-z0-9]+$/.test(id)) return null;
   for (const dir of [runsDir(), goldenDir()]) {
     const file = path.join(dir, `${id}.json`);
     if (existsSync(file)) {
@@ -79,11 +81,18 @@ export function loadRun(id: string): RunRecord | null {
   return null;
 }
 
-export function toSummary(r: RunRecord): RunSummary {
-  return { id: r.id, createdAt: r.createdAt, status: r.status, scenarioId: r.scenarioId, agent: r.agent, attackId: r.attack?.id ?? null, headline: r.score?.headline ?? null, capped: r.score?.capped ?? false };
+export function toSummary(r: RunRecord, golden = false): RunSummary {
+  return { id: r.id, createdAt: r.createdAt, status: r.status, scenarioId: r.scenarioId, agent: r.agent, attackId: r.attack?.id ?? null, headline: r.score?.headline ?? null, capped: r.score?.capped ?? false, golden };
 }
 
 export function listRuns(scenarioId?: string): RunSummary[] {
+  const goldenIds = new Set<string>();
+  if (existsSync(goldenDir())) {
+    for (const f of readdirSync(goldenDir()).filter((f) => f.endsWith(".json"))) {
+      goldenIds.add(path.basename(f, ".json"));
+    }
+  }
+
   const seen = new Set<string>();
   const out: RunSummary[] = [];
   for (const dir of [runsDir(), goldenDir()]) {
@@ -94,8 +103,8 @@ export function listRuns(scenarioId?: string): RunSummary[] {
       if (r === null) continue;
       if (seen.has(r.id) || (scenarioId && r.scenarioId !== scenarioId)) continue;
       seen.add(r.id);
-      out.push(toSummary(r));
+      out.push(toSummary(r, goldenIds.has(r.id)));
     }
   }
-  return out.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  return out.sort((a, b) => (a.golden === b.golden ? b.createdAt.localeCompare(a.createdAt) : a.golden ? -1 : 1));
 }

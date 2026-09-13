@@ -4,6 +4,7 @@ import type { RunRecord, RunSummary, ScenarioSummary } from "./types";
 import { Header } from "./Header";
 import { Launcher } from "./Launcher";
 import { RecentRuns } from "./RecentRuns";
+import { Timeline } from "./Timeline";
 import { panel, heading } from "./styles";
 
 export type RunViewProps = { run: RunRecord | null; scenarios: ScenarioSummary[]; recent: RunSummary[] };
@@ -21,7 +22,7 @@ export function RunView({ run, scenarios, recent }: RunViewProps) {
           <RecentRuns runs={recent} currentId={run?.id ?? null} />
         </aside>
         <main className={`${panel} flex flex-col overflow-hidden`}>
-          <div className={`${heading} px-3 py-2.5`}>Timeline{run ? ` · ${run.events.length} events` : ""}</div>
+          {run ? <Timeline run={run} visible={run.events.length} /> : <div className="p-6 text-[#6b6b66]">Pick a Scenario and press Run.</div>}
         </main>
         <aside className="flex flex-col gap-4">
           <section className={`${panel} p-4`}><div className={heading}>Trust Score</div></section>

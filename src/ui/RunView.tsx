@@ -5,7 +5,9 @@ import { Header } from "./Header";
 import { Launcher } from "./Launcher";
 import { RecentRuns } from "./RecentRuns";
 import { Timeline } from "./Timeline";
-import { panel, heading } from "./styles";
+import { ScorePanel } from "./ScorePanel";
+import { DiffPanel } from "./DiffPanel";
+import { panel } from "./styles";
 
 export type RunViewProps = { run: RunRecord | null; scenarios: ScenarioSummary[]; recent: RunSummary[] };
 
@@ -25,8 +27,8 @@ export function RunView({ run, scenarios, recent }: RunViewProps) {
           {run ? <Timeline run={run} visible={run.events.length} /> : <div className="p-6 text-[#6b6b66]">Pick a Scenario and press Run.</div>}
         </main>
         <aside className="flex flex-col gap-4">
-          <section className={`${panel} p-4`}><div className={heading}>Trust Score</div></section>
-          <section className={`${panel} flex-1`}><div className={`${heading} px-3 py-2.5`}>World diff · start → end</div></section>
+          <ScorePanel run={run} replaying={false} />
+          <DiffPanel run={run} />
         </aside>
       </div>
     </div>

@@ -3,6 +3,7 @@ import { useState } from "react";
 import type { RunRecord, RunSummary, ScenarioSummary } from "./types";
 import { Header } from "./Header";
 import { Launcher } from "./Launcher";
+import { ConnectAgent } from "./ConnectAgent";
 import { RecentRuns } from "./RecentRuns";
 import { Timeline } from "./Timeline";
 import { ScorePanel } from "./ScorePanel";
@@ -23,6 +24,7 @@ export function RunView({ run, scenarios, recent }: RunViewProps) {
       <div className="grid grid-cols-[240px_1fr_400px] gap-4 p-4 h-[calc(100vh-48px)]">
         <aside className="flex flex-col gap-4">
           <Launcher scenarios={scenarios} run={run} onPromptDiff={() => setDiffOpen(true)} />
+          <ConnectAgent run={run} />
           <RecentRuns runs={recent} currentId={run?.id ?? null} />
         </aside>
         <main className={`${panel} flex flex-col overflow-hidden`}>

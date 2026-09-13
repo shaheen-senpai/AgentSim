@@ -7,6 +7,8 @@ import type { Event } from "@/sim/types";
 import { seedWorld, snapshot } from "@/sim/world";
 import { REFERENCE_AGENT_MODEL } from "./agents";
 import { getLive, registerLive, unregisterLive } from "./registry";
+import { driveReferenceAgent } from "./referenceAgent";
+import type { AgentVersion } from "./agents";
 import { newRunId, saveRun, type RunAgent, type RunRecord } from "./store";
 
 export type CreateRunOptions = { scenarioId: string; agent: RunAgent; attackId?: string | null };
@@ -82,4 +84,24 @@ export function finishRun(id: string, patch: FinishPatch = {}): RunRecord {
   saveRun(done);
   unregisterLive(id);
   return done;
+}
+
+/** Create the Run and return its id at once; the Reference Agent runs in the background of this Node process. */
+export function startRun(opts: CreateRunOptions): string {
+  const { run, sim } = createRun(opts);
+  if (opts.agent === "byo") return run.id; // finished from the UI via POST /api/runs/:id/finish
+
+  const agent: AgentVersion = opts.agent;
+  void (async () => {
+    try {
+      const result = await driveReferenceAgent(sim, agent, run.taskBrief, (usage) => {
+        run.usage = usage;
+        saveRun(run);
+      });
+      finishRun(run.id, { usage: result.usage, transcript: result.transcript, cappedOut: result.cappedOut, truncated: result.truncated });
+    } catch (e) {
+      finishRun(run.id, { error: e instanceof Error ? e.message : String(e) });
+    }
+  })();
+  return run.id;
 }

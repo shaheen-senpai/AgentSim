@@ -25,14 +25,19 @@ export function Launcher({ scenarios, run, onPromptDiff }: Props) {
   const [agent, setAgent] = useState<"naive" | "fixed">(run?.agent === "fixed" ? "fixed" : "naive");
   const [attackId, setAttackId] = useState<string | "off">(run?.attack?.id ?? "off");
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const scenario = scenarios.find((s) => s.id === scenarioId);
 
   async function start() {
     setBusy(true);
+    setError(null);
     try {
       const res = await fetch("/api/runs", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ scenarioId, agent, attackId: attackId === "off" ? null : attackId }) });
+      if (!res.ok) throw new Error(`Run failed to start (HTTP ${res.status})`);
       const { id } = (await res.json()) as { id: string };
       router.push(`/runs/${id}`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(false);
     }
@@ -52,6 +57,7 @@ export function Launcher({ scenarios, run, onPromptDiff }: Props) {
       <button type="button" onClick={start} disabled={busy || !scenarioId} className="mt-1 h-9 rounded bg-[#1d1d1b] text-white font-semibold disabled:opacity-50">
         {busy ? "Starting…" : "▷ Run"}
       </button>
+      {error && <div className="text-xs text-[#c8321e]">{error}</div>}
     </section>
   );
 }

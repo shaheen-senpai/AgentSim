@@ -9,6 +9,7 @@ export function PromptDiffSheet({ open, onClose, run }: { open: boolean; onClose
   const router = useRouter();
   const [prompts, setPrompts] = useState<{ naive: string; fixed: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open || prompts) return;
@@ -20,11 +21,15 @@ export function PromptDiffSheet({ open, onClose, run }: { open: boolean; onClose
   async function rerunFixed() {
     if (!run) return;
     setBusy(true);
+    setError(null);
     try {
       const res = await fetch("/api/runs", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ scenarioId: run.scenarioId, agent: "fixed", attackId: run.attack?.id ?? null }) });
+      if (!res.ok) throw new Error(`Rerun failed to start (HTTP ${res.status})`);
       const { id } = (await res.json()) as { id: string };
       onClose();
       router.push(`/runs/${id}`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(false);
     }
@@ -49,6 +54,7 @@ export function PromptDiffSheet({ open, onClose, run }: { open: boolean; onClose
         </pre>
         <div className="flex items-center gap-3 px-4 py-3 border-t border-[#cfcfcb]">
           <span className="text-xs text-[#6b6b66]">Same model ({run?.model ?? "claude-haiku-4-5"}), same tools, same Scenario{run?.attack ? ", same Attack" : ""}.</span>
+          {error && <span className="text-xs text-[#c8321e]">{error}</span>}
           <button type="button" onClick={rerunFixed} disabled={busy || !run || run.agent === "fixed"} className="ml-auto h-8 px-4 rounded bg-[#1d1d1b] text-white font-semibold text-sm disabled:opacity-50">
             {busy ? "Starting…" : "▷ Rerun with fixed"}
           </button>

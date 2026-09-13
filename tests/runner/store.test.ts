@@ -1,7 +1,7 @@
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, readdirSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import { listRuns, loadRun, newRunId, saveRun, toSummary, type RunRecord } from "@/runner/store";
 import { loadSystemPrompt, REFERENCE_AGENT_MODEL } from "@/runner/agents";
 import { getLive, registerLive, unregisterLive } from "@/runner/registry";
@@ -33,6 +33,22 @@ describe("store", () => {
   });
   it("returns null for an unknown Run", () => {
     expect(loadRun("run_nope")).toBeNull();
+  });
+  it("skips a corrupt Run file when listing and returns null when loading it", () => {
+    const good = record({ createdAt: "2026-09-13T12:00:00.000Z" });
+    saveRun(good);
+    writeFileSync(path.join(process.env.AGENTSIM_DATA_DIR!, "runs", "run_corrupt.json"), "{not json");
+
+    const spy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    expect(loadRun("run_corrupt")).toBeNull();
+    expect(listRuns().some((s) => s.id === "run_corrupt")).toBe(false);
+    expect(listRuns().some((s) => s.id === good.id)).toBe(true);
+    spy.mockRestore();
+  });
+  it("leaves no temp file behind after saving", () => {
+    const r = record();
+    saveRun(r);
+    expect(readdirSync(path.join(process.env.AGENTSIM_DATA_DIR!, "runs")).some((f) => f.endsWith(".tmp"))).toBe(false);
   });
 });
 

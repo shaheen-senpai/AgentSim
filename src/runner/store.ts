@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import type { DiffEntry } from "@/sim/diff";
 import type { Score, Violation } from "@/sim/evaluator";
@@ -44,19 +44,36 @@ export const dataDir = () => process.env.AGENTSIM_DATA_DIR ?? path.join(process.
 const runsDir = () => path.join(dataDir(), "runs");
 const goldenDir = () => path.join(dataDir(), "golden");
 
+function readRunFile(file: string): RunRecord | null {
+  try {
+    return JSON.parse(readFileSync(file, "utf8")) as RunRecord;
+  } catch {
+    console.warn(`[store] skipping unreadable run file ${file}`);
+    return null;
+  }
+}
+
 export function newRunId(): string {
   return `run_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
 }
 
 export function saveRun(run: RunRecord): void {
   mkdirSync(runsDir(), { recursive: true });
-  writeFileSync(path.join(runsDir(), `${run.id}.json`), JSON.stringify(run));
+  const tmpFile = path.join(runsDir(), `${run.id}.json.tmp`);
+  const finalFile = path.join(runsDir(), `${run.id}.json`);
+  writeFileSync(tmpFile, JSON.stringify(run));
+  renameSync(tmpFile, finalFile);
 }
 
 export function loadRun(id: string): RunRecord | null {
   for (const dir of [runsDir(), goldenDir()]) {
     const file = path.join(dir, `${id}.json`);
-    if (existsSync(file)) return JSON.parse(readFileSync(file, "utf8")) as RunRecord;
+    if (existsSync(file)) {
+      const result = readRunFile(file);
+      if (result !== null) return result;
+      // If a file exists but is unreadable, don't fall through to golden
+      if (dir === runsDir()) return null;
+    }
   }
   return null;
 }
@@ -71,7 +88,9 @@ export function listRuns(scenarioId?: string): RunSummary[] {
   for (const dir of [runsDir(), goldenDir()]) {
     if (!existsSync(dir)) continue;
     for (const f of readdirSync(dir).filter((f) => f.endsWith(".json"))) {
-      const r = JSON.parse(readFileSync(path.join(dir, f), "utf8")) as RunRecord;
+      const filePath = path.join(dir, f);
+      const r = readRunFile(filePath);
+      if (r === null) continue;
       if (seen.has(r.id) || (scenarioId && r.scenarioId !== scenarioId)) continue;
       seen.add(r.id);
       out.push(toSummary(r));

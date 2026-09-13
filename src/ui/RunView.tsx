@@ -9,13 +9,12 @@ import { ScorePanel } from "./ScorePanel";
 import { DiffPanel } from "./DiffPanel";
 import { useReplay } from "./useReplay";
 import { ReplayScrubber } from "./ReplayScrubber";
+import { PromptDiffSheet } from "./PromptDiffSheet";
 import { panel } from "./styles";
 
 export type RunViewProps = { run: RunRecord | null; scenarios: ScenarioSummary[]; recent: RunSummary[] };
 
 export function RunView({ run, scenarios, recent }: RunViewProps) {
-  // used by PromptDiffSheet (Task 20)
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [diffOpen, setDiffOpen] = useState(false);
   const replay = useReplay(run);
   return (
@@ -39,6 +38,7 @@ export function RunView({ run, scenarios, recent }: RunViewProps) {
           <DiffPanel run={run} />
         </aside>
       </div>
+      <PromptDiffSheet open={diffOpen} onClose={() => setDiffOpen(false)} run={run} />
     </div>
   );
 }

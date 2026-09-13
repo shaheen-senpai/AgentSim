@@ -7,6 +7,8 @@ import { RecentRuns } from "./RecentRuns";
 import { Timeline } from "./Timeline";
 import { ScorePanel } from "./ScorePanel";
 import { DiffPanel } from "./DiffPanel";
+import { useReplay } from "./useReplay";
+import { ReplayScrubber } from "./ReplayScrubber";
 import { panel } from "./styles";
 
 export type RunViewProps = { run: RunRecord | null; scenarios: ScenarioSummary[]; recent: RunSummary[] };
@@ -15,6 +17,7 @@ export function RunView({ run, scenarios, recent }: RunViewProps) {
   // used by PromptDiffSheet (Task 20)
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [diffOpen, setDiffOpen] = useState(false);
+  const replay = useReplay(run);
   return (
     <div className="min-h-screen text-sm">
       <Header run={run} />
@@ -24,10 +27,15 @@ export function RunView({ run, scenarios, recent }: RunViewProps) {
           <RecentRuns runs={recent} currentId={run?.id ?? null} />
         </aside>
         <main className={`${panel} flex flex-col overflow-hidden`}>
-          {run ? <Timeline run={run} visible={run.events.length} /> : <div className="p-6 text-[#6b6b66]">Pick a Scenario and press Run.</div>}
+          {run ? (
+            <>
+              <Timeline run={run} visible={replay.visible} />
+              {run.status !== "running" && <ReplayScrubber replay={replay} />}
+            </>
+          ) : <div className="p-6 text-[#6b6b66]">Pick a Scenario and press Run.</div>}
         </main>
         <aside className="flex flex-col gap-4">
-          <ScorePanel run={run} replaying={false} />
+          <ScorePanel run={run} replaying={replay.replaying} />
           <DiffPanel run={run} />
         </aside>
       </div>

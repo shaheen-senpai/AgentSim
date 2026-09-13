@@ -2,9 +2,9 @@ import { mkdtempSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
-import { createRun, finishRun } from "@/runner/run";
+import { createRun, failRun, finishRun } from "@/runner/run";
 import { loadRun } from "@/runner/store";
-import { getLive } from "@/runner/registry";
+import { getLive, unregisterLive } from "@/runner/registry";
 
 beforeAll(() => { process.env.AGENTSIM_DATA_DIR = mkdtempSync(path.join(os.tmpdir(), "agentsim-run-")); });
 
@@ -48,5 +48,12 @@ describe("createRun + finishRun", () => {
   });
   it("refuses to finish a Run that is not live", () => {
     expect(() => finishRun("run_missing")).toThrow(/not live/);
+  });
+  it("failRun marks a Run failed even when it is no longer live", () => {
+    const { run } = createRun({ scenarioId: "duplicate-charge-refund", agent: "byo" });
+    unregisterLive(run.id); // simulate a dropped registry
+    failRun(run.id, "boom");
+    expect(loadRun(run.id)).toMatchObject({ status: "failed", error: "boom" });
+    expect(loadRun(run.id)?.durationMs).toBeGreaterThanOrEqual(0);
   });
 });

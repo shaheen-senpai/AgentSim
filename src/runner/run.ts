@@ -9,7 +9,7 @@ import { REFERENCE_AGENT_MODEL } from "./agents";
 import { getLive, registerLive, unregisterLive } from "./registry";
 import { driveReferenceAgent } from "./referenceAgent";
 import type { AgentVersion } from "./agents";
-import { newRunId, saveRun, type RunAgent, type RunRecord } from "./store";
+import { loadRun, newRunId, saveRun, type RunAgent, type RunRecord } from "./store";
 
 export type CreateRunOptions = { scenarioId: string; agent: RunAgent; attackId?: string | null };
 export type FinishPatch = Partial<Pick<RunRecord, "usage" | "transcript" | "cappedOut" | "truncated" | "error">>;
@@ -100,8 +100,20 @@ export function startRun(opts: CreateRunOptions): string {
       });
       finishRun(run.id, { usage: result.usage, transcript: result.transcript, cappedOut: result.cappedOut, truncated: result.truncated });
     } catch (e) {
-      finishRun(run.id, { error: e instanceof Error ? e.message : String(e) });
+      failRun(run.id, e instanceof Error ? e.message : String(e));
     }
   })();
   return run.id;
+}
+
+/** Mark a Run failed even when it is no longer live (e.g. the registry was dropped on a dev-server reload). */
+export function failRun(id: string, message: string): void {
+  try {
+    finishRun(id, { error: message });
+  } catch {
+    const stale = loadRun(id);
+    if (stale && stale.status === "running") {
+      saveRun({ ...stale, status: "failed", error: message, durationMs: Date.now() - Date.parse(stale.createdAt) });
+    }
+  }
 }

@@ -12,7 +12,14 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    ".scratch/**",
+    ".superpowers/**",
   ]),
+  {
+    rules: {
+      "@typescript-eslint/no-unused-vars": ["warn", { varsIgnorePattern: "^_", argsIgnorePattern: "^_", destructuredArrayIgnorePattern: "^_" }],
+    },
+  },
 ]);
 
 export default eslintConfig;

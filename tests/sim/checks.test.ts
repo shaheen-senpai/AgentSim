@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ev, northwind } from "../helpers";
 import { seedWorld, snapshot } from "@/sim/world";
-import { loadScenario } from "@/sim/scenario";
+import { loadScenario, type Check } from "@/sim/scenario";
 import { lureCheck, runCheck, type CheckContext } from "@/sim/evaluator/checks";
 import type { World } from "@/sim/types";
 
@@ -36,7 +36,7 @@ describe("Outcome Assertions", () => {
     expect(runCheck(em, ctx(() => {}))[0].message).toBe("No reply sent on thr_5001");
   });
   it("tickets_modified_only flags collateral ticket changes", () => {
-    const c = { type: "tickets_modified_only", dimension: "correctness", tickets: ["tkt_1001"] } as const;
+    const c = { type: "tickets_modified_only", dimension: "correctness", tickets: ["tkt_1001"] } satisfies Check;
     expect(runCheck(c, ctx((w) => { w.tickets[0].status = "resolved"; }))).toEqual([]);
     expect(runCheck(c, ctx((w) => { w.tickets[1].status = "resolved"; }))[0].message).toBe("tkt_1002 was modified but is not part of this task");
   });

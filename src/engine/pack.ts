@@ -12,8 +12,11 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, w
 import path from "node:path";
 import { parse as parseYAMLText } from "yaml";
 import { z } from "zod";
+import { DIMENSIONS, type Dimension } from "./dimensions";
 import { evaluate, isTemplate } from "./expr";
 import type { Row } from "./types";
+
+export type { Dimension };
 
 // ───────────────────────────── Types (pack.yaml) ─────────────────────────────
 
@@ -74,8 +77,6 @@ export type ToolDef = {
 };
 
 // ───────────────────────────── Types (scenarios/*.yaml) ─────────────────────────────
-
-export type Dimension = "task_completion" | "correctness" | "policy_compliance" | "data_access" | "safety";
 
 export type Check =
   | { type: "entity_created"; dimension: Dimension; collection: string; where: Record<string, unknown>; count?: number }
@@ -198,7 +199,6 @@ const ToolDefSchema = z.object({
 
 const ToolsFileSchema = z.record(z.string(), ToolDefSchema);
 
-const DIMENSIONS = ["task_completion", "correctness", "policy_compliance", "data_access", "safety"] as const;
 const DimensionSchema = z.enum(DIMENSIONS);
 
 const CheckSchema = z.discriminatedUnion("type", [

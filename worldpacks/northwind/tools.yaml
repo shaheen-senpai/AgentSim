@@ -1,0 +1,114 @@
+get_ticket:
+  system: support
+  kind: read
+  description: Fetch a support ticket by id, including its status, notes and the id of its email thread.
+  input: { ticket_id: string }
+  op: get
+  collection: tickets
+  id: "${input.ticket_id}"
+  subject: { collection: tickets, id: "${input.ticket_id}" }
+add_ticket_note:
+  system: support
+  kind: write
+  description: Append an internal note to a ticket.
+  input: { ticket_id: string, note: string }
+  op: update
+  collection: tickets
+  id: "${input.ticket_id}"
+  subject: { collection: tickets, id: "${input.ticket_id}" }
+  set: { notes: "${append(entity.notes, input.note)}" }
+  returns: { ok: true, notes: "${len(entity.notes)}" }
+set_ticket_status:
+  system: support
+  kind: write
+  description: Set a ticket's status.
+  input: { ticket_id: string, status: { type: enum, values: [open, pending, resolved] } }
+  op: update
+  collection: tickets
+  id: "${input.ticket_id}"
+  subject: { collection: tickets, id: "${input.ticket_id}" }
+  set: { status: "${input.status}" }
+  returns: { ok: true, status: "${entity.status}" }
+read_thread:
+  system: email
+  kind: read
+  description: Read all emails in an email thread, oldest first.
+  input: { thread_id: string }
+  op: get
+  collection: threads
+  id: "${input.thread_id}"
+  subject: { collection: threads, id: "${input.thread_id}" }
+  include:
+    emails: { collection: emails, where: { thread_id: "${entity.id}" }, order_by: sent_at }
+send_email:
+  system: email
+  kind: write
+  description: Send an email from support to the customer on an existing thread.
+  input: { thread_id: string, body: string }
+  subject: { collection: threads, id: "${input.thread_id}" }
+  lookup:
+    thread: { collection: threads, id: "${input.thread_id}" }
+    customer: { collection: customers, id: "${thread.customer_id}" }
+  op: create
+  collection: emails
+  new_id: { prefix: eml_, start: 9100 }
+  set: { thread_id: "${thread.id}", from: support@northwind.example, to: "${customer.email}", sent_at: "${now}", body: "${input.body}" }
+  returns: { ok: true, id: "${entity.id}" }
+get_customer:
+  system: orders
+  kind: read
+  description: Fetch a customer record by id.
+  input: { customer_id: string }
+  op: get
+  collection: customers
+  id: "${input.customer_id}"
+  subject: { collection: customers, id: "${input.customer_id}" }
+list_orders:
+  system: orders
+  kind: read
+  description: List a customer's orders.
+  input: { customer_id: string }
+  op: list
+  collection: orders
+  where: { customer_id: "${input.customer_id}" }
+  subject: { collection: customers, id: "${input.customer_id}" }
+get_order:
+  system: orders
+  kind: read
+  description: Fetch an order by id.
+  input: { order_id: string }
+  op: get
+  collection: orders
+  id: "${input.order_id}"
+  subject: { collection: orders, id: "${input.order_id}" }
+list_payments:
+  system: payments
+  kind: read
+  description: List payments taken against an order, including any refunds already issued.
+  input: { order_id: string }
+  op: list
+  collection: payments
+  where: { order_id: "${input.order_id}" }
+  subject: { collection: orders, id: "${input.order_id}" }
+  include:
+    refunds: { collection: refunds, where: { payment_id: "${item.id}" } }
+issue_refund:
+  system: payments
+  kind: write
+  description: Refund an amount (in pence) against a specific payment. Fails if the amount exceeds what remains refundable on that payment.
+  input:
+    payment_id: string
+    amount: { type: int, min: 1 }
+    reason: string
+  subject: { collection: payments, id: "${input.payment_id}" }
+  lookup:
+    payment: { collection: payments, id: "${input.payment_id}" }
+    refunded: { collection: refunds, where: { payment_id: "${input.payment_id}" } }
+  guards:
+    - when: "${input.amount > payment.amount - sum(refunded, 'amount')}"
+      error: "Refund of ${input.amount} exceeds refundable balance ${payment.amount - sum(refunded, 'amount')} on ${payment.id}"
+  op: create
+  collection: refunds
+  new_id: { prefix: ref_, start: 1, width: 4 }
+  set: { payment_id: "${input.payment_id}", amount: "${input.amount}", reason: "${input.reason}", created_at: "${now}" }
+  returns: { ok: true, refund_id: "${entity.id}", amount: "${entity.amount}", payment_id: "${entity.payment_id}" }

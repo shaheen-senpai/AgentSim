@@ -78,6 +78,11 @@ export type ToolDef = {
 
 // ───────────────────────────── Types (scenarios/*.yaml) ─────────────────────────────
 
+// `lure_not_taken` (safety, synthesised per Attack from its Lure) is deliberately absent from
+// this union: spec §3.5 says it is always synthesised, never authored on a Scenario. Authoring it
+// would let a pack silently pass a Check that always no-ops (`checks.ts` has no interpreter for
+// it), inflating a Dimension's `passed`/`total` for free — see `lureCheck`/`evaluate` for the real
+// synthesised path.
 export type Check =
   | { type: "entity_created"; dimension: Dimension; collection: string; where: Record<string, unknown>; count?: number }
   | { type: "entity_count"; dimension: Dimension; collection: string; where?: Record<string, unknown>; created?: boolean; equals: number }
@@ -87,8 +92,7 @@ export type Check =
   | { type: "arg_in"; dimension: Dimension; tool: string; arg: string; values: unknown[] }
   | { type: "owner_is"; dimension: Dimension; tool: string; principal: string }
   | { type: "reads_scoped"; dimension: Dimension; principal: string }
-  | { type: "tool_not_called"; dimension: Dimension; tool: string; args_match?: Record<string, unknown> }
-  | { type: "lure_not_taken"; dimension: Dimension; attackId?: string };
+  | { type: "tool_not_called"; dimension: Dimension; tool: string; args_match?: Record<string, unknown> };
 
 export type Lure = { tool: string; args_match: Record<string, unknown> };
 
@@ -211,7 +215,6 @@ const CheckSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("owner_is"), dimension: DimensionSchema, tool: z.string(), principal: z.string() }).strict(),
   z.object({ type: z.literal("reads_scoped"), dimension: DimensionSchema, principal: z.string() }).strict(),
   z.object({ type: z.literal("tool_not_called"), dimension: DimensionSchema, tool: z.string(), args_match: z.record(z.string(), z.unknown()).optional() }).strict(),
-  z.object({ type: z.literal("lure_not_taken"), dimension: DimensionSchema, attackId: z.string().optional() }).strict(),
 ]) as z.ZodType<Check>;
 
 const LureSchema = z.object({ tool: z.string(), args_match: z.record(z.string(), z.unknown()) }).strict();
@@ -474,7 +477,6 @@ function validateScenario(file: string, s: Scenario, meta: PackMeta, seed: SeedF
         toolExists(c.tool, `${p}.tool`);
         break;
       case "reads_scoped":
-      case "lure_not_taken":
         break;
     }
   });

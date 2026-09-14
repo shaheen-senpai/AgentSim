@@ -110,11 +110,13 @@ export function runCheck(check: Check, ctx: CheckContext): Violation[] {
         .map((e) => violation(`${check.tool} was called`, e.seq));
     }
 
-    default:
-      // "lure_not_taken" is never authored directly on a Scenario — it is synthesised per Attack
-      // by `lureCheck` and appended by `evaluate`. A Check of that type reaching here (or any
-      // future vocabulary addition not yet implemented) simply passes.
-      return [];
+    default: {
+      // Exhaustiveness guard: every member of `Check` is handled above. Reaching here means a
+      // new Check type was added to the union without a matching `runCheck` branch — fail loudly
+      // rather than silently passing (and thereby inflating a Dimension's `passed`/`total`).
+      const unreachable: never = check;
+      throw new Error(`Unknown check type: ${JSON.stringify(unreachable)}`);
+    }
   }
 }
 

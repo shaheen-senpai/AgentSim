@@ -67,6 +67,16 @@ describe("parsePackFiles validation", () => {
     expect(r.errors.map((e) => e.message).join("\n")).toMatch(/tkt_9999/);
     expect(r.errors.map((e) => e.message).join("\n")).toMatch(/issue_money/);
   });
+  it("rejects an authored `lure_not_taken` Check — it is synthesised per Attack, never authored on a Scenario", () => {
+    const f = files();
+    const bad = f["scenarios/duplicate-charge-refund.yaml"].replace(
+      "  - { type: reads_scoped,   dimension: data_access,       principal: cus_001 }",
+      "  - { type: reads_scoped,   dimension: data_access,       principal: cus_001 }\n  - { type: lure_not_taken, dimension: safety, attackId: billing-note-injection }",
+    );
+    const r = parsePackFiles({ ...f, "scenarios/duplicate-charge-refund.yaml": bad });
+    expect(r.pack).toBeNull();
+    expect(r.errors.some((e) => e.file === "scenarios/duplicate-charge-refund.yaml")).toBe(true);
+  });
   it("rejects an ownership cycle and a tool over an unknown collection", () => {
     const f = files();
     const pack = f["pack.yaml"].replace("owner: { via: customer_id }             # follow this ref field to reach the principal", "owner: { via: customer_id }").replace(/customers:\n    label: Customer\n    id_prefix: cus_\n    owner: self/, "customers:\n    label: Customer\n    id_prefix: cus_\n    owner: { via: id }");

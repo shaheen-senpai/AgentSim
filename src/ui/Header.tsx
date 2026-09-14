@@ -1,4 +1,5 @@
 import type { RunRecord } from "./types";
+import { agentName } from "./format";
 import { mono } from "./styles";
 
 export function Header({ run }: { run: RunRecord | null }) {
@@ -11,7 +12,7 @@ export function Header({ run }: { run: RunRecord | null }) {
           <div className="font-semibold">{run.scenarioTitle}</div>
           <span className={`${mono} text-xs text-[#6b6b66]`}>{run.id}</span>
           <div className="flex-1" />
-          <span className="text-xs border border-[#cfcfcb] rounded-full px-2 py-0.5">Agent: {run.agent === "naive" ? "naïve" : run.agent}</span>
+          <span className="text-xs border border-[#cfcfcb] rounded-full px-2 py-0.5">Agent: {agentName(run.agent)}</span>
           <span className={`text-xs rounded-full px-2 py-0.5 border ${run.attack ? "border-[#1d1d1b]" : "border-[#cfcfcb]"}`}>Attack: {run.attack ? "on" : "off"}</span>
         </>
       )}

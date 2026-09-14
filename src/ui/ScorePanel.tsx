@@ -1,4 +1,4 @@
-import { label } from "@/sim/dimensions";
+import { label } from "@/engine/dimensions";
 import type { RunRecord } from "./types";
 import { heading, mono, panel } from "./styles";
 

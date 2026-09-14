@@ -1,6 +1,7 @@
 import { createMcpHandler, McpServer, hostHeaderValidationResponse, originValidationResponse, localhostAllowedHostnames, localhostAllowedOrigins } from "@modelcontextprotocol/server";
+import { ToolError } from "@/engine/dsl";
+import { inputZod } from "@/engine/pack";
 import { getLive } from "@/runner/registry";
-import { TOOLS, ToolError } from "@/sim/tools";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,13 +14,13 @@ const handler = createMcpHandler(
     const live = getLive(runId);
     if (!live) throw new Error(`Unknown run ${runId}`);
     const server = new McpServer({ name: "agentsim", version: "0.1.0" });
-    for (const def of TOOLS) {
+    for (const def of Object.values(live.pack.tools)) {
       server.registerTool(
         def.name,
-        { description: def.description, inputSchema: def.schema, annotations: { readOnlyHint: def.kind === "read" } },
+        { description: def.description, inputSchema: inputZod(def).shape, annotations: { readOnlyHint: def.kind === "read" } },
         async (args) => {
           try {
-            return { content: [{ type: "text" as const, text: await live.sim.execute(def.name, args) }] };
+            return { content: [{ type: "text" as const, text: await live.gateway.execute({ tool: def.name, input: args, source: "mcp" }) }] };
           } catch (e) {
             if (e instanceof ToolError) return { content: [{ type: "text" as const, text: e.message }], isError: true };
             throw e;

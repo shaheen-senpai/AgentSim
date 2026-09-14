@@ -53,9 +53,9 @@ export function PromptDiffSheet({ open, onClose, run }: { open: boolean; onClose
           )) : "loading…"}
         </pre>
         <div className="flex items-center gap-3 px-4 py-3 border-t border-[#cfcfcb]">
-          <span className="text-xs text-[#6b6b66]">Same model ({run?.model ?? "claude-haiku-4-5"}), same tools, same Scenario{run?.attack ? ", same Attack" : ""}.</span>
+          <span className="text-xs text-[#6b6b66]">Same model ({(run?.agent.kind === "reference" ? run.agent.model : null) ?? "claude-haiku-4-5"}), same tools, same Scenario{run?.attack ? ", same Attack" : ""}.</span>
           {error && <span className="text-xs text-[#c8321e]">{error}</span>}
-          <button type="button" onClick={rerunFixed} disabled={busy || !run || run.agent === "fixed"} className="ml-auto h-8 px-4 rounded bg-[#1d1d1b] text-white font-semibold text-sm disabled:opacity-50">
+          <button type="button" onClick={rerunFixed} disabled={busy || !run || run.agent.kind === "reference" && run.agent.version === "fixed"} className="ml-auto h-8 px-4 rounded bg-[#1d1d1b] text-white font-semibold text-sm disabled:opacity-50">
             {busy ? "Starting…" : "▷ Rerun with fixed"}
           </button>
         </div>

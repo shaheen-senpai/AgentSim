@@ -1,23 +1,30 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import type { DiffEntry } from "@/sim/diff";
-import type { Score, Violation } from "@/sim/evaluator";
-import type { Attack } from "@/sim/scenario";
-import type { Event, Snapshot } from "@/sim/types";
-import type { AgentVersion } from "./agents";
+import type { DiffEntry } from "@/engine/diff";
+import type { Score, Violation } from "@/engine/evaluator";
+import type { Attack } from "@/engine/pack";
+import type { Event, Snapshot } from "@/engine/types";
 
 export type RunStatus = "running" | "completed" | "failed";
-export type RunAgent = AgentVersion | "byo";
+export type AgentShape = "mcp" | "forwarder" | "connector";
+
+/** Who ran the Scenario: one of the pack's Reference Agent prompts, or someone's own agent. */
+export type RunAgentRef =
+  | { kind: "reference"; version: string; model: string }
+  | { kind: "byo"; agentId: string | null; name: string; shape: AgentShape; toolAliases: Record<string, string> };
+
+export type FinishedBy = "agent" | "user" | "idle_timeout" | "error";
 
 export type RunRecord = {
   id: string;
   createdAt: string;
   status: RunStatus;
+  packId: string;
+  packName: string;
   scenarioId: string;
   scenarioTitle: string;
-  agent: RunAgent;
+  agent: RunAgentRef;
   attack: Attack | null;
-  model: string | null;
   taskBrief: string;
   startSnapshot: Snapshot;
   endSnapshot: Snapshot | null;
@@ -33,14 +40,36 @@ export type RunRecord = {
   transcript: unknown[];
   error: string | null;
   narrative: string | null;
+  idleTimeoutMs: number | null;
+  finishedBy: FinishedBy | null;
 };
 
-export type RunSummary = Pick<RunRecord, "id" | "createdAt" | "status" | "scenarioId" | "agent"> & {
+export type RunSummary = Pick<RunRecord, "id" | "createdAt" | "status" | "packId" | "scenarioId"> & {
+  agentLabel: string;
+  agentKind: "reference" | "byo";
   attackId: string | null;
   headline: number | null;
   capped: boolean;
   golden: boolean;
 };
+
+/**
+ * Display name for a Run's agent: a Reference version ("naive" → "naïve") or the BYO agent's name.
+ * Defensive about v1 records still on disk, where `agent` was the version string (Task 10 migrates them).
+ */
+export function agentLabel(a: RunAgentRef): string {
+  const legacy = a as unknown;
+  if (typeof legacy === "string") return legacy === "naive" ? "naïve" : legacy;
+  if (!a || typeof a !== "object") return "—";
+  if (a.kind === "byo") return a.name;
+  return a.version === "naive" ? "naïve" : a.version;
+}
+
+function agentKind(a: RunAgentRef): "reference" | "byo" {
+  const legacy = a as unknown;
+  if (typeof legacy === "string") return legacy === "byo" ? "byo" : "reference";
+  return a?.kind === "byo" ? "byo" : "reference";
+}
 
 export const dataDir = () => process.env.AGENTSIM_DATA_DIR ?? path.join(process.cwd(), "data");
 const runsDir = () => path.join(dataDir(), "runs");
@@ -82,7 +111,19 @@ export function loadRun(id: string): RunRecord | null {
 }
 
 export function toSummary(r: RunRecord, golden = false): RunSummary {
-  return { id: r.id, createdAt: r.createdAt, status: r.status, scenarioId: r.scenarioId, agent: r.agent, attackId: r.attack?.id ?? null, headline: r.score?.headline ?? null, capped: r.score?.capped ?? false, golden };
+  return {
+    id: r.id,
+    createdAt: r.createdAt,
+    status: r.status,
+    packId: r.packId ?? "", // v1 records predate packs; Task 10 migrates them
+    scenarioId: r.scenarioId,
+    agentLabel: agentLabel(r.agent),
+    agentKind: agentKind(r.agent),
+    attackId: r.attack?.id ?? null,
+    headline: r.score?.headline ?? null,
+    capped: r.score?.capped ?? false,
+    golden,
+  };
 }
 
 export function listRuns(scenarioId?: string): RunSummary[] {

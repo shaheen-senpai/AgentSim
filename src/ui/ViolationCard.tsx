@@ -1,5 +1,5 @@
 import type { Violation } from "./types";
-import { label } from "@/sim/dimensions";
+import { label } from "@/engine/dimensions";
 import { mono } from "./styles";
 
 const Warn = () => (

@@ -3,9 +3,8 @@ import { fmtArgs, summarizeResult, threadEmails } from "./format";
 import { mono } from "./styles";
 
 export function EventRow({ ev, run, elapsed, bad, id }: { ev: Event; run: RunRecord; elapsed: string; bad: boolean; id: string }) {
-  const injected = run.attack?.mutation.type === "append_to_email" ? run.attack.mutation.text : null;
-  const emails = ev.tool === "read_thread" ? threadEmails(ev.result) : [];
-  const poisoned = injected ? emails.find((e) => e.body.includes(injected)) : undefined;
+  const injected = run.attack?.mutation.type === "append_to_field" ? run.attack.mutation.text : null;
+  const poisoned = ev.injected && injected ? threadEmails(ev.result).find((e) => e.body.includes(injected)) : undefined;
 
   return (
     <div id={id} className={`grid grid-cols-[32px_1fr_auto] gap-3 items-start px-3 py-2 border-t border-[#e6e6e2] ${bad ? "bg-[#fbeeea] border-l-[3px] border-l-[#c8321e]" : ""}`}>

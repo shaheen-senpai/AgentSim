@@ -1,9 +1,9 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { betaZodTool } from "@anthropic-ai/sdk/helpers/beta/zod";
 import type { BetaMessage } from "@anthropic-ai/sdk/resources/beta";
-import type { Sim } from "@/sim/sim";
-import { TOOLS } from "@/sim/tools";
-import { loadSystemPrompt, REFERENCE_AGENT_MODEL, type AgentVersion } from "./agents";
+import type { Gateway } from "@/engine/gateway";
+import { inputZod, type WorldPack } from "@/engine/pack";
+import { loadSystemPrompt, REFERENCE_AGENT_MODEL } from "./agents";
 
 export const MAX_ITERATIONS = 16; // API requests per Run; the capped turn's tools still execute (research §5)
 export const MAX_TOKENS = 16_000;
@@ -16,22 +16,23 @@ export type DriveResult = {
   turns: number;
 };
 
-/** Runs the Reference Agent against a live Sim. Every tool call is routed through sim.execute, which records the Event. */
+/** Runs the Reference Agent against a live gateway. Every tool call is routed through gateway.execute, which records the Event. */
 export async function driveReferenceAgent(
-  sim: Sim,
-  agent: AgentVersion,
+  gateway: Gateway,
+  pack: WorldPack,
+  version: string,
   taskBrief: string,
   onTurn?: (usage: DriveResult["usage"]) => void,
 ): Promise<DriveResult> {
   const client = new Anthropic({ maxRetries: 3 }); // ANTHROPIC_API_KEY from the environment
 
-  const tools = TOOLS.map((def) =>
+  const tools = Object.values(pack.tools).map((def) =>
     betaZodTool({
       name: def.name,
       description: def.description,
-      inputSchema: def.schema,
-      // ToolError thrown by sim.execute becomes a tool_result with is_error: true — the loop continues.
-      run: async (args, context) => sim.execute(def.name, args, context?.toolUse.id),
+      inputSchema: inputZod(def),
+      // ToolError thrown by gateway.execute becomes a tool_result with is_error: true — the loop continues.
+      run: async (args, context) => gateway.execute({ tool: def.name, input: args, toolUseId: context?.toolUse.id, source: "reference" }),
     }),
   );
 
@@ -39,7 +40,7 @@ export async function driveReferenceAgent(
   const runner = client.beta.messages.toolRunner({
     model: REFERENCE_AGENT_MODEL,
     max_tokens: MAX_TOKENS,
-    system: loadSystemPrompt(agent),
+    system: loadSystemPrompt(pack, version),
     tools,
     messages: [{ role: "user", content: taskBrief }],
     max_iterations: MAX_ITERATIONS,

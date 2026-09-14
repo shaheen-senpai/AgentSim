@@ -27,7 +27,7 @@ export function RunView({ run, scenarios, recent }: RunViewProps) {
   const requestedFor = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!run || run.status !== "completed" || run.narrative || run.agent === "byo") return;
+    if (!run || run.status !== "completed" || run.narrative || run.agent.kind === "byo") return;
     if (recent.find((s) => s.id === run.id)?.golden === true) return; // golden Runs are canned demo data — never a live model call
     if (requestedFor.current === run.id) return;
     requestedFor.current = run.id;

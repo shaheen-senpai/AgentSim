@@ -22,7 +22,7 @@ function Seg<T extends string>({ value, options, onChange }: { value: T; options
 export function Launcher({ scenarios, run, onPromptDiff }: Props) {
   const router = useRouter();
   const [scenarioId, setScenarioId] = useState(run?.scenarioId ?? scenarios[0]?.id ?? "");
-  const [agent, setAgent] = useState<"naive" | "fixed">(run?.agent === "fixed" ? "fixed" : "naive");
+  const [agent, setAgent] = useState<"naive" | "fixed">(run?.agent.kind === "reference" && run.agent.version === "fixed" ? "fixed" : "naive");
   const [attackId, setAttackId] = useState<string | "off">(run?.attack?.id ?? "off");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);

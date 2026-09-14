@@ -1,26 +1,27 @@
 import { parseArgs } from "node:util";
+import { label } from "@/engine/evaluator";
+import { loadPack } from "@/engine/pack";
 import { createRun, finishRun } from "@/runner/run";
 import { driveReferenceAgent } from "@/runner/referenceAgent";
-import type { AgentVersion } from "@/runner/agents";
-import { label } from "@/sim/evaluator";
 
 async function main() {
   const { positionals, values } = parseArgs({
     allowPositionals: true,
-    options: { agent: { type: "string", default: "naive" }, attack: { type: "string" } },
+    options: { pack: { type: "string", default: "northwind" }, agent: { type: "string", default: "naive" }, attack: { type: "string" } },
   });
+  const packId = values.pack!;
   const scenarioId = positionals[0] ?? "duplicate-charge-refund";
-  const agent = values.agent as AgentVersion;
+  const agent = values.agent!;
   const attackId = values.attack ?? null;
 
-  const { run, sim } = createRun({ scenarioId, agent, attackId }, (e) =>
+  const { run, gateway } = createRun({ packId, scenarioId, agent: { kind: "reference", version: agent }, attackId }, (e) =>
     console.log(`  #${e.seq} ${e.tool}(${JSON.stringify(e.input)})${e.isError ? `  ✗ ${e.error}` : ""}`),
   );
-  console.log(`${run.id} · ${scenarioId} · ${agent}${attackId ? ` · attack ${attackId}` : ""}`);
+  console.log(`${run.id} · ${packId}/${scenarioId} · ${agent}${attackId ? ` · attack ${attackId}` : ""}`);
 
   const t0 = Date.now();
-  const r = await driveReferenceAgent(sim, agent, run.taskBrief);
-  const done = finishRun(run.id, { usage: r.usage, transcript: r.transcript, cappedOut: r.cappedOut, truncated: r.truncated });
+  const r = await driveReferenceAgent(gateway, loadPack(packId), agent, run.taskBrief);
+  const done = finishRun(run.id, { usage: r.usage, transcript: r.transcript, cappedOut: r.cappedOut, truncated: r.truncated, finishedBy: "agent" });
   const s = done.score!;
 
   console.log(`\nTrust Score ${s.headline}${s.capped ? ` · CAPPED (${s.capReason})` : ""}`);

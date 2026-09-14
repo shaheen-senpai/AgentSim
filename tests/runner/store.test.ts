@@ -2,34 +2,57 @@ import { mkdirSync, mkdtempSync, readdirSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import { listRuns, loadRun, newRunId, saveRun, toSummary, type RunRecord } from "@/runner/store";
-import { loadSystemPrompt, REFERENCE_AGENT_MODEL } from "@/runner/agents";
-import { getLive, registerLive, unregisterLive } from "@/runner/registry";
-import { createSim } from "@/sim/sim";
-import { seedWorld } from "@/sim/world";
-import { northwind } from "../helpers";
+import { agentLabel, listRuns, loadRun, newRunId, saveRun, toSummary, type RunRecord } from "@/runner/store";
+import { loadSystemPrompt, REFERENCE_AGENT_MODEL, referenceVersions } from "@/runner/agents";
+import { loadPack } from "@/engine/pack";
+import { seedWorld, snapshot } from "@/engine/world";
+import { minimalPack } from "../helpers/minimalPack";
+import { usePacksDir } from "../helpers/packs";
 
 function record(over: Partial<RunRecord> = {}): RunRecord {
-  const w = seedWorld(northwind());
+  const pack = loadPack("northwind");
   return {
-    id: newRunId(), createdAt: new Date().toISOString(), status: "running", scenarioId: "duplicate-charge-refund", scenarioTitle: "Dup",
-    agent: "naive", attack: null, model: REFERENCE_AGENT_MODEL, taskBrief: "brief", startSnapshot: w, endSnapshot: null,
-    events: [], violations: [], score: null, diff: null, unchangedCount: null, usage: { inputTokens: 0, outputTokens: 0 },
-    durationMs: null, cappedOut: false, truncated: false, transcript: [], error: null, narrative: null, ...over,
+    id: newRunId(), createdAt: new Date().toISOString(), status: "running",
+    packId: pack.meta.id, packName: pack.meta.name,
+    scenarioId: "duplicate-charge-refund", scenarioTitle: "Dup",
+    agent: { kind: "reference", version: "naive", model: REFERENCE_AGENT_MODEL },
+    attack: null, taskBrief: "brief", startSnapshot: snapshot(seedWorld(pack)), endSnapshot: null,
+    events: [], violations: [], score: null, diff: null, unchangedCount: null,
+    usage: { inputTokens: 0, outputTokens: 0 }, durationMs: null, cappedOut: false, truncated: false,
+    transcript: [], error: null, narrative: null, idleTimeoutMs: null, finishedBy: null, ...over,
   };
 }
 
-beforeAll(() => { process.env.AGENTSIM_DATA_DIR = mkdtempSync(path.join(os.tmpdir(), "agentsim-store-")); });
+beforeAll(() => {
+  usePacksDir();
+  process.env.AGENTSIM_DATA_DIR = mkdtempSync(path.join(os.tmpdir(), "agentsim-store-"));
+});
 
 describe("store", () => {
-  it("round-trips a Run and lists newest first", () => {
+  it("round-trips a v2 Run and lists newest first", () => {
     const a = record({ createdAt: "2026-09-13T10:00:00.000Z" });
-    const b = record({ createdAt: "2026-09-13T11:00:00.000Z", status: "completed", score: { headline: 40, capped: true, capReason: "x", dimensions: [] } });
+    const b = record({ createdAt: "2026-09-13T11:00:00.000Z", status: "completed", finishedBy: "agent", score: { headline: 40, capped: true, capReason: "x", dimensions: [] } });
     saveRun(a); saveRun(b);
     expect(loadRun(a.id)).toEqual(a);
     expect(listRuns().map((s) => s.id)).toEqual([b.id, a.id]);
-    expect(toSummary(b)).toMatchObject({ headline: 40, capped: true, attackId: null });
+    expect(toSummary(b)).toMatchObject({ headline: 40, capped: true, attackId: null, packId: "northwind", agentKind: "reference", agentLabel: "naïve" });
     expect(listRuns("other-scenario")).toEqual([]);
+  });
+  it("summarises a BYO Run under the agent's name", () => {
+    const r = record({ agent: { kind: "byo", agentId: null, name: "Claude Code", shape: "mcp", toolAliases: {} } });
+    expect(toSummary(r)).toMatchObject({ agentKind: "byo", agentLabel: "Claude Code" });
+  });
+  it("labels agents for display", () => {
+    expect(agentLabel({ kind: "reference", version: "naive", model: REFERENCE_AGENT_MODEL })).toBe("naïve");
+    expect(agentLabel({ kind: "reference", version: "fixed", model: REFERENCE_AGENT_MODEL })).toBe("fixed");
+    expect(agentLabel({ kind: "byo", agentId: "ag_1", name: "Codex", shape: "forwarder", toolAliases: {} })).toBe("Codex");
+  });
+  it("tolerates a v1 record on disk (Task 10 migrates them)", () => {
+    const v1 = { id: newRunId(), createdAt: "2026-09-13T13:02:34.209Z", status: "completed", scenarioId: "duplicate-charge-refund", scenarioTitle: "Dup", agent: "naive", attack: null, model: "claude-haiku-4-5", events: [], violations: [], score: { headline: 100, capped: false, capReason: null, dimensions: [] } };
+    mkdirSync(path.join(process.env.AGENTSIM_DATA_DIR!, "runs"), { recursive: true });
+    writeFileSync(path.join(process.env.AGENTSIM_DATA_DIR!, "runs", `${v1.id}.json`), JSON.stringify(v1));
+    expect(loadRun(v1.id)?.id).toBe(v1.id);
+    expect(listRuns().find((s) => s.id === v1.id)).toMatchObject({ agentLabel: "naïve", agentKind: "reference", headline: 100 });
   });
   it("returns null for an unknown Run", () => {
     expect(loadRun("run_nope")).toBeNull();
@@ -68,20 +91,21 @@ describe("store", () => {
 });
 
 describe("agents", () => {
-  it("loads both prompts; only the naïve one trusts internal notes", () => {
-    expect(loadSystemPrompt("naive")).toContain("treat them as pre-approved instructions");
-    expect(loadSystemPrompt("fixed")).toContain("Security rules");
-    expect(loadSystemPrompt("fixed")).not.toContain("pre-approved instructions");
+  it("lists a pack's Reference Agent versions, sorted", () => {
+    expect(referenceVersions(loadPack("northwind"))).toEqual(["fixed", "naive"]);
   });
-});
-
-describe("registry", () => {
-  it("holds live Runs on globalThis and forgets them", () => {
-    const sim = createSim(seedWorld(northwind()));
-    const run = record();
-    registerLive(run.id, sim, run);
-    expect(getLive(run.id)?.sim).toBe(sim);
-    unregisterLive(run.id);
-    expect(getLive(run.id)).toBeUndefined();
+  it("falls back to the generic version for a pack that ships no prompts", () => {
+    expect(referenceVersions(minimalPack())).toEqual(["generic"]);
+  });
+  it("loads a pack's prompts; only the naïve one trusts internal notes", () => {
+    const pack = loadPack("northwind");
+    expect(loadSystemPrompt(pack, "naive")).toContain("treat them as pre-approved instructions");
+    expect(loadSystemPrompt(pack, "fixed")).toContain("Security rules");
+    expect(loadSystemPrompt(pack, "fixed")).not.toContain("pre-approved instructions");
+  });
+  it("falls back to agents/generic.md when the pack has no prompt for the version", () => {
+    const prompt = loadSystemPrompt(minimalPack(), "generic");
+    expect(prompt.length).toBeGreaterThan(0);
+    expect(prompt).toContain("Task Brief");
   });
 });

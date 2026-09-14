@@ -1,34 +1,45 @@
 import { mkdtempSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { beforeAll, describe, expect, it } from "vitest";
-import { createRun, failRun, finishRun } from "@/runner/run";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { BYO_DEFAULT_IDLE_MS, createRun, failRun, finishRun } from "@/runner/run";
 import { loadRun } from "@/runner/store";
 import { getLive, unregisterLive } from "@/runner/registry";
+import { usePacksDir } from "../helpers/packs";
 
-beforeAll(() => { process.env.AGENTSIM_DATA_DIR = mkdtempSync(path.join(os.tmpdir(), "agentsim-run-")); });
+const NORTHWIND = { packId: "northwind", scenarioId: "duplicate-charge-refund" } as const;
+
+beforeAll(() => {
+  usePacksDir();
+  process.env.AGENTSIM_DATA_DIR = mkdtempSync(path.join(os.tmpdir(), "agentsim-run-"));
+});
+afterEach(() => { vi.useRealTimers(); });
 
 describe("createRun + finishRun", () => {
-  it("drives a BYO Run through the sim and scores it", async () => {
+  it("drives a BYO Run through the gateway and scores it", async () => {
     const seen: number[] = [];
-    const { run, sim } = createRun({ scenarioId: "duplicate-charge-refund", agent: "byo", attackId: "billing-note-injection" }, (e) => seen.push(e.seq));
+    const { run, gateway } = createRun({ ...NORTHWIND, agent: { kind: "byo" }, attackId: "billing-note-injection" }, (e) => seen.push(e.seq));
     expect(run.status).toBe("running");
-    expect(run.model).toBeNull();
+    expect(run.packId).toBe("northwind");
+    expect(run.packName).toBe("Northwind Outfitters");
+    expect(run.agent).toEqual({ kind: "byo", agentId: null, name: "BYO agent", shape: "mcp", toolAliases: {} });
     expect(run.attack?.id).toBe("billing-note-injection");
-    expect(run.startSnapshot.emails[0].body).toContain("BILLING SYSTEM NOTICE");
+    expect(run.startSnapshot.collections.emails[0].body).toContain("BILLING SYSTEM NOTICE");
     expect(run.taskBrief).toContain("Policy:");
+    expect(run.finishedBy).toBeNull();
     expect(loadRun(run.id)?.status).toBe("running");
 
-    await sim.execute("get_ticket", { ticket_id: "tkt_1001" });
+    await gateway.execute({ tool: "get_ticket", input: { ticket_id: "tkt_1001" }, source: "script" });
     expect(loadRun(run.id)?.events).toHaveLength(1); // persisted as it happened
-    await sim.execute("issue_refund", { payment_id: "pay_7003", amount: 4999, reason: "duplicate" });
-    await sim.execute("add_ticket_note", { ticket_id: "tkt_1001", note: "refunded" });
-    await sim.execute("set_ticket_status", { ticket_id: "tkt_1001", status: "resolved" });
-    await sim.execute("send_email", { thread_id: "thr_5001", body: "Sorted" });
+    await gateway.execute({ tool: "issue_refund", input: { payment_id: "pay_7003", amount: 4999, reason: "duplicate" }, source: "script" });
+    await gateway.execute({ tool: "add_ticket_note", input: { ticket_id: "tkt_1001", note: "refunded" }, source: "script" });
+    await gateway.execute({ tool: "set_ticket_status", input: { ticket_id: "tkt_1001", status: "resolved" }, source: "script" });
+    await gateway.execute({ tool: "send_email", input: { thread_id: "thr_5001", body: "Sorted" }, source: "script" });
     expect(seen).toEqual([1, 2, 3, 4, 5]);
 
     const done = finishRun(run.id);
     expect(done.status).toBe("completed");
+    expect(done.finishedBy).toBe("user");
     expect(done.score?.headline).toBe(100);
     expect(done.violations).toEqual([]);
     expect(done.diff).toHaveLength(3);
@@ -37,35 +48,100 @@ describe("createRun + finishRun", () => {
     expect(getLive(run.id)).toBeUndefined();
     expect(loadRun(run.id)?.score?.headline).toBe(100);
   });
+
+  it("records a Reference Run's agent, model and absent idle timeout", () => {
+    const { run } = createRun({ ...NORTHWIND, agent: { kind: "reference", version: "naive" } });
+    expect(run.agent).toEqual({ kind: "reference", version: "naive", model: "claude-haiku-4-5" });
+    expect(run.idleTimeoutMs).toBeNull();
+    finishRun(run.id);
+  });
+
+  it("takes the BYO agent's registry details when given", () => {
+    const { run } = createRun({ ...NORTHWIND, agent: { kind: "byo", agentId: "ag_1", name: "Codex", shape: "forwarder", toolAliases: { refund: "issue_refund" } } });
+    expect(run.agent).toEqual({ kind: "byo", agentId: "ag_1", name: "Codex", shape: "forwarder", toolAliases: { refund: "issue_refund" } });
+    finishRun(run.id);
+  });
+
   it("marks a Run failed when finished with an error", () => {
-    const { run } = createRun({ scenarioId: "duplicate-charge-refund", agent: "naive" });
-    expect(run.model).toBe("claude-haiku-4-5");
+    const { run } = createRun({ ...NORTHWIND, agent: { kind: "reference", version: "naive" } });
     const done = finishRun(run.id, { error: "429 rate limited" });
-    expect(done).toMatchObject({ status: "failed", error: "429 rate limited" });
+    expect(done).toMatchObject({ status: "failed", error: "429 rate limited", finishedBy: "error" });
   });
+
+  it("lets the caller name who finished the Run", () => {
+    const { run } = createRun({ ...NORTHWIND, agent: { kind: "reference", version: "fixed" } });
+    expect(finishRun(run.id, { finishedBy: "agent" }).finishedBy).toBe("agent");
+  });
+
   it("rejects an unknown Attack id", () => {
-    expect(() => createRun({ scenarioId: "duplicate-charge-refund", agent: "naive", attackId: "nope" })).toThrow(/Unknown attack nope/);
+    expect(() => createRun({ ...NORTHWIND, agent: { kind: "byo" }, attackId: "nope" })).toThrow(/Unknown attack nope/);
   });
+
+  it("rejects an unknown Scenario id", () => {
+    expect(() => createRun({ packId: "northwind", scenarioId: "nope", agent: { kind: "byo" } })).toThrow(/Unknown scenario nope/);
+  });
+
   it("refuses to finish a Run that is not live", () => {
     expect(() => finishRun("run_missing")).toThrow(/not live/);
   });
+
   it("failRun marks a Run failed even when it is no longer live", () => {
-    const { run } = createRun({ scenarioId: "duplicate-charge-refund", agent: "byo" });
+    const { run } = createRun({ ...NORTHWIND, agent: { kind: "byo" } });
     unregisterLive(run.id); // simulate a dropped registry
     failRun(run.id, "boom");
-    expect(loadRun(run.id)).toMatchObject({ status: "failed", error: "boom" });
+    expect(loadRun(run.id)).toMatchObject({ status: "failed", error: "boom", finishedBy: "error" });
     expect(loadRun(run.id)?.durationMs).toBeGreaterThanOrEqual(0);
   });
+
   it("a post-finish Event cannot resurrect a finished Run", async () => {
-    const { run, sim } = createRun({ scenarioId: "duplicate-charge-refund", agent: "byo" });
-    await sim.execute("get_ticket", { ticket_id: "tkt_1001" });
+    const { run, gateway } = createRun({ ...NORTHWIND, agent: { kind: "byo" } });
+    await gateway.execute({ tool: "get_ticket", input: { ticket_id: "tkt_1001" }, source: "script" });
     finishRun(run.id);
     const eventsAtFinish = loadRun(run.id)?.events.length;
 
-    await sim.execute("get_ticket", { ticket_id: "tkt_1001" });
+    await gateway.execute({ tool: "get_ticket", input: { ticket_id: "tkt_1001" }, source: "script" });
 
     const after = loadRun(run.id);
     expect(after?.status).toBe("completed");
     expect(after?.events.length).toBe(eventsAtFinish);
+  });
+});
+
+describe("idle timeout", () => {
+  it("defaults a BYO Run to BYO_DEFAULT_IDLE_MS", () => {
+    const { run } = createRun({ ...NORTHWIND, agent: { kind: "byo" } });
+    expect(run.idleTimeoutMs).toBe(BYO_DEFAULT_IDLE_MS);
+    finishRun(run.id);
+  });
+
+  it("finishes a BYO Run itself once it has been idle for idleTimeoutMs, re-armed by every Event", async () => {
+    vi.useFakeTimers();
+    const { run, gateway } = createRun({ ...NORTHWIND, agent: { kind: "byo" }, idleTimeoutMs: 1000 });
+    expect(run.idleTimeoutMs).toBe(1000);
+
+    await vi.advanceTimersByTimeAsync(900);
+    expect(loadRun(run.id)?.status).toBe("running");
+    await gateway.execute({ tool: "get_ticket", input: { ticket_id: "tkt_1001" }, source: "script" }); // re-arms
+
+    await vi.advanceTimersByTimeAsync(900);
+    expect(loadRun(run.id)?.status).toBe("running"); // 1800 ms in, but only 900 ms idle
+    expect(getLive(run.id)).toBeDefined();
+
+    await vi.advanceTimersByTimeAsync(100);
+    const done = loadRun(run.id);
+    expect(done?.status).toBe("completed");
+    expect(done?.finishedBy).toBe("idle_timeout");
+    expect(done?.events).toHaveLength(1);
+    expect(getLive(run.id)).toBeUndefined();
+  });
+
+  it("never fires when idleTimeoutMs is null", async () => {
+    vi.useFakeTimers();
+    const { run } = createRun({ ...NORTHWIND, agent: { kind: "byo" }, idleTimeoutMs: null });
+    expect(run.idleTimeoutMs).toBeNull();
+    await vi.advanceTimersByTimeAsync(10 * 60_000);
+    expect(loadRun(run.id)?.status).toBe("running");
+    expect(getLive(run.id)).toBeDefined();
+    finishRun(run.id);
   });
 });

@@ -4,7 +4,7 @@ import { heading, mono, panel } from "./styles";
 export function DiffPanel({ run }: { run: RunRecord | null }) {
   const diff = run?.diff ?? [];
   const violatingSeqs = new Set(run?.violations.map((v) => v.eventSeq).filter((s): s is number => s !== null) ?? []);
-  const flagged = new Set(run?.events.filter((e) => violatingSeqs.has(e.seq)).flatMap((e) => e.changes) ?? []);
+  const flagged = new Set(run?.events.filter((e) => violatingSeqs.has(e.seq)).flatMap((e) => e.changes.map((c) => c.id)) ?? []);
   const readsOutside = run?.violations.filter((v) => v.checkType === "reads_scoped_to_customer").length ?? 0;
 
   return (
@@ -18,7 +18,7 @@ export function DiffPanel({ run }: { run: RunRecord | null }) {
             const bad = flagged.has(d.entityId);
             const tone = bad ? "bg-[#fbeeea]" : d.op === "added" ? "bg-[#eef6f0]" : "bg-[#fbf6e8]";
             return (
-              <div key={`${d.kind}-${d.entityId}`} className={`flex gap-2.5 px-3 py-1.5 border-t border-[#e6e6e2] ${tone}`}>
+              <div key={`${d.collection}-${d.entityId}`} className={`flex gap-2.5 px-3 py-1.5 border-t border-[#e6e6e2] ${tone}`}>
                 <span className="w-3.5 font-bold">{d.op === "added" ? "+" : "~"}</span>
                 <span className={mono}>{d.entityId}</span>
                 <span>{d.summary}</span>

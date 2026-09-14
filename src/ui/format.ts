@@ -1,5 +1,8 @@
-import { fmtMoney } from "@/sim/money";
-import type { Event } from "@/sim/types";
+import { fmtMoney } from "@/engine/money";
+import type { Event, RunAgentRef } from "./types";
+
+/** Display name for a Run's agent — the client bundle cannot import the store's `agentLabel` (node:fs). */
+export const agentName = (a: RunAgentRef): string => (a.kind === "byo" ? a.name : a.version === "naive" ? "naïve" : a.version);
 
 const HIDDEN_ARGS = new Set(["reason", "note", "body"]);
 

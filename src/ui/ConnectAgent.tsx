@@ -7,7 +7,7 @@ import { heading, mono, panel } from "./styles";
 export function ConnectAgent({ run }: { run: RunRecord | null }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
-  const isByo = run?.agent === "byo" && run.status === "running";
+  const isByo = run?.agent.kind === "byo" && run.status === "running";
 
   async function create() {
     setBusy(true);

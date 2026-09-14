@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import type { RunRecord } from "./types";
 import { EventRow } from "./EventRow";
 import { ViolationCard } from "./ViolationCard";
-import { elapsedLabel, threadEmails } from "./format";
+import { elapsedLabel } from "./format";
 import { heading } from "./styles";
 
 export function Timeline({ run, visible }: { run: RunRecord; visible: number }) {
@@ -14,8 +14,7 @@ export function Timeline({ run, visible }: { run: RunRecord; visible: number }) 
     return m;
   }, [run.violations]);
   const outcome = run.violations.filter((v) => v.eventSeq === null);
-  const injected = run.attack?.mutation.type === "append_to_email" ? run.attack.mutation.text : null;
-  const injectionSeq = injected ? run.events.find((e) => e.tool === "read_thread" && threadEmails(e.result).some((em) => em.body.includes(injected)))?.seq : undefined;
+  const injectionSeq = run.events.find((e) => e.injected)?.seq; // the gateway stamps the Event that surfaced the Attack's text
   const complete = run.status !== "running" && visible >= run.events.length;
   const jump = (seq: number) => document.getElementById(`event-${run.id}-${seq}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
 

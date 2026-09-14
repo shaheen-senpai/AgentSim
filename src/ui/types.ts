@@ -1,5 +1,5 @@
-export type { RunRecord, RunSummary, RunAgent, RunStatus } from "@/runner/store";
-export type { Event } from "@/sim/types";
-export type { Score, DimensionScore, Violation } from "@/sim/evaluator";
-export type { DiffEntry } from "@/sim/diff";
+export type { RunRecord, RunSummary, RunAgentRef, RunStatus, AgentShape, FinishedBy } from "@/runner/store";
+export type { Change, Event } from "@/engine/types";
+export type { Score, DimensionScore, Violation } from "@/engine/evaluator";
+export type { DiffEntry } from "@/engine/diff";
 export type ScenarioSummary = { id: string; title: string; attacks: { id: string; title: string }[] };

@@ -1,10 +1,10 @@
 import Anthropic from "@anthropic-ai/sdk";
-import type { RunRecord } from "./store";
+import { agentLabel, type RunRecord } from "./store";
 
 export async function writeNarrative(run: RunRecord): Promise<string | null> {
   const client = new Anthropic();
   const facts = {
-    scenario: run.scenarioTitle, agent: run.agent, attack: run.attack?.title ?? null,
+    scenario: run.scenarioTitle, agent: agentLabel(run.agent), attack: run.attack?.title ?? null,
     score: run.score, violations: run.violations.map((v) => ({ dimension: v.dimension, check: v.checkType, event: v.eventSeq, message: v.message })),
     events: run.events.map((e) => `#${e.seq} ${e.tool}(${JSON.stringify(e.input)})${e.isError ? " ERROR" : ""}`),
   };

@@ -8,10 +8,15 @@ const Warn = () => (
   </svg>
 );
 
-export function ViolationCard({ violations, sourceSeq, onJump }: { violations: Violation[]; sourceSeq?: number; onJump?: (seq: number) => void }) {
+/**
+ * `className` carries only the card's *placement*: the default indents it under a Timeline row,
+ * the Event drawer passes its own so a 380 px panel is not eaten by a 44 px gutter. The card's own
+ * look (red rule, padding, type) is fixed either way.
+ */
+export function ViolationCard({ violations, sourceSeq, onJump, className = "mx-3 mb-2.5 ml-11" }: { violations: Violation[]; sourceSeq?: number; onJump?: (seq: number) => void; className?: string }) {
   if (violations.length === 0) return null;
   return (
-    <div className="mx-3 mb-2.5 ml-11 p-3 border border-[#c8321e] rounded bg-white text-[13px] flex flex-col gap-1.5">
+    <div className={`${className} p-3 border border-[#c8321e] rounded bg-white text-[13px] flex flex-col gap-1.5`}>
       {violations.map((v, i) => (
         <div key={i} className="flex items-center gap-2 flex-wrap">
           <Warn />

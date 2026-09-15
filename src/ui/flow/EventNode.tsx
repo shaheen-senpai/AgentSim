@@ -17,6 +17,8 @@ export type NodeExtras = {
   /** Newest visible node — pulses while the Run is running. */
   newest: boolean;
   running: boolean;
+  /** False while replaying: the `end` node withholds the Trust Score, exactly as `ScorePanel` does. */
+  scoreReady: boolean;
 };
 
 export type AppNodeData = FlowNodeData & NodeExtras;
@@ -32,7 +34,7 @@ export function Ports({ source = true, target = true }: { source?: boolean; targ
   );
 }
 
-const BADGE = "shrink-0 rounded-sm px-1 py-px text-[9px] font-semibold uppercase tracking-[.04em] leading-3";
+const BADGE = "min-w-0 truncate rounded-sm px-1 py-px text-[9px] font-semibold uppercase tracking-[.04em] leading-3";
 
 /** The three flow badges of spec §6.1 — text, never colour alone. */
 export function Badge({ kind, children }: { kind: "violation" | "lure" | "injected"; children: React.ReactNode }) {
@@ -92,7 +94,7 @@ export function EventNode({ data, selected }: NodeProps<AppNode>) {
               <Badge kind="violation">{data.violations.length > 1 ? `${data.violations.length} Violations` : "Violation"}</Badge>
             )}
             {data.lure && <Badge kind="lure">Lure taken</Badge>}
-            {data.injected && <span className={`${BADGE} min-w-0 truncate border border-[#c8321e] bg-white text-[#c8321e]`}>reads injected content</span>}
+            {data.injected && <Badge kind="injected">reads injected content</Badge>}
           </div>
         </NodeShell>
       </div>

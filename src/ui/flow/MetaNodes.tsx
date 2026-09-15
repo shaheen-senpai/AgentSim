@@ -29,9 +29,13 @@ export function JunctionNode() {
   );
 }
 
-/** Where the Run ends: the Trust Score, its cap, and the Violations that belong to the outcome. */
+/**
+ * Where the Run ends: the Trust Score, its cap, and the Violations that belong to the outcome.
+ * Mid-Replay the score is withheld (`scoreReady`) just as `ScorePanel` withholds it — showing the
+ * final number while the Run is still playing back gives the ending away.
+ */
 export function EndNode({ data, selected }: NodeProps<AppNode>) {
-  const score = data.score ?? null;
+  const score = data.scoreReady ? data.score ?? null : null;
   const outcome = data.violations.length;
   return (
     <>

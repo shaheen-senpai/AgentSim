@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ToolDef } from "@/engine/pack";
 import type { Event } from "@/engine/types";
-import { fmtArgs, summarizeResult } from "@/ui/format";
+import { clockTime, fmtArgs, prettyJson, summarizeResult } from "@/ui/format";
 
 function tool(overrides: Partial<ToolDef> & Pick<ToolDef, "op" | "collection">): ToolDef {
   return {
@@ -97,5 +97,22 @@ describe("summarizeResult", () => {
   it("falls back to a truncated result string when no ToolDef is available", () => {
     const long = JSON.stringify({ foo: "bar", baz: "qux long value here that goes on" });
     expect(summarizeResult(undefined, ev({ tool: "unknown_tool", result: long }))).toBe(long.slice(0, 80));
+  });
+});
+
+describe("prettyJson", () => {
+  it("re-indents a JSON result for reading", () => {
+    expect(prettyJson('{"a":1,"b":[2,3]}')).toBe('{\n  "a": 1,\n  "b": [\n    2,\n    3\n  ]\n}');
+  });
+
+  it("returns anything that does not parse untouched, rather than swallowing it", () => {
+    expect(prettyJson("No order ord_9999")).toBe("No order ord_9999");
+    expect(prettyJson("")).toBe("");
+  });
+});
+
+describe("clockTime", () => {
+  it("is HH:MM:SS.mmm in UTC, so a Run reads the same on every machine", () => {
+    expect(clockTime(Date.UTC(2026, 8, 12, 20, 14, 3, 456))).toBe("20:14:03.456");
   });
 });

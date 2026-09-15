@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { ToolDef } from "../types";
 
 export type FlowViewMode = "flow" | "list";
@@ -44,6 +44,12 @@ export function useFlowState(): FlowState {
   const [follow, setFollow] = useState(true);
   const [fitSignal, setFitSignal] = useState(0);
 
+  // `filters` feeds `buildFlow`'s `useMemo` in `FlowView`. A fresh object on every `RunView`
+  // render (the narrative poll, the follow toggle, the fit button) would defeat that memo and
+  // rebuild the whole graph — and every node's identity with it. Everything else this hook returns
+  // is already stable: `useState` setters by definition, the three callbacks by `useCallback`.
+  const filters = useMemo<FlowFilters>(() => ({ systems, writesOnly }), [systems, writesOnly]);
+
   const toggleSystem = useCallback((system: string) => {
     setSystems((prev) => {
       const next = new Set(prev);
@@ -57,7 +63,7 @@ export function useFlowState(): FlowState {
     setView,
     selected,
     select,
-    filters: { systems, writesOnly },
+    filters,
     toggleSystem,
     clearSystems: useCallback(() => setSystems(new Set()), []),
     setWritesOnly,

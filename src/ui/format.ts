@@ -93,3 +93,24 @@ export function elapsedLabel(events: Event[], i: number): string {
   const prev = i === 0 ? events[0].at : events[i - 1].at;
   return `${((events[i].at - prev) / 1000).toFixed(1)}s`;
 }
+
+/**
+ * A tool result re-indented for reading (the Event drawer's *Details* tab). A result is normally
+ * `JSON.stringify`d by the DSL, but a BYO agent can return anything, so anything that does not
+ * parse comes back untouched rather than being swallowed.
+ */
+export function prettyJson(raw: string): string {
+  try {
+    return JSON.stringify(JSON.parse(raw), null, 2);
+  } catch {
+    return raw;
+  }
+}
+
+/**
+ * `HH:MM:SS.mmm` of a wall-clock ms timestamp, in UTC — deliberately not the viewer's locale or
+ * zone, so the same Run reads the same on every machine (and server and client agree).
+ */
+export function clockTime(ms: number): string {
+  return new Date(ms).toISOString().slice(11, 23);
+}

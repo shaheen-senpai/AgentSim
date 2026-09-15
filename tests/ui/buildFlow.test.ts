@@ -454,7 +454,8 @@ describe("buildFlow: determinism", () => {
 // ─────────────────────────────── import purity (browser-safety) ───────────────────────────────
 
 /**
- * `buildFlow.ts` must stay importable from a `"use client"` component (Task 13's `FlowView.tsx`)
+ * `buildFlow.ts` — and, since Task 14, `injected.ts`, which restates `@/engine/attack`'s
+ * `injectionMarker` for the Event drawer — must stay importable from a `"use client"` component
  * without pulling server-only code into the browser bundle. `@/engine/pack` and (transitively,
  * through it) `@/engine/attack` both value-import `node:fs`/`node:path`; `@/runner/store` is
  * server-only outright. The only safe way to reuse `matchesLure` is the leaf module
@@ -464,7 +465,7 @@ describe("buildFlow: determinism", () => {
  * the moment a future edit adds a runtime (non-`import type`) import of a forbidden specifier,
  * rather than waiting for Task 13 to hit a build break or, worse, a silently-inlined `node:fs` shim
  * in the client bundle. It is documentation as much as a guard: read this test to see exactly why
- * these two files are not allowed to import `./pack`, `./attack`, or `@/runner/store` by value.
+ * these files are not allowed to import `./pack`, `./attack`, or `@/runner/store` by value.
  */
 describe("buildFlow: import purity (browser-safety)", () => {
   const FORBIDDEN: [RegExp, string][] = [
@@ -473,7 +474,7 @@ describe("buildFlow: import purity (browser-safety)", () => {
     [/@\/runner\/store\b/, "@/runner/store (server-only)"],
     [/["']node:/, "a node: builtin"],
   ];
-  const files = ["src/ui/flow/buildFlow.ts", "src/engine/lure.ts"];
+  const files = ["src/ui/flow/buildFlow.ts", "src/ui/flow/injected.ts", "src/engine/lure.ts"];
 
   it("never value-imports @/engine/pack, @/engine/attack, @/runner/store, or a node: builtin", () => {
     for (const file of files) {

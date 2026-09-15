@@ -324,6 +324,40 @@ function resolveWhereKey(entities: Record<string, EntitySpec>, collection: strin
   return null;
 }
 
+/**
+ * Reports every key of a `where` map that does not resolve against `collection`'s declared fields.
+ *
+ * Module scope, not a closure inside `validateScenario`: a tool's `where`, `lookup.where` and
+ * `include.where` were completely unchecked while this lived there, and an unresolvable key whose
+ * templated value is also `undefined` (an omitted optional input) used to match *every* row — a
+ * silently unscoped read, which is precisely the failure this product exists to detect.
+ * `matchWhere` in `world.ts` closes the runtime half; this closes the authoring half.
+ */
+function checkWhereKeys(
+  entities: Record<string, EntitySpec>,
+  collection: string,
+  where: Record<string, unknown>,
+  file: string,
+  path_: string,
+  errors: ValidationError[],
+): void {
+  // An undeclared collection is already reported by the caller; a second error per key adds noise.
+  if (!(collection in entities)) return;
+  for (const key of Object.keys(where)) {
+    const err = resolveWhereKey(entities, collection, key);
+    if (err) errors.push({ file, path: `${path_}.${key}`, message: err });
+  }
+}
+
+/** A field spec's semantics, beyond the structural shape `FieldSpecSchema` already enforces. */
+function checkFieldSpec(file: string, path_: string, spec: FieldSpec, errors: ValidationError[]): void {
+  // `fieldZod` builds `z.enum([])` for a valueless enum, which parses structurally and then rejects
+  // every row with "expected one of " — an empty list and no clue why.
+  if (spec.type === "enum" && (spec.values === undefined || spec.values.length === 0)) {
+    errors.push({ file, path: `${path_}.values`, message: `type 'enum' requires a non-empty 'values' list` });
+  }
+}
+
 function validateEntities(meta: PackMeta, errors: ValidationError[]): void {
   const entities = meta.entities;
   const principalEntity = entities[meta.principal];
@@ -338,6 +372,7 @@ function validateEntities(meta: PackMeta, errors: ValidationError[]): void {
       if (field.ref && !entities[field.ref]) {
         errors.push({ file: "pack.yaml", path: `entities.${ek}.fields.${fk}.ref`, message: `ref '${field.ref}' is not a declared entity` });
       }
+      checkFieldSpec("pack.yaml", `entities.${ek}.fields.${fk}`, field, errors);
     }
   }
 
@@ -408,6 +443,23 @@ function validateTools(meta: PackMeta, tools: Record<string, ToolDef>, errors: V
       if (!(c in entities)) errors.push({ file: "tools.yaml", path: p, message: `collection '${c}' is not a declared entity` });
     }
 
+    // Every `where` map a tool declares, against the collection it filters. Unchecked until now:
+    // a key naming no declared field validated clean and then matched nothing — or, when its
+    // templated value resolved to `undefined`, everything.
+    if (tool.where) checkWhereKeys(entities, tool.collection, tool.where, "tools.yaml", `${tpath}.where`, errors);
+    if (tool.lookup) {
+      for (const [lk, l] of Object.entries(tool.lookup)) {
+        if (l.where) checkWhereKeys(entities, l.collection, l.where, "tools.yaml", `${tpath}.lookup.${lk}.where`, errors);
+      }
+    }
+    if (tool.include) {
+      for (const [ik, inc] of Object.entries(tool.include)) {
+        checkWhereKeys(entities, inc.collection, inc.where, "tools.yaml", `${tpath}.include.${ik}.where`, errors);
+      }
+    }
+
+    for (const [fk, field] of Object.entries(tool.input)) checkFieldSpec("tools.yaml", `${tpath}.input.${fk}`, field, errors);
+
     if ((tool.op === "get" || tool.op === "update") && !tool.id) {
       errors.push({ file: "tools.yaml", path: `${tpath}.id`, message: `op '${tool.op}' requires 'id'` });
     }
@@ -437,12 +489,8 @@ function validateScenario(file: string, s: Scenario, meta: PackMeta, seed: SeedF
   const argExists = (t: ToolDef | undefined, arg: string, p: string): void => {
     if (t && !(arg in t.input)) errors.push({ file, path: p, message: `arg '${arg}' is not an input field of tool '${t.name}'` });
   };
-  const checkWhere = (collection: string, where: Record<string, unknown>, p: string): void => {
-    for (const key of Object.keys(where)) {
-      const err = resolveWhereKey(entities, collection, key);
-      if (err) errors.push({ file, path: `${p}.${key}`, message: err });
-    }
-  };
+  const checkWhere = (collection: string, where: Record<string, unknown>, p: string): void =>
+    checkWhereKeys(entities, collection, where, file, p, errors);
 
   s.checks.forEach((c, i) => {
     const p = `checks[${i}]`;

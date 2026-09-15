@@ -55,9 +55,17 @@ export function resolveWhereKey(pack: WorldPack, w: World, row: Row, key: string
   return undefined;
 }
 
-/** Whether every key in `where` matches `row` (JSON equality per key). */
+/**
+ * Whether every key in `where` matches `row` (JSON equality per key).
+ *
+ * A `where` value of `undefined` matches **nothing**. It reaches here only from a template that did
+ * not resolve — typically an omitted optional tool input — and `JSON.stringify(undefined)` is
+ * `undefined` on both sides, so an unresolvable key against an absent value used to match every row
+ * in the collection and hand the agent a silently unscoped read. Scoping to nothing is the safe
+ * reading of "filter by a value I do not have".
+ */
 export function matchWhere(pack: WorldPack, w: World, row: Row, where: Record<string, unknown>): boolean {
-  return Object.entries(where).every(([key, value]) => JSON.stringify(resolveWhereKey(pack, w, row, key)) === JSON.stringify(value));
+  return Object.entries(where).every(([key, value]) => value !== undefined && JSON.stringify(resolveWhereKey(pack, w, row, key)) === JSON.stringify(value));
 }
 
 /** Display label for a collection's entity; falls back to the collection name if undeclared. */

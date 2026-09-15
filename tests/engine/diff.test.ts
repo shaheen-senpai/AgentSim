@@ -36,6 +36,23 @@ describe("diffWorld", () => {
     expect(unchangedCount(pack, snapshot(w), snapshot(w))).toBe(totalRows(w));
   });
 
+  // `summarizeChanged` did `(p as unknown[]).length` for any `n` that is an array, which throws
+  // when the field was absent before. `diffWorld` runs inside `finishRun`, so that turned a
+  // perfectly good Run into a failed one — on the first write to any optional `string[]` with no
+  // declared default.
+  it("summarizes a field that becomes an array from absent, rather than throwing", () => {
+    const pack = loadPack("northwind");
+    const w = seedWorld(pack);
+    delete w.collections.tickets[0].notes; // an optional string[] that no seed row carries yet
+    const before = snapshot(w);
+    w.collections.tickets[0].notes = ["called the principal", "refunded"];
+    const after = snapshot(w);
+    expect(() => diffWorld(pack, before, after)).not.toThrow();
+    expect(diffWorld(pack, before, after)).toEqual([
+      { op: "changed", collection: "tickets", entityId: "tkt_1001", summary: "notes 0 → 2" },
+    ]);
+  });
+
   it("summarizes array field changes by length", () => {
     const pack = loadPack("northwind");
     const w = seedWorld(pack);

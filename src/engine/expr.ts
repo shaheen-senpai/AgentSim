@@ -99,7 +99,15 @@ function run(n: Node, b: Bindings): unknown {
     case "lit": return n.v;
     case "path": return lookup(n.parts, b);
     case "un": { const x = run(n.x, b); return n.op === "!" ? !x : -Number(x); }
-    case "call": { const f = FNS[n.fn]; if (!f) throw new ExprError(`Unknown function ${n.fn}`); return f(n.args.map((a) => run(a, b))); }
+    // `hasOwnProperty.call`, not `FNS[n.fn]`: a plain index reaches `Object.prototype`, so
+    // `constructor(1)` evaluated and `hasOwnProperty('x')` threw a raw `TypeError` rather than an
+    // `ExprError`. The parser forbids dotted calls, so neither was exploitable — but a sandbox
+    // should not have the back door at all.
+    case "call": {
+      const f = Object.prototype.hasOwnProperty.call(FNS, n.fn) ? FNS[n.fn] : undefined;
+      if (!f) throw new ExprError(`Unknown function ${n.fn}`);
+      return f(n.args.map((a) => run(a, b)));
+    }
     case "bin": {
       if (n.op === "&&") return run(n.l, b) && run(n.r, b);
       if (n.op === "||") return run(n.l, b) || run(n.r, b);

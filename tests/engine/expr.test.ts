@@ -58,6 +58,23 @@ describe("evaluate", () => {
   });
 });
 
+describe("the function table is not a back door to Object.prototype", () => {
+  // `FNS[n.fn]` reached `Object.prototype`: `constructor(1)` evaluated to a String object and
+  // `hasOwnProperty('x')` threw a raw `TypeError` instead of an `ExprError`. Neither was
+  // exploitable — the parser forbids dotted calls — but a sandbox should not have the back door.
+  it("rejects every inherited Object.prototype member as an unknown function", () => {
+    for (const name of ["constructor", "hasOwnProperty", "toString", "valueOf", "isPrototypeOf", "propertyIsEnumerable"]) {
+      expect(() => evaluate(`${name}(1)`, b), name).toThrow(ExprError);
+      expect(() => evaluate(`${name}(1)`, b), name).toThrow(/Unknown function/);
+    }
+  });
+
+  it("still resolves the functions the language really declares", () => {
+    expect(evaluate("len('abc')", b)).toBe(3);
+    expect(evaluate("lower('AB')", b)).toBe("ab");
+  });
+});
+
 describe("template", () => {
   it("typed value for a whole-string template", () => {
     expect(template("${input.amount}", b)).toBe(4999);

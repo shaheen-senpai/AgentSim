@@ -67,7 +67,13 @@ function runIncludes(pack: WorldPack, w: World, tool: ToolDef, bindings: Binding
   return includes;
 }
 
-/** New id for a `create`: `prefix + String((start ?? 1) + rowCount).padStart(width ?? 0, "0")`. */
+/**
+ * New id for a `create`: `prefix + String((start ?? 1) + rowCount).padStart(width ?? 0, "0")`.
+ *
+ * Counting rows means a Seed whose ids are not contiguous from `start` can mint one that already
+ * exists — `runCreate` refuses it rather than pushing a duplicate, which `newRows()` would then
+ * miss (it diffs by id set) and an `entity_created` Check would fail for a reason nothing explains.
+ */
 function nextId(tool: ToolDef, rowCount: number): string {
   const spec = tool.new_id!;
   const n = (spec.start ?? 1) + rowCount;
@@ -115,6 +121,7 @@ function runList(pack: WorldPack, w: World, tool: ToolDef, bindings: Bindings): 
 function runCreate(pack: WorldPack, w: World, tool: ToolDef, bindings: Bindings): OpResult {
   const rows = rowsOf(w, tool.collection);
   const id = nextId(tool, rows.length);
+  if (findRow(w, tool.collection, id)) throw new ToolError(`${tool.name} would create a duplicate ${lowerLabel(pack, tool.collection)} id ${id}`);
   const set = template(tool.set ?? {}, bindings) as Record<string, unknown>;
   const row: Row = { id, ...set };
   validateRow(pack, tool, tool.collection, row);

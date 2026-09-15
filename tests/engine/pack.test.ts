@@ -85,6 +85,50 @@ describe("parsePackFiles validation", () => {
     expect(all).toMatch(/ownership|principal|cycle/i);
     expect(all).toMatch(/rebates/);
   });
+  // A tool's `where` keys were completely unchecked: `checkWhere` lived as a closure inside
+  // `validateScenario`, so only a Check's `where` was ever resolved against the declared fields. A
+  // probe pack with `where: { no_such_field: "${input.q}" }` validated clean — and then, when `q`
+  // was omitted, matched every row in the collection (see `matchWhere` in tests/engine/world.test.ts).
+  it("rejects a tool `where` key that names no declared field", () => {
+    const f = files();
+    const bad = f["tools.yaml"].replace("  where: { customer_id:", "  where: { no_such_field: \"${input.customer_id}\", customer_id:");
+    expect(bad).not.toBe(f["tools.yaml"]);
+    const r = parsePackFiles({ ...f, "tools.yaml": bad });
+    expect(r.pack).toBeNull();
+    const err = r.errors.find((e) => e.file === "tools.yaml" && /no_such_field/.test(e.message));
+    expect(err, r.errors.map((e) => `${e.path} ${e.message}`).join("\n")).toBeTruthy();
+    expect(err!.path).toMatch(/\.where\.no_such_field$/);
+  });
+
+  it("rejects an unresolvable key in a tool's `lookup.where` and `include.where` too", () => {
+    const f = files();
+    const lookup = f["tools.yaml"].replace(
+      "    thread: { collection: threads, id: \"${input.thread_id}\" }",
+      "    thread: { collection: threads, where: { not_a_field: \"${input.thread_id}\" } }",
+    );
+    expect(lookup).not.toBe(f["tools.yaml"]);
+    expect(parsePackFiles({ ...f, "tools.yaml": lookup }).errors.some((e) => /not_a_field/.test(e.message))).toBe(true);
+
+    const include = f["tools.yaml"].replace(
+      "    emails: { collection: emails, where: { thread_id: \"${entity.id}\" }, order_by: sent_at }",
+      "    emails: { collection: emails, where: { nope: \"${entity.id}\" }, order_by: sent_at }",
+    );
+    expect(include).not.toBe(f["tools.yaml"]);
+    expect(parsePackFiles({ ...f, "tools.yaml": include }).errors.some((e) => /'nope'/.test(e.message))).toBe(true);
+  });
+
+  it("rejects `type: enum` with no `values` — structurally fine, then rejects every row with \"expected one of \"", () => {
+    const f = files();
+    const entity = f["pack.yaml"].replace("status: { type: enum, values: [open, pending, resolved] }", "status: { type: enum }");
+    expect(entity).not.toBe(f["pack.yaml"]);
+    expect(parsePackFiles({ ...f, "pack.yaml": entity }).errors.some((e) => e.file === "pack.yaml" && /non-empty 'values'/.test(e.message))).toBe(true);
+
+    const input = f["tools.yaml"].replace("status: { type: enum, values: [open, pending, resolved] }", "status: { type: enum, values: [] }");
+    expect(input).not.toBe(f["tools.yaml"]);
+    const r = parsePackFiles({ ...f, "tools.yaml": input });
+    expect(r.errors.some((e) => e.file === "tools.yaml" && /non-empty 'values'/.test(e.message))).toBe(true);
+  });
+
   it("rejects invalid YAML with a file-scoped error", () => {
     const r = parsePackFiles({ ...files(), "tools.yaml": "get_ticket: [unclosed" });
     expect(r.pack).toBeNull();

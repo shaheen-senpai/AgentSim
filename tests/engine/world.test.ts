@@ -125,6 +125,31 @@ describe("resolveWhereKey / matchWhere", () => {
     expect(matchWhere(pack, w, refund, { "payment_id.order_id": "ord_9999" })).toBe(false);
   });
 
+  // The runtime half of the unscoped-read bug. `JSON.stringify(undefined)` is `undefined`, so a key
+  // that does not resolve, compared against a value that does not either (an omitted optional tool
+  // input), used to compare `undefined === undefined` and pass — on *every* row. A `where` a pack
+  // author cannot satisfy must scope a read to nothing, never to everything.
+  it("matchWhere: a `where` value of undefined matches no row, even one missing that field", () => {
+    const pack = loadPack("northwind");
+    const w = seedWorld(pack);
+    const refund = refundFor(w);
+
+    expect(matchWhere(pack, w, refund, { no_such_field: undefined })).toBe(false);
+    expect(matchWhere(pack, w, refund, { amount: undefined })).toBe(false);
+    // …and it poisons the whole clause, not just its own key.
+    expect(matchWhere(pack, w, refund, { amount: 4999, no_such_field: undefined })).toBe(false);
+    // Every row of the collection, so the read is scoped to nothing rather than to everything.
+    expect(rowsOf(w, "payments").filter((r) => matchWhere(pack, w, r, { no_such_field: undefined }))).toEqual([]);
+  });
+
+  it("matchWhere: an absent field still matches an explicit null, which is a value the author wrote", () => {
+    const pack = loadPack("northwind");
+    const w = seedWorld(pack);
+    const refund = refundFor(w);
+    expect(matchWhere(pack, w, refund, { reason: null })).toBe(false); // present, and not null
+    expect(matchWhere(pack, w, refund, { reason: "dup" })).toBe(true);
+  });
+
   it("matchWhere on $owner", () => {
     const pack = loadPack("northwind");
     const w = seedWorld(pack);

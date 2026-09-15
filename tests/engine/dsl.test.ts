@@ -267,6 +267,92 @@ describe("runTool — create validates against the entity schema", () => {
   });
 });
 
+/**
+ * The composed failure the `where` fixes close, end to end through `runTool`.
+ *
+ * `validateTools` now rejects a pack whose tool `where` names no declared field, so this pack is
+ * hand-built to get past it — the probe that found the bug validated clean before that fix. The
+ * runtime half is what is under test here: an unresolvable key whose templated value is also
+ * `undefined` used to match every row and hand the agent the whole collection.
+ */
+describe("runTool — an unscoped `where` returns nothing, never everything", () => {
+  const notes: EntitySpec = { label: "Note", id_prefix: "note_", owner: "self", fields: { id: { type: "string" }, text: { type: "string" } } };
+
+  function probePack(where: Record<string, unknown>): WorldPack {
+    const listNotes: ToolDef = {
+      name: "list_notes",
+      system: "sys",
+      kind: "read",
+      description: "d",
+      input: { q: { type: "string", optional: true } },
+      subject: { collection: "notes", id: "${input.q}" },
+      op: "list",
+      collection: "notes",
+      where,
+    };
+    return {
+      meta: { id: "probe", name: "Probe", domain: "test", description: "test pack", principal: "notes", systems: { sys: { label: "Sys" } }, entities: { notes } },
+      seed: { now: "2026-01-01T00:00:00Z", currency: "GBP", rows: { notes: [{ id: "note_1", text: "a" }, { id: "note_2", text: "b" }] } },
+      tools: { list_notes: listNotes },
+      scenarios: [],
+      agents: {},
+      files: {},
+    };
+  }
+
+  it("returns no rows when an unresolvable key is compared against an omitted optional input", () => {
+    const pack = probePack({ no_such_field: "${input.q}" });
+    const w = seedWorld(pack);
+    expect(JSON.parse(runTool(pack, w, "list_notes", {}).result)).toEqual([]);
+  });
+
+  it("returns no rows when a declared key is compared against an omitted optional input", () => {
+    const pack = probePack({ text: "${input.q}" });
+    const w = seedWorld(pack);
+    expect(JSON.parse(runTool(pack, w, "list_notes", {}).result)).toEqual([]);
+    // …and still filters normally when the input is supplied.
+    expect(JSON.parse(runTool(pack, w, "list_notes", { q: "b" }).result)).toEqual([{ id: "note_2", text: "b" }]);
+  });
+});
+
+describe("runTool — create refuses to mint an id that already exists", () => {
+  /** `nextId` counts rows, so a Seed whose ids are not contiguous from `start` can collide. */
+  function collidingPack(): WorldPack {
+    const widgets: EntitySpec = { label: "Widget", id_prefix: "wid_", owner: "self", fields: { id: { type: "string" }, name: { type: "string" } } };
+    const makeWidget: ToolDef = {
+      name: "make_widget",
+      system: "sys",
+      kind: "write",
+      description: "d",
+      input: { name: { type: "string" } },
+      subject: { collection: "widgets", id: "${input.name}" },
+      op: "create",
+      collection: "widgets",
+      new_id: { prefix: "wid_" },
+      set: { name: "${input.name}" },
+    };
+    return {
+      meta: { id: "collide", name: "Collide", domain: "test", description: "test pack", principal: "widgets", systems: { sys: { label: "Sys" } }, entities: { widgets } },
+      // One seeded row, but numbered 2 — so `nextId` mints `wid_2`, which is taken.
+      seed: { now: "2026-01-01T00:00:00Z", currency: "GBP", rows: { widgets: [{ id: "wid_2", name: "seeded" }] } },
+      tools: { make_widget: makeWidget },
+      scenarios: [],
+      agents: {},
+      files: {},
+    };
+  }
+
+  it("throws ToolError rather than pushing a duplicate id", () => {
+    const pack = collidingPack();
+    const w = seedWorld(pack);
+    expect(() => runTool(pack, w, "make_widget", { name: "new" })).toThrow(ToolError);
+    expect(() => runTool(pack, w, "make_widget", { name: "new" })).toThrow(/duplicate widget id wid_2/);
+    // Nothing was written: `newRows()` diffs by id set, so a silent duplicate would make an
+    // `entity_created` Check fail for a reason nothing in the Run explains.
+    expect(w.collections.widgets).toEqual([{ id: "wid_2", name: "seeded" }]);
+  });
+});
+
 describe("toolSubject", () => {
   it("templates the tool's subject id from args", () => {
     const pack = loadPack("northwind");

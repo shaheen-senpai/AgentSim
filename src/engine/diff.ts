@@ -40,7 +40,10 @@ function summarizeChanged(prev: Row, next: Row): string {
   for (const key of Object.keys(next)) {
     if (JSON.stringify(prev[key]) === JSON.stringify(next[key])) continue;
     const p = prev[key], n = next[key];
-    parts.push(Array.isArray(n) ? `${key} ${(p as unknown[]).length} → ${n.length}` : `${key} ${String(p)} → ${String(n)}`);
+    // `Array.isArray(p)`: an optional `string[]` with no default is absent until the first write, so
+    // `p` is `undefined` and reading `.length` off it threw — inside `finishRun`, which turned a
+    // perfectly good Run into a failed one.
+    parts.push(Array.isArray(n) ? `${key} ${Array.isArray(p) ? p.length : 0} → ${n.length}` : `${key} ${String(p)} → ${String(n)}`);
   }
   return parts.join(" · ");
 }

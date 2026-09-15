@@ -17,9 +17,10 @@ import type { ValidationError } from "@/engine/pack";
 import { field as FIELD, heading, hint as HINT, label as LABEL, mono, primaryButton as PRIMARY_BUTTON } from "@/ui/styles";
 import { isValidWorldId, packField, withPackId } from "./editorLogic";
 import { PackEditor } from "./PackEditor";
+import { mcpAddCommand, mcpJsonConfig } from "@/ui/connect/snippets";
 
 export type Template = { id: string; name: string };
-type Mode = "template" | "generate";
+type Mode = "template" | "generate" | "mcp";
 type Draft = { files: Record<string, string>; errors: ValidationError[]; attempts: number };
 type Outcome = { ok: boolean; errors: ValidationError[] };
 
@@ -42,7 +43,7 @@ export function NewWorld({ templates, skeleton }: { templates: Template[]; skele
   return (
     <div className="flex flex-col gap-4">
       <div role="group" aria-label="How to start" className="flex gap-1">
-        {(["template", "generate"] as const).map((m) => (
+        {(["template", "generate", "mcp"] as const).map((m) => (
           <button
             key={m}
             type="button"
@@ -52,17 +53,65 @@ export function NewWorld({ templates, skeleton }: { templates: Template[]; skele
               mode === m ? "bg-[#1d1d1b] text-white border-[#1d1d1b] font-semibold" : "bg-white text-[#6b6b66] border-[#cfcfcb] hover:text-[#1d1d1b]"
             }`}
           >
-            {m === "template" ? "From template" : "Generate with Claude"}
+            {m === "template" ? "From template" : m === "generate" ? "Generate with Claude" : "Connect your agent"}
           </button>
         ))}
       </div>
 
       {mode === "template" ? (
         <FromTemplate ids={ids} templates={templates} skeleton={skeleton} onCreated={(id) => router.push(`/worlds/${id}`)} />
-      ) : (
+      ) : mode === "generate" ? (
         <GenerateWithClaude ids={ids} onCreated={(id) => router.push(`/worlds/${id}`)} />
+      ) : (
+        <ConnectYourAgent />
       )}
     </div>
+  );
+}
+
+// ───────────────────────────── Connect your agent ─────────────────────────────
+
+const WORLDBUILDER_NAME = "AgentSim World Builder";
+
+/**
+ * The one-time connect instructions for /mcp/worlds (spec extension: MCP world-builder). Purely
+ * informational — no draft is shown or reviewed here. Review happens in the connecting agent's own
+ * chat, over get_world_draft; once create_world runs, the result is an ordinary saved pack, open it
+ * from /worlds like any other. The origin is read from the browser, the same way a copy-paste
+ * snippet always resolves for whoever is reading it — this panel needs no server-derived URL.
+ */
+function ConnectYourAgent() {
+  const [origin, setOrigin] = useState("");
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => setOrigin(window.location.origin), []);
+  const mcpUrl = `${origin || "http://localhost:3000"}/mcp/worlds`;
+
+  return (
+    <section className="bg-white border border-[#cfcfcb] rounded p-3 flex flex-col gap-3 max-w-[820px]">
+      <h2 className={heading}>Connect your agent</h2>
+      <p className="text-[12px] text-[#6b6b66]">
+        AgentSim also runs as an MCP server for building Worlds, not just running them. Add it to your own agent&rsquo;s Claude Code session, then
+        ask it to register itself — it drafts a World pack from your agent&rsquo;s real tools, and you review the draft in that same chat before
+        anything is created.
+      </p>
+
+      <div className="flex flex-col gap-1">
+        <span className={LABEL}>Claude Code</span>
+        <pre className={`${FIELD} ${mono} whitespace-pre-wrap`}>{mcpAddCommand(WORLDBUILDER_NAME, mcpUrl)}</pre>
+      </div>
+
+      <div className="flex flex-col gap-1">
+        <span className={LABEL}>Or, any MCP client</span>
+        <pre className={`${FIELD} ${mono} whitespace-pre-wrap`}>{mcpJsonConfig(WORLDBUILDER_NAME, mcpUrl)}</pre>
+      </div>
+
+      <p className="text-[12px] text-[#6b6b66]">
+        Then, in that session: &ldquo;Use {WORLDBUILDER_NAME} to register yourself and build a test world.&rdquo; It calls{" "}
+        <span className={mono}>register_agent</span> with your tools, then <span className={mono}>get_world_draft</span> and{" "}
+        <span className={mono}>refine_world</span> to iterate, and <span className={mono}>create_world</span> once it looks right — the new World
+        then appears on <span className={mono}>/worlds</span> like any other.
+      </p>
+    </section>
   );
 }
 

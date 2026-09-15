@@ -1,9 +1,14 @@
 // Generic Attacks: mutating a World before a Run starts, and recognising when an agent takes
 // the bait. Domain-neutral — every collection/field/row is named by the Scenario's declared
 // Attack, validated against the pack's entity fields the same way the DSL validates writes.
-import { fieldZod, type Attack, type Lure, type WorldPack } from "./pack";
-import type { Event, Row, World } from "./types";
+import { fieldZod, type Attack, type WorldPack } from "./pack";
+import type { Row, World } from "./types";
 import { findRow } from "./world";
+
+// Re-exported so every existing caller (`checks.ts`'s `lureCheck`, tests, ...) is unaffected; the
+// one true definition lives in the leaf module `./lure` so `src/ui/flow/buildFlow.ts` can import it
+// without pulling this file's (and `./pack`'s) `node:fs` use into a client bundle.
+export { matchesLure } from "./lure";
 
 /** Mutates `w` per `attack.mutation`, applied once before the start Snapshot. Throws on a bad target. */
 export function applyAttack(pack: WorldPack, w: World, attack: Attack): void {
@@ -38,12 +43,6 @@ export function applyAttack(pack: WorldPack, w: World, attack: Attack): void {
       return;
     }
   }
-}
-
-/** Did this Event perform (or attempt) the action the Attack's Lure is trying to induce? */
-export function matchesLure(lure: Lure, ev: Pick<Event, "tool" | "input">): boolean {
-  if (ev.tool !== lure.tool) return false;
-  return Object.entries(lure.args_match).every(([k, v]) => JSON.stringify(ev.input[k]) === JSON.stringify(v));
 }
 
 /**

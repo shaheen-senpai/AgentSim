@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
   buildFlow,
@@ -114,6 +115,23 @@ describe("groupWaves", () => {
     ];
     const waves = groupWaves(events);
     expect(waves).toEqual([{ batchId: "t1", maxEndedAt: 2500, seqs: [1, 2, 3] }]);
+  });
+
+  it("does not re-merge a batchId that reappears after a gap — only the current wave is checked", () => {
+    // A(t1), B(t2), C(t1): C shares a batchId with A, but A's wave is no longer "current" once B
+    // has started its own — and there's no time overlap either (all non-overlapping) — so C must
+    // start a third wave, not merge back into A's.
+    const events = [
+      ev(1, { batchId: "t1", startedAt: 0, endedAt: 500 }),
+      ev(2, { batchId: "t2", startedAt: 1000, endedAt: 1500 }),
+      ev(3, { batchId: "t1", startedAt: 2000, endedAt: 2500 }),
+    ];
+    const waves = groupWaves(events);
+    expect(waves).toEqual([
+      { batchId: "t1", maxEndedAt: 500, seqs: [1] },
+      { batchId: "t2", maxEndedAt: 1500, seqs: [2] },
+      { batchId: "t1", maxEndedAt: 2500, seqs: [3] },
+    ]);
   });
 });
 
@@ -386,6 +404,14 @@ describe("buildFlow: node data flags", () => {
     expect(nodes.find((n) => n.id === "ev-2")!.data.dimmed).toBe(true);
   });
 
+  it("dims an Event whose system is null (toolSystem returned no match) under an active filters.systems", () => {
+    const events = [ev(1, { tool: "unknown.tool" })];
+    const { nodes } = buildFlow(baseInput({ events, status: "completed", filters: { systems: new Set(["orders"]) } }));
+    const node = nodes.find((n) => n.id === "ev-1")!;
+    expect(node.data.system).toBe(null);
+    expect(node.data.dimmed).toBe(true);
+  });
+
   it("dims non-writes under filters.writesOnly", () => {
     const events = [ev(1, { tool: "orders.get" }), ev(2, { tool: "orders.update" })];
     const isWrite = (tool: string) => tool === "orders.update";
@@ -422,5 +448,43 @@ describe("buildFlow: determinism", () => {
     const a = buildFlow(input);
     const b = buildFlow(input);
     expect(JSON.stringify(a)).toBe(JSON.stringify(b));
+  });
+});
+
+// ─────────────────────────────── import purity (browser-safety) ───────────────────────────────
+
+/**
+ * `buildFlow.ts` must stay importable from a `"use client"` component (Task 13's `FlowView.tsx`)
+ * without pulling server-only code into the browser bundle. `@/engine/pack` and (transitively,
+ * through it) `@/engine/attack` both value-import `node:fs`/`node:path`; `@/runner/store` is
+ * server-only outright. The only safe way to reuse `matchesLure` is the leaf module
+ * `@/engine/lure`, which must itself never value-import any of those.
+ *
+ * This is a *text* check, not a bundler check — deliberately so: it fails immediately and loudly
+ * the moment a future edit adds a runtime (non-`import type`) import of a forbidden specifier,
+ * rather than waiting for Task 13 to hit a build break or, worse, a silently-inlined `node:fs` shim
+ * in the client bundle. It is documentation as much as a guard: read this test to see exactly why
+ * these two files are not allowed to import `./pack`, `./attack`, or `@/runner/store` by value.
+ */
+describe("buildFlow: import purity (browser-safety)", () => {
+  const FORBIDDEN: [RegExp, string][] = [
+    [/@\/engine\/pack\b/, "@/engine/pack (touches node:fs/node:path)"],
+    [/@\/engine\/attack\b/, "@/engine/attack (transitively touches @/engine/pack)"],
+    [/@\/runner\/store\b/, "@/runner/store (server-only)"],
+    [/["']node:/, "a node: builtin"],
+  ];
+  const files = ["src/ui/flow/buildFlow.ts", "src/engine/lure.ts"];
+
+  it("never value-imports @/engine/pack, @/engine/attack, @/runner/store, or a node: builtin", () => {
+    for (const file of files) {
+      const text = readFileSync(file, "utf8");
+      const importLines = text.split("\n").filter((line) => /^\s*import\b/.test(line));
+      for (const line of importLines) {
+        if (/^\s*import\s+type\b/.test(line)) continue; // erased at compile time — always safe
+        for (const [pattern, why] of FORBIDDEN) {
+          expect(line, `${file}: forbidden value import (${why}) — "${line.trim()}"`).not.toMatch(pattern);
+        }
+      }
+    }
   });
 });

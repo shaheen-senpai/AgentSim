@@ -1,12 +1,17 @@
 // Flow graph model for a Run (spec §6.1). Pure, framework-free: Task 13 renders this data with
 // `@xyflow/react`, Task 15 reuses it for the Compare page, but this module knows nothing of either
-// — no React, no DOM, no `@xyflow/react` import.
+// — no React, no DOM, no `@xyflow/react` import. The only value import is `matchesLure` from the
+// leaf module `@/engine/lure` (types only otherwise) — never `@/engine/attack` or `@/engine/pack`
+// directly, both of which pull in `node:fs`/`node:path` transitively via `pack.ts`. This keeps the
+// module safe to import from a `"use client"` component (Task 13's `FlowView.tsx`) without dragging
+// server-only code into the browser bundle; see the import-purity test in
+// `tests/ui/buildFlow.test.ts`.
 //
 // Concurrent tool calls ("waves") lay out as columns, left to right: `start`, one column per wave,
 // then `end` when the Run is no longer running. A wave of more than one node gets a small junction
 // dot fanning its edges in and out, on whichever side(s) border it — including against `start` or
 // `end`, which behave as ordinary single-node columns for this purpose.
-import { matchesLure } from "@/engine/attack";
+import { matchesLure } from "@/engine/lure";
 import type { Score, Violation } from "@/engine/evaluator";
 import type { Attack } from "@/engine/pack";
 import type { Event } from "@/engine/types";

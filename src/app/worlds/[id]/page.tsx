@@ -1,15 +1,15 @@
-// `/worlds/[id]` — one World pack, read-only, with tabs driven by `?tab=` (spec §6.2). Task 17
-// adds editing on top of these same tabs; Task 18 adds `/worlds/new`.
-//
-// A server component throughout: it loads the pack with `loadPack` and hands plain data to the
-// tab components, none of which are client components — the tab strip is links, so the page needs
-// no client JS at all.
+// `/worlds/[id]` — one World pack, with tabs driven by `?tab=` (spec §6.2). The page itself stays a
+// Server Component throughout: it loads the pack with `loadPack` and renders each tab's read-only
+// view exactly as Task 16 left it (`Body` below). Task 17 layers editing on top via `PackEditor`, a
+// client island that receives the current tab's read-only render as `children` — it takes over the
+// tab strip and the tab body to add Edit/Validate/Save, but never re-implements what `Body` renders.
 import { notFound } from "next/navigation";
 import { listPackIds, loadPack, PACK_ID_RE, type WorldPack } from "@/engine/pack";
 import { Header } from "@/ui/Header";
 import { heading, mono } from "@/ui/styles";
 import { AgentPrompts } from "@/ui/worlds/AgentPrompts";
 import { EntityMap } from "@/ui/worlds/EntityMap";
+import { PackEditor } from "@/ui/worlds/PackEditor";
 import { PackTabs } from "@/ui/worlds/PackTabs";
 import { ScenarioCards } from "@/ui/worlds/ScenarioCards";
 import { SeedTables } from "@/ui/worlds/SeedTables";
@@ -82,10 +82,9 @@ export default async function WorldPage({ params, searchParams }: { params: Para
         </div>
         <p className="text-[12px] text-[#6b6b66] max-w-[70ch]">{pack.meta.description}</p>
 
-        <PackTabs packId={pack.meta.id} current={tab} />
-        <div className="pt-1">
+        <PackEditor worldId={pack.meta.id} principal={pack.meta.principal} initialTab={tab} files={pack.files}>
           <Body pack={pack} tab={tab} />
-        </div>
+        </PackEditor>
       </main>
     </div>
   );

@@ -1,13 +1,27 @@
-// The `/worlds/[id]` tab strip. Plain links that set `?tab=` — no client JS, no state: the server
-// component re-renders the page for the chosen tab, and `aria-current="page"` marks it.
+// The `/worlds/[id]` tab strip. Plain links that set `?tab=` — no client JS, no state of its own:
+// the server component re-renders the page for the chosen tab, and `aria-current="page"` marks it.
+//
+// `errorTabs` (Task 17) is optional and purely additive: the read-only page renders this with no
+// errors to show, so it passes nothing and gets the original strip; `PackEditor` (a client
+// component) renders it a second way, live, with the tabs whose file failed the last Validate/Save
+// marked — a dot plus screen-reader text, never colour alone.
 import Link from "next/link";
 import { tabHref, tabLabel, WORLD_TABS, type WorldTab } from "./packView";
 
-export function PackTabs({ packId, current }: { packId: string; current: WorldTab }) {
+export function PackTabs({
+  packId,
+  current,
+  errorTabs,
+}: {
+  packId: string;
+  current: WorldTab;
+  errorTabs?: ReadonlySet<WorldTab>;
+}) {
   return (
     <nav aria-label="World pack sections" className="flex items-end gap-1 border-b border-[#cfcfcb]">
       {WORLD_TABS.map((tab) => {
         const active = tab === current;
+        const hasError = errorTabs?.has(tab) ?? false;
         return (
           <Link
             key={tab}
@@ -18,6 +32,12 @@ export function PackTabs({ packId, current }: { packId: string; current: WorldTa
             }`}
           >
             {tabLabel(tab)}
+            {hasError && (
+              <>
+                <span aria-hidden="true" className="ml-1 text-[#c8321e]">●</span>
+                <span className="sr-only"> (has validation errors)</span>
+              </>
+            )}
           </Link>
         );
       })}

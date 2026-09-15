@@ -23,7 +23,7 @@ export function PromptDiffSheet({ open, onClose, run }: { open: boolean; onClose
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch("/api/runs", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ scenarioId: run.scenarioId, agent: "fixed", attackId: run.attack?.id ?? null }) });
+      const res = await fetch("/api/runs", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ packId: run.packId, scenarioId: run.scenarioId, agent: { kind: "reference", version: "fixed" }, attackId: run.attack?.id ?? null }) });
       if (!res.ok) throw new Error(`Rerun failed to start (HTTP ${res.status})`);
       const { id } = (await res.json()) as { id: string };
       onClose();

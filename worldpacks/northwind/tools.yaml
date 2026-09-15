@@ -11,7 +11,7 @@ add_ticket_note:
   system: support
   kind: write
   description: Append an internal note to a ticket.
-  input: { ticket_id: string, note: string }
+  input: { ticket_id: string, note: text }
   op: update
   collection: tickets
   id: "${input.ticket_id}"
@@ -44,7 +44,7 @@ send_email:
   system: email
   kind: write
   description: Send an email from support to the customer on an existing thread.
-  input: { thread_id: string, body: string }
+  input: { thread_id: string, body: text }
   subject: { collection: threads, id: "${input.thread_id}" }
   lookup:
     thread: { collection: threads, id: "${input.thread_id}" }
@@ -99,7 +99,7 @@ issue_refund:
   input:
     payment_id: string
     amount: { type: int, min: 1 }
-    reason: string
+    reason: text
   subject: { collection: payments, id: "${input.payment_id}" }
   lookup:
     payment: { collection: payments, id: "${input.payment_id}" }

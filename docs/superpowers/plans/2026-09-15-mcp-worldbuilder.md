@@ -769,9 +769,12 @@ const handler = createMcpHandler(
       { name: "agentsim-worldbuilder", version: "0.1.0" },
       {
         instructions:
-          "Builds a simulated test World for an agent, from its own tools. Call register_agent first, passing your agent's tool list " +
-          "(name/description/inputSchema, as from tools/list) plus a short description of what it does — this drafts a World pack with " +
-          "Claude. Then get_world_draft to read it, refine_world with a plain-language change, and create_world once it looks right.",
+          "Builds a simulated test World for an agent, from its own tools — you are running inside that agent's own repo, so gather this " +
+          "yourself rather than asking the user for it: read the agent's tool definitions, its database schema or ORM models, and any " +
+          "OpenAPI spec directly from the codebase. Then call register_agent with the agent's real tool list (name/description/inputSchema, " +
+          "the same shape as tools/list), the schema text and the OpenAPI text if the repo has them, plus a short description of what the " +
+          "agent does — this drafts a World pack with Claude. Then get_world_draft to read it, refine_world with a plain-language change, " +
+          "and create_world once it looks right.",
       },
     );
 
@@ -1034,3 +1037,113 @@ Using the `run` skill's server pattern: start `npm run dev`, confirm `http://loc
 - [ ] **Step 3: Report**
 
 Confirm in the session: full suite status (pass count), the manual pass's outcome (world id created, whether `/worlds/<id>` rendered correctly), and whether the smoke-test world was cleaned up afterward.
+
+---
+
+### Task 8: Package the world-builder as an installable Claude Code plugin
+
+The seamless end state this whole plan is for: a developer in their *own* agent's repo runs `claude plugin marketplace add` once, `claude plugin install agentsim-worldbuilder`, and Claude Code both knows how to reach `/mcp/worlds` and knows to gather the agent's own tools/schema from the repo itself rather than asking the user to paste anything (Task 4's server `instructions` already say this at connect time; this task adds a bundled Skill that says it *before* connect time, and removes the manual `claude mcp add` step). This mirrors the `superpowers` plugin's own layout — `.claude-plugin/plugin.json` + `.claude-plugin/marketplace.json` at a self-hosted marketplace root, an `.mcp.json` declaring the bundled server — and the `playwright` plugin's pattern for bundling an MCP server declaration inside a plugin.
+
+**Known uncertainty, carried honestly rather than asserted away:** this repo has never installed a plugin from a *subdirectory* marketplace before, and the exact `.mcp.json` schema has only been confirmed here for a `command`/`args` (stdio) server (`playwright`), not the `type: "http"` shape this task needs (that shape is confirmed only from `claude mcp add --transport http` output and `src/ui/connect/snippets.ts`'s `mcpJsonConfig`, both of which write into the *user's own* Claude config, not a plugin bundle). Step 2 below is a real installation attempt, not a formality — if it fails, that is this task's actual result, reported as such, not routed around.
+
+**Files:**
+- Create: `claude-plugin/.claude-plugin/plugin.json`
+- Create: `claude-plugin/.claude-plugin/marketplace.json`
+- Create: `claude-plugin/.mcp.json`
+- Create: `claude-plugin/skills/init-world/SKILL.md`
+- Modify: `README.md`
+
+**Interfaces:** none — this task ships static config and a Skill, no code.
+
+- [ ] **Step 1: Write the plugin files**
+
+```json
+// claude-plugin/.claude-plugin/plugin.json
+{
+  "name": "agentsim-worldbuilder",
+  "description": "Draft an AgentSim World pack from your own agent's tools, schema and OpenAPI spec — no hand-written YAML.",
+  "author": { "name": "AgentSim" }
+}
+```
+
+```json
+// claude-plugin/.claude-plugin/marketplace.json
+{
+  "name": "agentsim",
+  "description": "AgentSim's own Claude Code plugins",
+  "owner": { "name": "AgentSim" },
+  "plugins": [
+    {
+      "name": "agentsim-worldbuilder",
+      "description": "Draft an AgentSim World pack from your own agent's tools, schema and OpenAPI spec — no hand-written YAML.",
+      "source": "./",
+      "author": { "name": "AgentSim" }
+    }
+  ]
+}
+```
+
+```json
+// claude-plugin/.mcp.json
+{
+  "agentsim-worldbuilder": {
+    "type": "http",
+    "url": "http://localhost:3000/mcp/worlds"
+  }
+}
+```
+
+```markdown
+// claude-plugin/skills/init-world/SKILL.md
+---
+name: init-world
+description: Draft and create an AgentSim World pack from this repo's own agent — its tools, schema and OpenAPI, gathered from the codebase rather than pasted by hand.
+---
+
+# Building an AgentSim World from this agent
+
+You are running inside an agent's own repository, connected to AgentSim's world-builder MCP server (`agentsim-worldbuilder`). Do not ask the user to paste their tool list, schema, or OpenAPI spec — read them from the repo:
+
+1. **Find the agent's tools.** Look for tool/function definitions (`@tool`, `betaZodTool`, an MCP server's own `tools/list` handler, a LangChain/OpenAI function-calling schema, or similar) and build a `{name, description, inputSchema}` entry for each.
+2. **Find the schema.** Look for DDL, migrations, an ORM's schema files (Prisma, Drizzle, SQLAlchemy models, Rails `schema.rb`), or similar. Read the raw text — do not summarize it.
+3. **Find an OpenAPI spec**, if the repo has one.
+4. Call `register_agent` on `agentsim-worldbuilder` with everything you found, plus a short description of what the agent does.
+5. Call `get_world_draft` and show the user what was drafted.
+6. If they want changes, call `refine_world` with their plain-language note and show the result again.
+7. Once they approve it, call `create_world` with a world id (lowercase, hyphenated) to persist it.
+
+The whole exchange should need no manually written YAML — everything AgentSim needs comes from the repo you are already in.
+```
+
+In `README.md`, find the section that currently tells a user to run `claude mcp add` (or the Limitations bullets added in Task 6). Add, near AgentSim's own setup instructions:
+
+```markdown
+## Install as a Claude Code plugin
+
+From inside this repo, with `npm run dev` running:
+
+```
+claude plugin marketplace add ./claude-plugin
+claude plugin install agentsim-worldbuilder
+```
+
+Then, from your *own* agent's repo, in a Claude Code session: "Use agentsim-worldbuilder to build a test world for this agent." It reads your tools, schema and OpenAPI spec straight from the codebase — see `claude-plugin/skills/init-world/SKILL.md` for exactly what it does. If AgentSim is not on `localhost:3000`, edit the URL in `claude-plugin/.mcp.json` first.
+```
+
+- [ ] **Step 2: Verify the plugin actually installs**
+
+Run, from a second Claude Code session with `npm run dev` already running in this repo:
+
+```bash
+claude plugin marketplace add ./claude-plugin
+claude plugin install agentsim-worldbuilder
+```
+
+Confirm the install succeeds and the `agentsim-worldbuilder` MCP server appears connected (`claude mcp list` or equivalent). If it fails — wrong marketplace root, wrong `.mcp.json` shape, or anything else — do not silently work around it by e.g. moving files to the repo root. Record exactly what happened and what, if anything, had to change from Step 1's file layout to make it work; a failed install with an accurate report is a valid outcome for this task, the same way Task 7's honeypot-resistant helpdesk agent was an honest negative result rather than a tuned one.
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add claude-plugin/ README.md
+git commit -m "feat(plugin): package the world-builder as an installable Claude Code plugin"
+```

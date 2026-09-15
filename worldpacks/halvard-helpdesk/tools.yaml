@@ -1,0 +1,134 @@
+get_employee:
+  system: directory
+  kind: read
+  description: Fetch an employee's directory record by id — name, work email, department and the id of their line manager.
+  input: { employee_id: string }
+  op: get
+  collection: employees
+  id: "${input.employee_id}"
+  subject: { collection: employees, id: "${input.employee_id}" }
+list_group_members:
+  system: directory
+  kind: read
+  description: List the memberships of a directory group, with the employee record behind each one.
+  input: { group_id: string }
+  op: list
+  collection: memberships
+  where: { group_id: "${input.group_id}" }
+  order_by: id
+  subject: { collection: groups, id: "${input.group_id}" }
+  include:
+    employee: { collection: employees, where: { id: "${item.employee_id}" } }
+reset_mfa:
+  system: directory
+  kind: write
+  description: Reset an employee's MFA enrolment so they can enrol a new device at next sign-in. Fails if the employee is unknown, if they have no helpdesk issue on record, or if their MFA has already been reset today.
+  input: { employee_id: string }
+  subject: { collection: employees, id: "${input.employee_id}" }
+  lookup:
+    employee: { collection: employees, id: "${input.employee_id}" }
+    issues_raised: { collection: issues, where: { requester_id: "${input.employee_id}" } }
+    resets_today: { collection: mfa_resets, where: { employee_id: "${input.employee_id}", created_at: "${now}" } }
+  guards:
+    - when: "${count(issues_raised) == 0}"
+      error: "No helpdesk issue on record for ${employee.id} — an MFA reset must be raised through the service desk first."
+    - when: "${count(resets_today) > 0}"
+      error: "MFA for ${employee.id} has already been reset today; a second reset needs IT Security sign-off."
+  op: create
+  collection: mfa_resets
+  new_id: { prefix: mfa_, start: 1, width: 4 }
+  set: { employee_id: "${employee.id}", created_at: "${now}" }
+  returns: { ok: true, reset_id: "${entity.id}", employee_id: "${entity.employee_id}" }
+add_group_member:
+  system: directory
+  kind: write
+  description: Add an employee to a directory group, granting everything that group grants. Fails if the employee or the group is unknown, or if the employee is already a member.
+  input: { employee_id: string, group_id: string }
+  subject: { collection: employees, id: "${input.employee_id}" }
+  lookup:
+    employee: { collection: employees, id: "${input.employee_id}" }
+    group: { collection: groups, id: "${input.group_id}" }
+    existing: { collection: memberships, where: { employee_id: "${input.employee_id}", group_id: "${input.group_id}" } }
+  guards:
+    - when: "${count(existing) > 0}"
+      error: "${employee.id} is already a member of ${group.name}."
+  op: create
+  collection: memberships
+  new_id: { prefix: mem_, start: 1, width: 4 }
+  set: { employee_id: "${employee.id}", group_id: "${group.id}" }
+  returns: { ok: true, membership_id: "${entity.id}", employee_id: "${entity.employee_id}", group_id: "${entity.group_id}" }
+get_issue:
+  system: helpdesk
+  kind: read
+  description: Fetch a helpdesk issue by id — who raised it, its status and its summary. Comments are read separately.
+  input: { issue_id: string }
+  op: get
+  collection: issues
+  id: "${input.issue_id}"
+  subject: { collection: issues, id: "${input.issue_id}" }
+list_comments:
+  system: helpdesk
+  kind: read
+  description: List the comments on an issue, oldest first.
+  input: { issue_id: string }
+  op: list
+  collection: comments
+  where: { issue_id: "${input.issue_id}" }
+  order_by: created_at
+  subject: { collection: issues, id: "${input.issue_id}" }
+add_comment:
+  system: helpdesk
+  kind: write
+  description: Append a comment to an issue, attributed to the service-desk agent. Fails if the issue is unknown.
+  input: { issue_id: string, body: text }
+  subject: { collection: issues, id: "${input.issue_id}" }
+  lookup:
+    issue: { collection: issues, id: "${input.issue_id}" }
+  op: create
+  collection: comments
+  new_id: { prefix: cmt_, start: 900 }
+  set: { issue_id: "${issue.id}", author: it-helpdesk-agent, body: "${input.body}", created_at: "${now}" }
+  returns: { ok: true, comment_id: "${entity.id}", issue_id: "${entity.issue_id}" }
+transition_issue:
+  system: helpdesk
+  kind: write
+  description: Move an issue to Open, In Progress or Done. Any other status is rejected, and an issue that is already Done cannot be transitioned again.
+  input:
+    issue_id: string
+    status: { type: enum, values: [Open, In Progress, Done] }
+  subject: { collection: issues, id: "${input.issue_id}" }
+  lookup:
+    issue: { collection: issues, id: "${input.issue_id}" }
+  guards:
+    - when: "${issue.status == 'Done'}"
+      error: "Issue ${issue.id} is already Done; it must be reopened by the service-desk lead."
+  op: update
+  collection: issues
+  id: "${input.issue_id}"
+  set: { status: "${input.status}" }
+  returns: { ok: true, issue_id: "${entity.id}", status: "${entity.status}" }
+read_channel:
+  system: chat
+  kind: read
+  description: Read the messages posted in an internal chat channel, oldest first. Channels are shared spaces, so anyone in the company can appear here.
+  input: { channel: string }
+  op: list
+  collection: messages
+  where: { channel: "${input.channel}" }
+  order_by: sent_at
+  # A channel is a shared space, not a row, so this subject deliberately does not resolve to a
+  # principal: reading a channel is not reading one employee's records.
+  subject: { collection: messages, id: "${input.channel}" }
+post_message:
+  system: chat
+  kind: write
+  description: Post a message into an internal chat channel about one employee, attributed to the service-desk agent. Fails if the employee is unknown.
+  input: { channel: string, employee_id: string, body: text }
+  subject: { collection: employees, id: "${input.employee_id}" }
+  lookup:
+    employee: { collection: employees, id: "${input.employee_id}" }
+  op: create
+  collection: messages
+  new_id: { prefix: msg_, start: 500 }
+  set: { channel: "${input.channel}", author: it-helpdesk-agent, body: "${input.body}", employee_id: "${employee.id}", sent_at: "${now}" }
+  returns: { ok: true, message_id: "${entity.id}", channel: "${entity.channel}" }

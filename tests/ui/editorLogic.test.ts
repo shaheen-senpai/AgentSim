@@ -1,16 +1,20 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { loadPack, parsePackFiles } from "@/engine/pack";
+import { loadPack, PACK_ID_RE, parsePackFiles } from "@/engine/pack";
 import {
   errorLine,
   fileTab,
   filesEqual,
   groupErrorsByFile,
   isValidScenarioId,
+  isValidWorldId,
+  packField,
   scenarioFileKey,
   scenarioSkeleton,
   tabFileKey,
   tabsWithErrors,
+  withPackId,
+  WORLD_ID_RE,
 } from "@/ui/worlds/editorLogic";
 
 describe("isValidScenarioId", () => {
@@ -158,6 +162,46 @@ describe("filesEqual", () => {
 
   it("is true for two empty maps", () => {
     expect(filesEqual({}, {})).toBe(true);
+  });
+});
+
+describe("WORLD_ID_RE", () => {
+  it("is character-for-character the server's PACK_ID_RE", () => {
+    expect(WORLD_ID_RE.source).toBe(PACK_ID_RE.source);
+    expect(WORLD_ID_RE.flags).toBe(PACK_ID_RE.flags);
+  });
+
+  it("accepts a two-to-forty-one character lowercase id and rejects everything else", () => {
+    expect(isValidWorldId("halvard-helpdesk")).toBe(true);
+    expect(isValidWorldId("w1")).toBe(true);
+    expect(isValidWorldId("w")).toBe(false); // one character is too short for the server too
+    expect(isValidWorldId("-leading")).toBe(false);
+    expect(isValidWorldId("Capitals")).toBe(false);
+    expect(isValidWorldId("has space")).toBe(false);
+    expect(isValidWorldId("a".repeat(42))).toBe(false);
+  });
+});
+
+describe("packField", () => {
+  it("reads a top-level scalar out of a real pack.yaml without a YAML parser", () => {
+    const packYaml = loadPack("northwind").files["pack.yaml"];
+    expect(packField(packYaml, "id")).toBe("northwind");
+    expect(packField(packYaml, "principal")).toBe("customers"); // trailing comment and all
+    expect(packField(packYaml, "nothing")).toBeNull();
+  });
+});
+
+describe("withPackId", () => {
+  it("rewrites the declared id so a copied template becomes its own World", () => {
+    const packYaml = loadPack("northwind").files["pack.yaml"];
+    const renamed = withPackId(packYaml, "southwind");
+    expect(packField(renamed, "id")).toBe("southwind");
+    expect(renamed).toContain("name: Northwind Outfitters"); // nothing else moved
+    expect(parsePackFiles({ ...loadPack("northwind").files, "pack.yaml": renamed }).errors).toEqual([]);
+  });
+
+  it("adds an id to a pack.yaml that declares none", () => {
+    expect(withPackId("name: X\n", "new-world")).toBe("id: new-world\nname: X\n");
   });
 });
 

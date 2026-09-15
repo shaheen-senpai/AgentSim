@@ -48,6 +48,35 @@ export function scenarioSkeleton(input: { id: string; principal: string }): stri
   ].join("\n");
 }
 
+// ───────────────────────────── new-world id (Task 18) ─────────────────────────────
+
+/**
+ * The id a new World may take. Mirrors `PACK_ID_RE` in `src/engine/pack.ts`, which cannot be
+ * value-imported here (it reaches `node:fs`); `tests/ui/editorLogic.test.ts` asserts the two
+ * sources are character-for-character identical, so they cannot drift.
+ */
+export const WORLD_ID_RE = /^[a-z0-9][a-z0-9-]{1,40}$/;
+
+export function isValidWorldId(id: string): boolean {
+  return WORLD_ID_RE.test(id);
+}
+
+/** A top-level scalar of `pack.yaml` (`id`, `principal`), read without a YAML parser. */
+export function packField(packYaml: string, field: string): string | null {
+  const m = new RegExp(`^${field}:[ \\t]*["']?([A-Za-z0-9_.-]+)["']?[ \\t]*(?:#.*)?$`, "m").exec(packYaml);
+  return m ? m[1] : null;
+}
+
+/**
+ * `pack.yaml` with its `id:` set to `id` — what makes copying a template a new World rather than a
+ * second copy of the old one. The directory name is the id every URL uses, and the API refuses a
+ * `pack.yaml` that disagrees with it (`packWriteErrors`), so this runs on every create.
+ */
+export function withPackId(packYaml: string, id: string): string {
+  const line = `id: ${id}`;
+  return /^id:.*$/m.test(packYaml) ? packYaml.replace(/^id:.*$/m, line) : `${line}\n${packYaml}`;
+}
+
 // ───────────────────────────── tabs ↔ files ─────────────────────────────
 
 /** The single-file tabs' file key — `null` for `scenarios`/`agents`, which hold many files. */

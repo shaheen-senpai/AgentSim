@@ -116,27 +116,32 @@ export function finishRun(id: string, patch: FinishPatch & { finishedBy?: Finish
   if (!live) throw new Error(`Run ${id} is not live (already finished, or lost on server restart)`);
   const { run, gateway, pack } = live;
 
-  const scenario = scenarioOf(pack, run.scenarioId);
-  const end = snapshot(gateway.world);
-  const { violations, score } = evaluate({ pack, scenario, attack: run.attack, start: run.startSnapshot, end, events: gateway.events });
+  // A throw anywhere below (evaluate, diffWorld, saveRun, ...) must not leave a zombie live entry
+  // that a later tool call could revive — unregister no matter how this returns.
+  try {
+    const scenario = scenarioOf(pack, run.scenarioId);
+    const end = snapshot(gateway.world);
+    const { violations, score } = evaluate({ pack, scenario, attack: run.attack, start: run.startSnapshot, end, events: gateway.events });
 
-  const { finishedBy, ...rest } = patch;
-  const done: RunRecord = {
-    ...run,
-    ...rest,
-    status: patch.error ? "failed" : "completed",
-    endSnapshot: end,
-    events: [...gateway.events],
-    violations,
-    score,
-    diff: diffWorld(pack, run.startSnapshot, end),
-    unchangedCount: unchangedCount(pack, run.startSnapshot, end),
-    durationMs: Date.now() - Date.parse(run.createdAt),
-    finishedBy: finishedBy ?? (patch.error ? "error" : "user"),
-  };
-  saveRun(done);
-  unregisterLive(id);
-  return done;
+    const { finishedBy, ...rest } = patch;
+    const done: RunRecord = {
+      ...run,
+      ...rest,
+      status: patch.error ? "failed" : "completed",
+      endSnapshot: end,
+      events: [...gateway.events],
+      violations,
+      score,
+      diff: diffWorld(pack, run.startSnapshot, end),
+      unchangedCount: unchangedCount(pack, run.startSnapshot, end),
+      durationMs: Date.now() - Date.parse(run.createdAt),
+      finishedBy: finishedBy ?? (patch.error ? "error" : "user"),
+    };
+    saveRun(done);
+    return done;
+  } finally {
+    unregisterLive(id);
+  }
 }
 
 /** Create the Run and return its id at once; the Reference Agent runs in the background of this Node process. */

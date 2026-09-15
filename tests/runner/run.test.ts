@@ -85,6 +85,13 @@ describe("createRun + finishRun", () => {
     expect(() => finishRun("run_missing")).toThrow(/not live/);
   });
 
+  it("finishRun always unregisters the live entry, even when it throws", () => {
+    const { run } = createRun({ ...NORTHWIND, agent: { kind: "byo" } });
+    getLive(run.id)!.run.scenarioId = "nope"; // forces scenarioOf to throw inside finishRun
+    expect(() => finishRun(run.id)).toThrow(/Unknown scenario nope/);
+    expect(getLive(run.id)).toBeUndefined();
+  });
+
   it("failRun marks a Run failed even when it is no longer live", () => {
     const { run } = createRun({ ...NORTHWIND, agent: { kind: "byo" } });
     unregisterLive(run.id); // simulate a dropped registry

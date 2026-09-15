@@ -154,26 +154,31 @@ describe("POST /api/worlds", () => {
 });
 
 describe("PUT /api/worlds/:id", () => {
-  it("overwrites an existing pack", async () => {
-    await createWorldRoute(post("http://localhost/api/worlds", { id: "editable", files: filesAs("editable") }));
-
-    const files = filesAs("editable");
-    files["pack.yaml"] = files["pack.yaml"].replace("name: Northwind Outfitters", "name: Editable Outfitters");
-    const res = await putWorldRoute(put("http://localhost/api/worlds/editable", { files }), ctx("editable"));
+  /** Each test creates and renames its own pack: nothing here may depend on another test's leftovers. */
+  async function renamedPack(id: string, name: string): Promise<void> {
+    expect((await createWorldRoute(post("http://localhost/api/worlds", { id, files: filesAs(id) }))).status).toBe(201);
+    const files = filesAs(id);
+    files["pack.yaml"] = files["pack.yaml"].replace("name: Northwind Outfitters", `name: ${name}`);
+    const res = await putWorldRoute(put(`http://localhost/api/worlds/${id}`, { files }), ctx(id));
     expect(res.status).toBe(200);
-    expect(await res.json()).toMatchObject({ id: "editable", name: "Editable Outfitters" });
+    expect(await res.json()).toMatchObject({ id, name });
+  }
+
+  it("overwrites an existing pack", async () => {
+    await renamedPack("editable", "Editable Outfitters");
     expect(loadPack("editable").meta.name).toBe("Editable Outfitters");
   });
 
   it("404s an unknown pack, 400s invalid files and leaves the pack on disk untouched", async () => {
     expect((await putWorldRoute(put("http://localhost/api/worlds/ghost", { files: filesAs("ghost") }), ctx("ghost"))).status).toBe(404);
 
-    const files = filesAs("editable");
+    await renamedPack("untouched", "Untouched Outfitters");
+    const files = filesAs("untouched");
     files["tools.yaml"] = "get_ticket: 3";
-    const res = await putWorldRoute(put("http://localhost/api/worlds/editable", { files }), ctx("editable"));
+    const res = await putWorldRoute(put("http://localhost/api/worlds/untouched", { files }), ctx("untouched"));
     expect(res.status).toBe(400);
     expect(((await res.json()) as { errors: ValidationError[] }).errors.length).toBeGreaterThan(0);
-    expect(loadPack("editable").meta.name).toBe("Editable Outfitters"); // unchanged
+    expect(loadPack("untouched").meta.name).toBe("Untouched Outfitters"); // unchanged
   });
 });
 

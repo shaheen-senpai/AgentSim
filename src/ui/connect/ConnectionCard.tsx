@@ -36,6 +36,11 @@ function ShapeInstructions({ run }: { run: CreatedRun }): ReactNode {
           One command in Claude Code, or the same server in any MCP client&rsquo;s config. The Task Brief arrives as the server&rsquo;s
           <span className={mono}> instructions</span>, so there is nothing else to paste.
         </p>
+        <p className={hint}>
+          The URL below is this origin, whatever you opened the app on. The MCP endpoint answers only on
+          <span className={mono}> localhost</span> unless AgentSim was started with <span className={mono}>AGENTSIM_ALLOWED_HOSTS</span> naming the
+          hostname it will be reached on — a LAN address or a tunnel is refused before the handler runs otherwise.
+        </p>
         <Snippet title="Add the Run as an MCP server" language="Claude Code" body={mcpAddCommand(run.agentName, run.mcpUrl)} what="Command" />
         <Snippet title="Or, any MCP client" language="JSON" body={mcpJsonConfig(run.agentName, run.mcpUrl)} what="Config" />
       </>
@@ -60,7 +65,9 @@ function ShapeInstructions({ run }: { run: CreatedRun }): ReactNode {
     <>
       <p className={hint}>
         An agent built straight on the Anthropic Messages API needs no forwarder: pass the Run as an MCP server and the API fetches our tools
-        itself. It has to reach us, so put a tunnel in front of this origin if it is a laptop.
+        itself. It fetches them over the internet, so this origin has to be reachable from outside this machine &mdash; and this build&rsquo;s MCP
+        endpoint answers only on <span className={mono}>localhost</span> unless AgentSim was started with{" "}
+        <span className={mono}>AGENTSIM_ALLOWED_HOSTS</span> naming the hostname it will be reached on. The README says what that turns off.
       </p>
       <Snippet title="Messages API request" language="JSON" body={connectorBlock(run.mcpUrl)} what="Block" />
     </>

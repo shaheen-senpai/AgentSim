@@ -3,7 +3,7 @@
 import { mkdtempSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { POST as mcpRoute } from "@/app/mcp/runs/[runId]/route";
 import { createRun, finishRun } from "@/runner/run";
 import { loadRun } from "@/runner/store";
@@ -72,5 +72,49 @@ describe("/mcp/runs/:id", () => {
 
   it("404s an unknown run", async () => {
     expect((await initialize("run_nope")).status).toBe(404);
+  });
+});
+
+/**
+ * DNS-rebinding protection. The default allowlist is `localhost`/`127.0.0.1`/`[::1]`, which is
+ * exactly what `/connect` used to tell people to work around ("put a tunnel in front of this
+ * origin") — advice the route refused before the handler ever ran. `AGENTSIM_ALLOWED_HOSTS` is the
+ * deliberate, opt-in way to widen it; the default must stay closed.
+ */
+describe("/mcp/runs/:id host allowlist", () => {
+  const request = (host: string) =>
+    new Request(`http://${host}/mcp/runs/run_nope`, {
+      method: "POST",
+      headers: { "content-type": "application/json", accept: "application/json, text/event-stream", host },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "initialize", params: {} }),
+    });
+
+  afterEach(() => {
+    delete process.env.AGENTSIM_ALLOWED_HOSTS;
+  });
+
+  it("refuses a tunnel hostname by default", async () => {
+    expect((await mcpRoute(request("agentsim.loca.lt"))).status).toBe(403);
+    expect((await mcpRoute(request("192.168.1.24:3000"))).status).toBe(403);
+  });
+
+  it("accepts a hostname named in AGENTSIM_ALLOWED_HOSTS, port and all", async () => {
+    process.env.AGENTSIM_ALLOWED_HOSTS = "agentsim.loca.lt, 192.168.1.24";
+    // Past the host guard: 404 is the *unknown run* answer, which only the handler side reaches.
+    expect((await mcpRoute(request("agentsim.loca.lt"))).status).toBe(404);
+    expect((await mcpRoute(request("192.168.1.24:3000"))).status).toBe(404);
+  });
+
+  it("widens nothing else, and localhost keeps working either way", async () => {
+    process.env.AGENTSIM_ALLOWED_HOSTS = "agentsim.loca.lt";
+    expect((await mcpRoute(request("someone-else.example.com"))).status).toBe(403);
+    expect((await mcpRoute(request("127.0.0.1:3000"))).status).toBe(404);
+    delete process.env.AGENTSIM_ALLOWED_HOSTS;
+    expect((await mcpRoute(request("127.0.0.1:3000"))).status).toBe(404);
+  });
+
+  it("is read per request, so an empty or blank value changes nothing", async () => {
+    process.env.AGENTSIM_ALLOWED_HOSTS = "  , ,";
+    expect((await mcpRoute(request("agentsim.loca.lt"))).status).toBe(403);
   });
 });

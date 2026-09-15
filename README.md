@@ -33,7 +33,7 @@ claude plugin marketplace add ./claude-plugin
 claude plugin install agentsim-worldbuilder
 ```
 
-Then, from your *own* agent's repo, in a Claude Code session: "Use agentsim-worldbuilder to build a test world for this agent." It reads your tools, schema and OpenAPI spec straight from the codebase — see `claude-plugin/skills/init-world/SKILL.md` for exactly what it does. If AgentSim is not on `localhost:3000`, edit the URL in `claude-plugin/.mcp.json` first.
+Then, from your *own* agent's repo, in a Claude Code session: "Use agentsim-worldbuilder to build a test world for this agent." It reads your tools, schema and OpenAPI spec straight from the codebase — see `claude-plugin/skills/init-world/SKILL.md` for exactly what it does. That URL is where your repo's schema and tool definitions get sent — keep it pointed at your own AgentSim. If AgentSim is not on `localhost:3000`, edit the URL in `claude-plugin/.mcp.json` first; if it's not on `localhost` at all (a tunnel, a LAN address), you also need `AGENTSIM_ALLOWED_HOSTS` set on the AgentSim server (see the `/mcp/worlds` limitations below) — a different port on localhost needs neither.
 
 ## The three pages
 

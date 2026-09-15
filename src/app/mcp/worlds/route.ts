@@ -17,7 +17,17 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 300; // generation is a long Opus call with a retry, same as /api/worlds/generate
 
 const MAX_TOOLS = 200;
-const ToolSchema = z.object({ name: z.string().min(1).max(200), description: z.string().max(2000).optional(), inputSchema: z.unknown().optional() });
+const MAX_INPUT_SCHEMA_JSON_CHARS = 5_000;
+const ToolSchema = z.object({
+  name: z.string().min(1).max(200),
+  description: z.string().max(2000).optional(),
+  inputSchema: z
+    .unknown()
+    .optional()
+    .refine((v) => v === undefined || JSON.stringify(v).length <= MAX_INPUT_SCHEMA_JSON_CHARS, {
+      message: `inputSchema is too large (max ${MAX_INPUT_SCHEMA_JSON_CHARS} characters as JSON)`,
+    }),
+});
 
 const RegisterInput = {
   name: z.string().min(1).max(200),
@@ -83,7 +93,10 @@ const handler = createMcpHandler(
         const draft = getDraft(args.draftId);
         if (!draft) return text(`Unknown draft ${args.draftId}`, true);
         const result = await generateWorldPack(draft.input, undefined, { note: args.note, previousFiles: draft.files });
-        return text(draftSummary(updateDraft(draft.id, result)!));
+        // generateWorldPack can run for minutes; the draft can cross its TTL while it's in flight.
+        const updated = updateDraft(draft.id, result);
+        if (!updated) return text(`Draft ${draft.id} expired while refining — start over with register_agent.`, true);
+        return text(draftSummary(updated));
       },
     );
 

@@ -16,8 +16,9 @@ const Body = z.object({
 
 /**
  * Drafts a World pack with Claude (spec §6.2, §7). Deliberately POST-only and never reachable by a
- * page load or a prefetch: this is the one route in the app that spends money, and it writes
- * nothing — the draft comes back for a human to review in the editor and create explicitly.
+ * page load or a prefetch: this is one of the few routes in the app that spend money (the others
+ * are /mcp/worlds's register_agent and refine_world), and it writes nothing — the draft comes back
+ * for a human to review in the editor and create explicitly.
  */
 export async function POST(req: Request) {
   if (!process.env.ANTHROPIC_API_KEY) {

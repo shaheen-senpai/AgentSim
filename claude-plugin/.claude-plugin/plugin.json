@@ -1,5 +1,6 @@
 {
   "name": "agentsim-worldbuilder",
   "description": "Draft an AgentSim World pack from your own agent's tools, schema and OpenAPI spec — no hand-written YAML.",
+  "version": "0.1.0",
   "author": { "name": "AgentSim" }
 }

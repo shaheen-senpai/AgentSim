@@ -71,7 +71,10 @@ export function NewWorld({ templates, skeleton }: { templates: Template[]; skele
 
 // ───────────────────────────── Connect your agent ─────────────────────────────
 
-const WORLDBUILDER_NAME = "AgentSim World Builder";
+// Must match the name the server registers itself under (src/app/mcp/worlds/route.ts) and the
+// name every other onboarding surface uses (claude-plugin/, README.md, the Skill) — serverName()
+// slugifies a display name, so a value that isn't already the canonical slug drifts from them.
+const WORLDBUILDER_NAME = "agentsim-worldbuilder";
 
 /**
  * The one-time connect instructions for /mcp/worlds (spec extension: MCP world-builder). Purely

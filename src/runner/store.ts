@@ -56,7 +56,20 @@ export type RunSummary = Pick<RunRecord, "id" | "createdAt" | "status" | "packId
 
 export const dataDir = () => process.env.AGENTSIM_DATA_DIR ?? path.join(process.cwd(), "data");
 const runsDir = () => path.join(dataDir(), "runs");
-const goldenDir = () => path.join(dataDir(), "golden");
+export const goldenDir = () => path.join(dataDir(), "golden");
+
+export const RUN_ID_RE = /^run_[a-z0-9]+$/;
+
+/**
+ * Whether `id` names a golden Run — a recorded, byte-for-byte reproducible demo record under
+ * `data/golden/`. It is the guard behind `saveRun`: `loadRun` reads `data/runs/` *first*, so a
+ * write of a golden id lands in `data/runs/` and from then on shadows the record it came from,
+ * quietly ending "replaying a golden Run makes no model calls" on that machine. Promotion
+ * (`scripts/promote-golden.ts`) copies the file directly and is unaffected.
+ */
+export function isGoldenRun(id: string): boolean {
+  return RUN_ID_RE.test(id) && existsSync(path.join(goldenDir(), `${id}.json`));
+}
 
 function readRunFile(file: string): RunRecord | null {
   try {
@@ -72,6 +85,7 @@ export function newRunId(): string {
 }
 
 export function saveRun(run: RunRecord): void {
+  if (isGoldenRun(run.id)) throw new Error(`Refusing to write Run ${run.id}: it is a golden Run, which data/runs/ would shadow`);
   mkdirSync(runsDir(), { recursive: true });
   const tmpFile = path.join(runsDir(), `${run.id}.json.tmp`);
   const finalFile = path.join(runsDir(), `${run.id}.json`);
@@ -80,7 +94,7 @@ export function saveRun(run: RunRecord): void {
 }
 
 export function loadRun(id: string): RunRecord | null {
-  if (!/^run_[a-z0-9]+$/.test(id)) return null;
+  if (!RUN_ID_RE.test(id)) return null;
   for (const dir of [runsDir(), goldenDir()]) {
     const file = path.join(dir, `${id}.json`);
     if (existsSync(file)) {

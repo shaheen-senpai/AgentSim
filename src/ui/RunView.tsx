@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import type { RunRecord, RunSummary, ScenarioSummary } from "./types";
+import type { PackOption, RunRecord, RunSummary, ToolDef } from "./types";
 import { Header } from "./Header";
 import { Launcher } from "./Launcher";
 import { ConnectAgent } from "./ConnectAgent";
@@ -13,9 +13,9 @@ import { ReplayScrubber } from "./ReplayScrubber";
 import { PromptDiffSheet } from "./PromptDiffSheet";
 import { panel } from "./styles";
 
-export type RunViewProps = { run: RunRecord | null; scenarios: ScenarioSummary[]; recent: RunSummary[] };
+export type RunViewProps = { run: RunRecord | null; packs: PackOption[]; tools: Record<string, ToolDef>; recent: RunSummary[] };
 
-export function RunView({ run, scenarios, recent }: RunViewProps) {
+export function RunView({ run, packs, tools, recent }: RunViewProps) {
   const [diffOpen, setDiffOpen] = useState(false);
   const replay = useReplay(run);
 
@@ -46,14 +46,14 @@ export function RunView({ run, scenarios, recent }: RunViewProps) {
       <Header run={displayRun} />
       <div className="grid grid-cols-[240px_1fr_400px] gap-4 p-4 h-[calc(100vh-48px)]">
         <aside className="flex flex-col gap-4">
-          <Launcher scenarios={scenarios} run={displayRun} onPromptDiff={() => setDiffOpen(true)} />
-          <ConnectAgent run={displayRun} scenarios={scenarios} />
+          <Launcher packs={packs} run={displayRun} onPromptDiff={() => setDiffOpen(true)} />
+          <ConnectAgent run={displayRun} />
           <RecentRuns runs={recent} currentId={displayRun?.id ?? null} />
         </aside>
         <main className={`${panel} flex flex-col overflow-hidden`}>
           {displayRun ? (
             <>
-              <Timeline run={displayRun} visible={replay.visible} />
+              <Timeline run={displayRun} visible={replay.visible} tools={tools} />
               {displayRun.status !== "running" && <ReplayScrubber replay={replay} />}
             </>
           ) : <div className="p-6 text-[#6b6b66]">Pick a Scenario and press Run.</div>}

@@ -9,13 +9,18 @@ export function RecentRuns({ runs, currentId }: { runs: RunSummary[]; currentId:
       <ul className="flex flex-col gap-2 text-[13px]">
         {runs.slice(0, 12).map((r) => (
           <li key={r.id}>
-            <Link href={`/runs/${r.id}`} className={`flex justify-between gap-2 ${r.id === currentId ? "font-semibold" : ""}`}>
-              <span className={mono}>{r.id.slice(0, 12)}</span>
-              <span className="text-[#6b6b66] truncate">
-                {r.agentLabel} · {r.attackId ? "attack" : "clean"}
+            <Link href={`/runs/${r.id}`} title={r.id} className={`flex flex-col gap-0.5 ${r.id === currentId ? "font-semibold" : ""}`}>
+              <span className="truncate">
+                {r.packId} · {r.scenarioId}
                 {r.golden && <span className="ml-1 text-[10px] uppercase tracking-[.08em] border border-[#cfcfcb] rounded px-1">golden</span>}
               </span>
-              <span className={`${mono} ${r.capped ? "text-[#c8321e] font-bold" : ""}`}>{r.status === "running" ? "…" : r.headline ?? "—"}</span>
+              <span className="flex justify-between gap-2 text-[#6b6b66]">
+                <span className="truncate">{r.agentLabel} · {r.attackId ? "attack" : "clean"}</span>
+                <span className={`${mono} shrink-0 flex items-center gap-1 ${r.capped ? "text-[#c8321e] font-bold" : ""}`}>
+                  {r.status === "running" ? "…" : r.headline ?? "—"}
+                  {r.capped && <span className="px-1 py-0.5 bg-[#c8321e] text-white text-[9px] font-bold uppercase rounded-sm">Capped</span>}
+                </span>
+              </span>
             </Link>
           </li>
         ))}

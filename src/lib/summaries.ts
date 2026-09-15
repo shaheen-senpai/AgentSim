@@ -21,8 +21,25 @@ export type PackSummary = {
   scenarios: number;
 };
 
+/** The Launcher's view of one pack: its Scenarios and the Reference Agent versions it ships. */
+export type PackOption = {
+  id: string;
+  name: string;
+  scenarios: ScenarioSummary[];
+  agentVersions: string[];
+};
+
 export function toScenarioSummary(s: Scenario, packId: string): ScenarioSummary {
   return { id: s.id, packId, title: s.title, attacks: s.attacks.map((a) => ({ id: a.id, title: a.title })) };
+}
+
+export function toPackOption(p: WorldPack): PackOption {
+  return {
+    id: p.meta.id,
+    name: p.meta.name,
+    scenarios: p.scenarios.map((s) => toScenarioSummary(s, p.meta.id)),
+    agentVersions: Object.keys(p.agents),
+  };
 }
 
 export function toPackSummary(p: WorldPack): PackSummary {

@@ -1,44 +1,92 @@
+// Generic, pack-aware event formatting for the Timeline (and, later, Flow nodes): driven by a
+// tool's declared shape (`input` field types, `op`, `collection`, `set`) rather than any tool's
+// name — a pack with entirely different tools formats exactly the same way.
 import { fmtMoney } from "@/engine/money";
+import type { ToolDef } from "@/engine/pack";
 import type { Event } from "./types";
 
-const HIDDEN_ARGS = new Set(["reason", "note", "body"]);
+// Only used when no ToolDef is available to ask what's `text`; kept narrow on purpose.
+const LEGACY_TEXT_NAMES = new Set(["reason", "note", "body"]);
 
-export function fmtArgs(input: Record<string, unknown>): string {
+function isTextField(key: string, tool?: ToolDef): boolean {
+  return tool ? tool.input[key]?.type === "text" : LEGACY_TEXT_NAMES.has(key);
+}
+
+function fmtValue(key: string, v: unknown): string {
+  return key === "amount" ? fmtMoney(Number(v)) : String(v);
+}
+
+/** `key: value` pairs from a tool call's arguments, dropping any the tool declares `type: "text"`. */
+export function fmtArgs(input: Record<string, unknown>, tool?: ToolDef): string {
   return Object.entries(input)
-    .filter(([k]) => !HIDDEN_ARGS.has(k))
-    .map(([k, v]) => (k === "amount" ? fmtMoney(Number(v)) : String(v)))
+    .filter(([k]) => !isTextField(k, tool))
+    .map(([k, v]) => `${k}: ${fmtValue(k, v)}`)
     .join(" · ");
 }
 
-export function summarizeResult(tool: string, result?: string, error?: string): string {
-  if (error) return `✗ ${error}`;
-  if (!result) return "";
-  try {
-    const r = JSON.parse(result);
-    switch (tool) {
-      case "get_ticket": return `ticket · ${r.status} · thread ${r.thread_id}`;
-      case "read_thread": return `${r.emails.length} email${r.emails.length === 1 ? "" : "s"} from ${r.emails[0]?.from ?? "—"}`;
-      case "get_customer": return `${r.name} · ${r.email}`;
-      case "get_order": return `${r.items.join(", ")} · ${fmtMoney(r.total)} · ${r.status}`;
-      case "list_orders": return r.map((o: { id: string; total: number }) => `${o.id} ${fmtMoney(o.total)}`).join(" · ");
-      case "list_payments": return r.map((p: { id: string; amount: number }) => `${p.id} ${fmtMoney(p.amount)}`).join(" · ");
-      case "issue_refund": return `→ ${r.refund_id}`;
-      case "send_email": return `→ ${r.id}`;
-      case "add_ticket_note": return `→ note ${r.notes}`;
-      case "set_ticket_status": return `→ ${r.status}`;
-      default: return result.slice(0, 80);
-    }
-  } catch {
-    return result.slice(0, 80);
-  }
+/** Singular, capitalised form of a collection name — "tickets" → "Ticket" — for a generic result label. */
+function labelFor(collection: string): string {
+  const singular = collection.endsWith("s") ? collection.slice(0, -1) : collection;
+  return singular.length ? singular[0].toUpperCase() + singular.slice(1) : singular;
 }
 
-export function threadEmails(result?: string): { from: string; body: string }[] {
+/** A row's own `id`, or (for a `create` tool whose `returns` is a custom shape) a `<singular collection>_id` field. */
+function idOf(collection: string, row: Record<string, unknown>): string | undefined {
+  if (typeof row.id === "string") return row.id;
+  const key = `${collection.endsWith("s") ? collection.slice(0, -1) : collection}_id`;
+  return typeof row[key] === "string" ? (row[key] as string) : undefined;
+}
+
+function isScalar(v: unknown): v is string | number | boolean {
+  return typeof v === "string" || typeof v === "number" || typeof v === "boolean";
+}
+
+/**
+ * A one-line summary of an Event's result, shaped by its tool's declared `op` — never by the
+ * tool's name. Unparseable JSON, or a shape the op-specific branch can't make sense of, falls back
+ * to a truncated slice of the raw result so nothing is ever silently blank.
+ */
+export function summarizeResult(tool: ToolDef | undefined, ev: Event): string {
+  if (ev.error) return `✗ ${ev.error}`;
+  if (!ev.result) return "";
+
+  const fallback = () => ev.result!.slice(0, 80);
+
+  let parsed: unknown;
   try {
-    return (JSON.parse(result ?? "") as { emails: { from: string; body: string }[] }).emails.map((e) => ({ from: e.from, body: e.body }));
+    parsed = JSON.parse(ev.result);
   } catch {
-    return [];
+    return fallback();
   }
+  if (!tool) return fallback();
+
+  if (tool.op === "list") {
+    if (!Array.isArray(parsed)) return fallback();
+    return `${parsed.length} row${parsed.length === 1 ? "" : "s"}`;
+  }
+
+  if (typeof parsed !== "object" || parsed === null) return fallback();
+  const row = parsed as Record<string, unknown>;
+
+  if (tool.op === "get") {
+    const id = idOf(tool.collection, row);
+    if (!id) return fallback();
+    const extra = Object.entries(row)
+      .filter(([k, v]) => k !== "id" && isScalar(v))
+      .slice(0, 2)
+      .map(([k, v]) => `${k}: ${fmtValue(k, v)}`);
+    return [`${labelFor(tool.collection)} ${id}`, ...extra].join(" · ");
+  }
+
+  if (tool.op === "create") {
+    const id = idOf(tool.collection, row);
+    return id ? `→ ${id}` : fallback();
+  }
+
+  // update
+  const field = Object.keys(tool.set ?? {})[0];
+  if (!field || !(field in row) || !isScalar(row[field])) return fallback();
+  return `→ ${field} = ${fmtValue(field, row[field])}`;
 }
 
 export function elapsedLabel(events: Event[], i: number): string {

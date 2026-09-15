@@ -1,12 +1,12 @@
 "use client";
 import { useMemo } from "react";
-import type { RunRecord } from "./types";
+import type { RunRecord, ToolDef } from "./types";
 import { EventRow } from "./EventRow";
 import { ViolationCard } from "./ViolationCard";
 import { elapsedLabel } from "./format";
 import { heading } from "./styles";
 
-export function Timeline({ run, visible }: { run: RunRecord; visible: number }) {
+export function Timeline({ run, visible, tools }: { run: RunRecord; visible: number; tools: Record<string, ToolDef> }) {
   const events = run.events.slice(0, visible);
   const bySeq = useMemo(() => {
     const m = new Map<number, RunRecord["violations"]>();
@@ -27,7 +27,7 @@ export function Timeline({ run, visible }: { run: RunRecord; visible: number }) 
       <div className="flex-1 overflow-auto">
         {events.map((ev, i) => (
           <div key={ev.seq}>
-            <EventRow ev={ev} run={run} elapsed={elapsedLabel(run.events, i)} bad={bySeq.has(ev.seq)} id={`event-${run.id}-${ev.seq}`} />
+            <EventRow ev={ev} tool={tools[ev.tool]} elapsed={elapsedLabel(run.events, i)} bad={bySeq.has(ev.seq)} id={`event-${run.id}-${ev.seq}`} />
             <ViolationCard violations={bySeq.get(ev.seq) ?? []} sourceSeq={bySeq.has(ev.seq) ? injectionSeq : undefined} onJump={jump} />
           </div>
         ))}

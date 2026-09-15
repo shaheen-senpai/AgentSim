@@ -1,19 +1,19 @@
 "use client";
+// The Run page's connection card. For a live BYO Run it is the control surface: how many Events
+// have landed, how long the Run will wait before finishing itself, the MCP URL to point an agent
+// at, and *Finish & evaluate*. Otherwise it is simply the way to `/connect`.
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { CopyButton } from "./connect/CopyButton";
+import { idleRemainingMs, mmss } from "./idle";
+import { heading, mono, panel, primaryButton } from "./styles";
 import type { RunRecord } from "./types";
-import { heading, mono, panel } from "./styles";
-
-/** ms left before the idle timer fires, from the last Event's `endedAt` (or Run creation, if none yet); `null` when disabled. */
-function idleRemainingMs(run: RunRecord): number | null {
-  if (run.idleTimeoutMs === null) return null;
-  const last = run.events.at(-1)?.endedAt ?? new Date(run.createdAt).getTime();
-  return run.idleTimeoutMs - (Date.now() - last);
-}
+import { useOrigin } from "./useOrigin";
 
 export function ConnectAgent({ run }: { run: RunRecord | null }) {
   const router = useRouter();
+  const origin = useOrigin();
   const [busy, setBusy] = useState(false);
   const [, tick] = useState(0); // re-render once a second so the idle countdown below counts down
   const isLiveByo = run !== null && run.agent.kind === "byo" && run.status === "running";
@@ -39,32 +39,49 @@ export function ConnectAgent({ run }: { run: RunRecord | null }) {
     return (
       <section className={`${panel} p-4 flex items-center justify-between text-xs`}>
         <div className={heading}>Connect your agent</div>
-        <Link href="/connect" className="font-semibold underline">Connect →</Link>
+        <Link
+          href="/connect"
+          className="font-semibold underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1d1d1b] rounded"
+        >
+          Connect →
+        </Link>
       </section>
     );
   }
 
-  // Task 9 returns this from POST /api/runs; a stored Run doesn't keep it, so it's re-derived from
-  // the page's own origin — a tunnel, a LAN address and localhost each hand back a URL that resolves.
-  const mcpUrl = typeof window !== "undefined" ? `${window.location.origin}/mcp/runs/${run.id}` : `/mcp/runs/${run.id}`;
+  // `POST /api/runs` returned this URL at creation; a stored Run doesn't keep it, so it is
+  // re-derived from the origin this page was served from — never a hardcoded one.
+  const mcpUrl = origin === null ? null : `${origin}/mcp/runs/${run.id}`;
   const remainingMs = idleRemainingMs(run);
 
   return (
     <section className={`${panel} p-4 flex flex-col gap-2 text-xs`}>
       <div className="flex items-center justify-between">
         <div className={heading}>Connect your agent</div>
-        <Link href="/connect" className="underline">Manage →</Link>
+        <Link
+          href="/connect"
+          className="underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1d1d1b] rounded"
+        >
+          Manage →
+        </Link>
       </div>
-      <div className="flex items-center gap-2">
-        <span className="inline-block w-2 h-2 rounded-full bg-[#2f7d4f]" />
-        <span className="font-semibold">Live · {run.events.length} event{run.events.length === 1 ? "" : "s"}</span>
+      <div role="status" aria-live="polite" className="flex flex-col gap-1">
+        <div className="flex items-center gap-2">
+          <span className="inline-block w-2 h-2 rounded-full bg-[#2f7d4f]" />
+          <span className="font-semibold">
+            Live · {run.events.length} {run.events.length === 1 ? "Event" : "Events"}
+          </span>
+        </div>
+        {remainingMs !== null && <div className="text-[#6b6b66]">Finishes itself in {mmss(remainingMs)} if nothing else happens</div>}
       </div>
-      {remainingMs !== null && (
-        <div className="text-[#6b6b66]">Idle timeout in {Math.max(0, Math.round(remainingMs / 1000))}s</div>
+      {mcpUrl && (
+        <>
+          <code className={`${mono} bg-[#fafaf8] border border-[#cfcfcb] rounded p-2 break-all`}>{mcpUrl}</code>
+          <CopyButton text={mcpUrl} what="MCP URL" />
+        </>
       )}
-      <code className={`${mono} bg-[#fafaf8] border border-[#cfcfcb] rounded p-2 break-all`}>{mcpUrl}</code>
-      <button type="button" onClick={finish} disabled={busy} className="h-8 rounded bg-[#1d1d1b] text-white font-semibold disabled:opacity-50">
-        Finish &amp; evaluate
+      <button type="button" onClick={finish} disabled={busy} className={`${primaryButton} h-8`}>
+        {busy ? "Evaluating…" : "Finish & evaluate"}
       </button>
     </section>
   );

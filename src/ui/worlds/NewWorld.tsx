@@ -14,16 +14,9 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useState, type FormEvent } from "react";
 import type { ValidationError } from "@/engine/pack";
-import { heading, mono } from "@/ui/styles";
+import { field as FIELD, heading, hint as HINT, label as LABEL, mono, primaryButton as PRIMARY_BUTTON } from "@/ui/styles";
 import { isValidWorldId, packField, withPackId } from "./editorLogic";
 import { PackEditor } from "./PackEditor";
-
-const PRIMARY_BUTTON =
-  "h-8 rounded bg-[#1d1d1b] text-white font-semibold disabled:opacity-50 px-3 text-[12px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1d1d1b]";
-const FIELD =
-  "rounded border border-[#cfcfcb] bg-white px-2 py-1.5 text-[13px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#1d1d1b]";
-const LABEL = "text-[12px] font-semibold text-[#1d1d1b]";
-const HINT = "text-[11px] text-[#6b6b66]";
 
 export type Template = { id: string; name: string };
 type Mode = "template" | "generate";

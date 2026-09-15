@@ -82,7 +82,7 @@ const WORLDBUILDER_NAME = "AgentSim World Builder";
  */
 function ConnectYourAgent() {
   const [origin, setOrigin] = useState("");
-  // eslint-disable-next-line react-hooks/set-state-in-effect
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- window.location is unavailable during SSR, not derivable at render time
   useEffect(() => setOrigin(window.location.origin), []);
   const mcpUrl = `${origin || "http://localhost:3000"}/mcp/worlds`;
 

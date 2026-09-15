@@ -128,6 +128,43 @@ describe("buildPrompt", () => {
       expect(user).toContain(e.message);
     }
   });
+
+  it("shows the current draft and the requested change when refining", () => {
+    const previousFiles = { "pack.yaml": "id: acme\nname: Acme\n", "tools.yaml": "get_ticket:\n  system: support\n" };
+    const { user } = buildPrompt(INPUT, formatDoc, undefined, { note: "Add a Stripe-like payments system.", previousFiles });
+
+    expect(user).toContain("## Current draft");
+    expect(user).toContain("pack.yaml");
+    expect(user).toContain(previousFiles["pack.yaml"]);
+    expect(user).toContain("tools.yaml");
+    expect(user).toContain(previousFiles["tools.yaml"]);
+    expect(user).toContain("## Requested change");
+    expect(user).toContain("Add a Stripe-like payments system.");
+  });
+
+  it("carries both a refinement and validation errors when both are present", () => {
+    const previousFiles = { "pack.yaml": "id: acme\n" };
+    const errors: ValidationError[] = [{ file: "tools.yaml", path: "", message: "system 'nope' is not declared" }];
+    const { user } = buildPrompt(INPUT, formatDoc, errors, { note: "add refunds", previousFiles });
+
+    expect(user).toContain("## Current draft");
+    expect(user).toContain("## Requested change");
+    expect(user).toContain("did not validate");
+    expect(user).toContain("system 'nope' is not declared");
+  });
+
+  it("omits the current-draft section when there is no refinement", () => {
+    const { user } = buildPrompt(INPUT, formatDoc);
+    expect(user).not.toContain("## Current draft");
+    expect(user).not.toContain("## Requested change");
+  });
+
+  it("names payments/messaging/email/storage dependencies as their own system, with a worked shape", () => {
+    const { system } = buildPrompt(INPUT, formatDoc);
+    expect(system).toContain("Stripe");
+    expect(system).toContain("issue_refund");
+    expect(system).toMatch(/refund.*exceed|balance/i);
+  });
 });
 
 describe("generateWorldPack", () => {
@@ -186,6 +223,20 @@ describe("generateWorldPack", () => {
   it("throws when the model stops without calling the tool", async () => {
     const client = fakeClient([{ stop_reason: "end_turn", content: [{ type: "text" }] }], []);
     await expect(generateWorldPack(INPUT, { client, formatDoc })).rejects.toThrow(/without calling propose_world_pack/);
+  });
+});
+
+describe("generateWorldPack with a refinement", () => {
+  it("passes the draft's current files and the note through to buildPrompt's user message", async () => {
+    const calls: StreamParams[] = [];
+    const client = fakeClient([toolUse(proposal(northwind, ["duplicate-charge-refund"], ["naive", "fixed"]))], calls);
+    const previousFiles = { "pack.yaml": "id: old-draft\n" };
+
+    await generateWorldPack(INPUT, { client, formatDoc }, { note: "add a payments system", previousFiles });
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0].messages[0].content).toContain("old-draft");
+    expect(calls[0].messages[0].content).toContain("add a payments system");
   });
 });
 

@@ -187,7 +187,7 @@ export function PackEditor({
   }
 
   function handleAddScenario() {
-    const raw = window.prompt("New scenario id (lowercase letters, digits and hyphens, e.g. refund-flow):");
+    const raw = window.prompt("New scenario id (lowercase letters, digits and hyphens, e.g. password-reset):");
     if (raw === null) return;
     const id = raw.trim();
     if (!isValidScenarioId(id)) {

@@ -1,6 +1,7 @@
 // The two list-shaped views of a World pack the UI and the API both hand out. One definition, so a
-// pack card and a Launcher dropdown can never drift apart.
-import type { Scenario, WorldPack } from "@/engine/pack";
+// pack card and a Launcher dropdown can never drift apart — plus the one tolerant loader every
+// list-shaped call site reads packs through.
+import { listPackIds, loadPack, type Scenario, type WorldPack } from "@/engine/pack";
 
 export type ScenarioSummary = {
   id: string;
@@ -28,6 +29,34 @@ export type PackOption = {
   scenarios: ScenarioSummary[];
   agentVersions: string[];
 };
+
+/** A World pack on disk that no longer parses, and why. */
+export type BrokenPack = { id: string; message: string };
+
+/**
+ * Every installed World pack that still loads, plus the ones that do not.
+ *
+ * One pack hand-edited into an invalid state must never take a list down with it — least of all the
+ * home page and the Run page, from which `/worlds/:id` (the editor you would *fix* it in) is
+ * reached. Every list-shaped call site — `/`, `/runs/:id`, `/worlds`, `/connect`, `GET /api/worlds`
+ * and `GET /api/scenarios` — reads packs through this one function, so the rule has one
+ * implementation rather than six. Callers that want a single named pack still use `loadPack`
+ * directly and surface its error: `/worlds/:id` exists precisely to show it.
+ */
+export function loadPacks(): { packs: WorldPack[]; broken: BrokenPack[] } {
+  const packs: WorldPack[] = [];
+  const broken: BrokenPack[] = [];
+  for (const id of listPackIds()) {
+    try {
+      packs.push(loadPack(id));
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e);
+      console.warn(`[worlds] skipping unloadable World pack ${id}: ${message}`);
+      broken.push({ id, message });
+    }
+  }
+  return { packs, broken };
+}
 
 export function toScenarioSummary(s: Scenario, packId: string): ScenarioSummary {
   return { id: s.id, packId, title: s.title, attacks: s.attacks.map((a) => ({ id: a.id, title: a.title })) };

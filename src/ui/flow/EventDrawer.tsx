@@ -22,6 +22,8 @@ export type EventDrawerProps = {
   systems: string[];
   /** False while replaying: the Trust Score is withheld until the whole Run is on screen. */
   scoreReady: boolean;
+  /** The Run's pack's label for the collection its Attack injected into — see `ViolationCard`. */
+  injectedLabel: string;
 };
 
 /** The drawer's width. `useFlowCamera` aims the camera past it, so the two must not drift apart. */
@@ -197,7 +199,7 @@ function EndOfRun({ run, outcome, scoreReady }: { run: RunRecord; outcome: Viola
  * `ReactFlowProvider` so the Violations tab's "jump to #N" can move the camera as well as the
  * selection.
  */
-export function EventDrawer({ run, events, selected, onSelect, onJump, tools, systems, scoreReady }: EventDrawerProps) {
+export function EventDrawer({ run, events, selected, onSelect, onJump, tools, systems, scoreReady, injectedLabel }: EventDrawerProps) {
   const open = selected !== null;
   const ev = typeof selected === "number" ? events.find((e) => e.seq === selected) ?? null : null;
 
@@ -368,7 +370,7 @@ export function EventDrawer({ run, events, selected, onSelect, onJump, tools, sy
             <Empty>No Violations on this Event.</Empty>
           ) : (
             <div className="p-3">
-              <ViolationCard violations={mine} sourceSeq={sourceSeq} onJump={onJump} className="" />
+              <ViolationCard violations={mine} sourceSeq={sourceSeq} onJump={onJump} injectedLabel={injectedLabel} className="" />
             </div>
           ))}
         {ev && tab === "injected" && <Injected run={run} ev={ev} />}

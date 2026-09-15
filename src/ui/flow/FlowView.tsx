@@ -23,9 +23,11 @@ export type FlowViewProps = {
   /** Incremented by the toolbar's *fit* action. */
   fitSignal: number;
   tools: Record<string, ToolDef>;
+  /** The Run's pack's label for the collection its Attack injected into — see `ViolationCard`. */
+  injectedLabel: string;
 };
 
-function FlowCanvas({ run, visible, selectedSeq, onSelect, filters, follow, fitSignal, tools }: FlowViewProps) {
+function FlowCanvas({ run, visible, selectedSeq, onSelect, filters, follow, fitSignal, tools, injectedLabel }: FlowViewProps) {
   const systems = useMemo(() => systemsOf(tools), [tools]);
   const shown = useMemo(() => run.events.slice(0, visible), [run.events, visible]);
   const scoreReady = visible >= run.events.length;
@@ -97,7 +99,7 @@ function FlowCanvas({ run, visible, selectedSeq, onSelect, filters, follow, fitS
         <MiniMap<AppNode> pannable zoomable nodeColor={(n) => (n.data.violations.length > 0 || n.data.lure ? RED : "#cfcfcb")} maskColor="rgba(244,244,242,.7)" className="!bg-white !border !border-[#cfcfcb]" />
         <Controls showInteractive={false} fitViewOptions={FIT} />
       </ReactFlow>
-      <EventDrawer run={run} events={shown} selected={selectedSeq} onSelect={onSelect} onJump={jump} tools={tools} systems={systems} scoreReady={scoreReady} />
+      <EventDrawer run={run} events={shown} selected={selectedSeq} onSelect={onSelect} onJump={jump} tools={tools} systems={systems} scoreReady={scoreReady} injectedLabel={injectedLabel} />
     </>
   );
 }

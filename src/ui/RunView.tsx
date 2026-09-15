@@ -16,10 +16,14 @@ import { ReplayScrubber } from "./ReplayScrubber";
 import { PromptDiffSheet } from "./PromptDiffSheet";
 import { panel } from "./styles";
 
-/** `principalLabel`: the Run's pack's principal entity label, for the World diff's reads counter. */
-export type RunViewProps = { run: RunRecord | null; packs: PackOption[]; tools: Record<string, ToolDef>; principalLabel: string; recent: RunSummary[] };
+/**
+ * `principalLabel`: the Run's pack's principal entity label, for the World diff's reads counter.
+ * `injectedLabel`: the same pack's label for the collection this Run's Attack injected into, for a
+ * Violation's "Source:" line. Both resolved server-side; both `""` when the pack is unavailable.
+ */
+export type RunViewProps = { run: RunRecord | null; packs: PackOption[]; tools: Record<string, ToolDef>; principalLabel: string; injectedLabel: string; recent: RunSummary[] };
 
-export function RunView({ run, packs, tools, principalLabel, recent }: RunViewProps) {
+export function RunView({ run, packs, tools, principalLabel, injectedLabel, recent }: RunViewProps) {
   const [diffOpen, setDiffOpen] = useState(false);
   const replay = useReplay(run);
   // Flow is the default view; List keeps the Timeline. Both read the same `visible`, so the
@@ -71,9 +75,10 @@ export function RunView({ run, packs, tools, principalLabel, recent }: RunViewPr
                   follow={flow.follow}
                   fitSignal={flow.fitSignal}
                   tools={tools}
+                  injectedLabel={injectedLabel}
                 />
               ) : (
-                <Timeline run={displayRun} visible={replay.visible} tools={tools} />
+                <Timeline run={displayRun} visible={replay.visible} tools={tools} injectedLabel={injectedLabel} />
               )}
               {displayRun.status !== "running" && <ReplayScrubber replay={replay} />}
             </>

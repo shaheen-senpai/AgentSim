@@ -3,8 +3,7 @@
 // filesystem) and hands the client island plain, serialisable props. Everything the island does
 // after that — register, edit, delete, create a Run, poll it — goes over the API.
 import type { Metadata } from "next";
-import { listPackIds, loadPack } from "@/engine/pack";
-import { toPackOption, type PackOption } from "@/lib/summaries";
+import { loadPacks, toPackOption, type PackOption } from "@/lib/summaries";
 import { listAgents } from "@/runner/agentRegistry";
 import { ConnectPage } from "@/ui/connect/ConnectPage";
 import { Header } from "@/ui/Header";
@@ -13,18 +12,8 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = { title: "Connect · AgentSim" };
 
-/** A pack hand-edited into an invalid state must not take the whole page down; `/worlds` reports it. */
-function packs(): PackOption[] {
-  const out: PackOption[] = [];
-  for (const id of listPackIds()) {
-    try {
-      out.push(toPackOption(loadPack(id)));
-    } catch {
-      // Not startable, so not offered.
-    }
-  }
-  return out;
-}
+/** A pack hand-edited into an invalid state is not startable, so it is not offered; `/worlds` reports it. */
+const packs = (): PackOption[] => loadPacks().packs.map(toPackOption);
 
 export default function ConnectRoute() {
   return (

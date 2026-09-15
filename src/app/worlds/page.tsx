@@ -1,9 +1,8 @@
-// `/worlds` — every World pack on disk (spec §6.2). A server component: it calls `loadPack`
+// `/worlds` — every World pack on disk (spec §6.2). A server component: it reads the packs
 // directly rather than going through `GET /api/worlds`, so there is no round trip.
 import type { Metadata } from "next";
 import Link from "next/link";
-import { listPackIds, loadPack } from "@/engine/pack";
-import { toPackSummary, type PackSummary } from "@/lib/summaries";
+import { loadPacks, toPackSummary } from "@/lib/summaries";
 import { Header } from "@/ui/Header";
 import { heading, mono } from "@/ui/styles";
 import { PackCard } from "@/ui/worlds/PackCard";
@@ -12,24 +11,11 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = { title: "Worlds · AgentSim" };
 
-type Loaded = { packs: PackSummary[]; broken: { id: string; message: string }[] };
-
-/** A pack hand-edited into an invalid state must not take the whole list down with it. */
-function loadAll(): Loaded {
-  const packs: PackSummary[] = [];
-  const broken: { id: string; message: string }[] = [];
-  for (const id of listPackIds()) {
-    try {
-      packs.push(toPackSummary(loadPack(id)));
-    } catch (e) {
-      broken.push({ id, message: e instanceof Error ? e.message : String(e) });
-    }
-  }
-  return { packs, broken };
-}
-
 export default function WorldsPage() {
-  const { packs, broken } = loadAll();
+  // `loadPacks` is the one place a pack hand-edited into an invalid state is skipped rather than
+  // thrown; this page is the one that then says which pack, and why.
+  const { packs: loaded, broken } = loadPacks();
+  const packs = loaded.map(toPackSummary);
   return (
     <div className="min-h-screen text-sm">
       <Header run={null} />

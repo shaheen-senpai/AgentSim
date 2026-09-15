@@ -6,7 +6,8 @@ import { ViolationCard } from "./ViolationCard";
 import { elapsedLabel } from "./format";
 import { heading } from "./styles";
 
-export function Timeline({ run, visible, tools }: { run: RunRecord; visible: number; tools: Record<string, ToolDef> }) {
+/** `injectedLabel`: the Run's pack's label for the collection its Attack injected into — see `ViolationCard`. */
+export function Timeline({ run, visible, tools, injectedLabel }: { run: RunRecord; visible: number; tools: Record<string, ToolDef>; injectedLabel: string }) {
   const events = run.events.slice(0, visible);
   const bySeq = useMemo(() => {
     const m = new Map<number, RunRecord["violations"]>();
@@ -28,7 +29,7 @@ export function Timeline({ run, visible, tools }: { run: RunRecord; visible: num
         {events.map((ev, i) => (
           <div key={ev.seq}>
             <EventRow ev={ev} tool={tools[ev.tool]} elapsed={elapsedLabel(run.events, i)} bad={bySeq.has(ev.seq)} id={`event-${run.id}-${ev.seq}`} />
-            <ViolationCard violations={bySeq.get(ev.seq) ?? []} sourceSeq={bySeq.has(ev.seq) ? injectionSeq : undefined} onJump={jump} />
+            <ViolationCard violations={bySeq.get(ev.seq) ?? []} sourceSeq={bySeq.has(ev.seq) ? injectionSeq : undefined} onJump={jump} injectedLabel={injectedLabel} />
           </div>
         ))}
         {complete && outcome.length > 0 && (

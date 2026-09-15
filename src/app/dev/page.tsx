@@ -1,6 +1,6 @@
-import { listPackIds, loadPack } from "@/engine/pack";
+import { loadPack } from "@/engine/pack";
 import { entityLabel } from "@/engine/world";
-import { toPackOption } from "@/lib/summaries";
+import { loadPacks, toPackOption } from "@/lib/summaries";
 import { toSummary } from "@/runner/store";
 import { RunView } from "@/ui/RunView";
 import { FIXTURE_RUN } from "@/ui/fixture";
@@ -11,7 +11,7 @@ import { FIXTURE_RUN } from "@/ui/fixture";
 export const dynamic = "force-dynamic";
 
 export default function DevPreview() {
-  const packs = listPackIds().map((id) => toPackOption(loadPack(id)));
+  const packs = loadPacks().packs.map(toPackOption);
   const pack = loadPack(FIXTURE_RUN.packId);
   return (
     <RunView
@@ -19,6 +19,7 @@ export default function DevPreview() {
       packs={packs}
       tools={pack.tools}
       principalLabel={entityLabel(pack, pack.meta.principal)}
+      injectedLabel={FIXTURE_RUN.attack ? entityLabel(pack, FIXTURE_RUN.attack.mutation.collection) : ""}
       recent={[toSummary(FIXTURE_RUN, true)]}
     />
   );

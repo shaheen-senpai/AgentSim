@@ -12,6 +12,8 @@ export type CompareRunColumnProps = {
   tools: Record<string, ToolDef>;
   /** Set when the Run's World pack could no longer be loaded server-side; the column then shows this instead of a flow. */
   packError: string | null;
+  /** This Run's pack's label for the collection its Attack injected into — `""` when `packError` is set. */
+  injectedLabel: string;
 };
 
 /**
@@ -20,7 +22,7 @@ export type CompareRunColumnProps = {
  * static side-by-side comparison, not a replay, so `visible` is always the whole Run (no scrubber)
  * and `follow` is always off — the camera settles once, fitted to the whole Run, on mount.
  */
-export function CompareRunColumn({ run, tools, packError }: CompareRunColumnProps) {
+export function CompareRunColumn({ run, tools, packError, injectedLabel }: CompareRunColumnProps) {
   const flow = useFlowState();
   return (
     <section aria-label={`${agentLabel(run.agent)} agent, Run ${run.id}`} className="flex flex-col gap-3 overflow-hidden">
@@ -38,6 +40,7 @@ export function CompareRunColumn({ run, tools, packError }: CompareRunColumnProp
           follow={false}
           fitSignal={flow.fitSignal}
           tools={tools}
+          injectedLabel={injectedLabel}
         />
       )}
     </section>

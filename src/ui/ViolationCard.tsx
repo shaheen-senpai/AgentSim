@@ -1,5 +1,6 @@
 import type { Violation } from "./types";
 import { label } from "@/engine/dimensions";
+import { injectionSourceLabel } from "./injectionSource";
 import { mono } from "./styles";
 
 const Warn = () => (
@@ -12,8 +13,24 @@ const Warn = () => (
  * `className` carries only the card's *placement*: the default indents it under a Timeline row,
  * the Event drawer passes its own so a 380 px panel is not eaten by a 44 px gutter. The card's own
  * look (red rule, padding, type) is fixed either way.
+ *
+ * `injectedLabel` is the Run's pack's label for the collection its Attack injected into ("Email",
+ * "Comment", …), threaded down from the server page the same way `DiffPanel`'s `principalLabel` is;
+ * `""` when there is no Attack or the pack could not be loaded.
  */
-export function ViolationCard({ violations, sourceSeq, onJump, className = "mx-3 mb-2.5 ml-11" }: { violations: Violation[]; sourceSeq?: number; onJump?: (seq: number) => void; className?: string }) {
+export function ViolationCard({
+  violations,
+  sourceSeq,
+  onJump,
+  injectedLabel = "",
+  className = "mx-3 mb-2.5 ml-11",
+}: {
+  violations: Violation[];
+  sourceSeq?: number;
+  onJump?: (seq: number) => void;
+  injectedLabel?: string;
+  className?: string;
+}) {
   if (violations.length === 0) return null;
   return (
     <div className={`${className} p-3 border border-[#c8321e] rounded bg-white text-[13px] flex flex-col gap-1.5`}>
@@ -27,7 +44,7 @@ export function ViolationCard({ violations, sourceSeq, onJump, className = "mx-3
       ))}
       {sourceSeq !== undefined && (
         <div className="text-xs text-[#6b6b66] mt-1">
-          Source: the injected block in the customer&apos;s email — <button type="button" className="underline" onClick={() => onJump?.(sourceSeq)}>jump to #{sourceSeq}</button>
+          Source: {injectionSourceLabel(injectedLabel)} — <button type="button" className="underline" onClick={() => onJump?.(sourceSeq)}>jump to #{sourceSeq}</button>
         </div>
       )}
     </div>

@@ -1,4 +1,5 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   buildFlow,
@@ -451,42 +452,126 @@ describe("buildFlow: determinism", () => {
   });
 });
 
-// ─────────────────────────────── import purity (browser-safety) ───────────────────────────────
+// ─────────────────────────────── static guards over src/ui ───────────────────────────────
+
+/** Every `.ts`/`.tsx` file under `dir`, recursively, as repo-relative paths. */
+function sourceFiles(dir: string): string[] {
+  const out: string[] = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) out.push(...sourceFiles(full));
+    else if (/\.tsx?$/.test(entry.name)) out.push(full);
+  }
+  return out;
+}
+
+const UI_FILES = sourceFiles("src/ui");
 
 /**
- * `buildFlow.ts` — and, since Task 14, `injected.ts`, which restates `@/engine/attack`'s
- * `injectionMarker` for the Event drawer — must stay importable from a `"use client"` component
- * without pulling server-only code into the browser bundle. `@/engine/pack` and (transitively,
- * through it) `@/engine/attack` both value-import `node:fs`/`node:path`; `@/runner/store` is
- * server-only outright. The only safe way to reuse `matchesLure` is the leaf module
- * `@/engine/lure`, which must itself never value-import any of those.
+ * Every module specifier `text` imports or re-exports **by value**, with `import type` /
+ * `export type` skipped (erased at compile time, so always safe).
  *
- * This is a *text* check, not a bundler check — deliberately so: it fails immediately and loudly
- * the moment a future edit adds a runtime (non-`import type`) import of a forbidden specifier,
- * rather than waiting for Task 13 to hit a build break or, worse, a silently-inlined `node:fs` shim
- * in the client bundle. It is documentation as much as a guard: read this test to see exactly why
- * these files are not allowed to import `./pack`, `./attack`, or `@/runner/store` by value.
+ * Specifier-based, not line-based: the old guard filtered lines starting with `import`, so a
+ * multi-line `import {\n x\n} from "@/engine/pack"` passed vacuously — the specifier sat on a line
+ * that never reached the check. `[^;]*?` spans newlines but stops at the first `;`, so a clause can
+ * wrap however prettier likes without the match running away into the rest of the file.
  */
-describe("buildFlow: import purity (browser-safety)", () => {
+function valueImportSpecifiers(text: string): string[] {
+  const out: string[] = [];
+  for (const m of text.matchAll(/^[ \t]*(import|export)\b([^;]*?)\bfrom\s*["']([^"']+)["']/gm)) {
+    if (/^\s*type\b/.test(m[2])) continue;
+    out.push(m[3]);
+  }
+  for (const m of text.matchAll(/^[ \t]*import\s+["']([^"']+)["']/gm)) out.push(m[1]); // side-effect import
+  return out;
+}
+
+/**
+ * Nothing reachable from a `"use client"` component may value-import server-only code.
+ * `@/engine/pack` value-imports `node:fs`/`node:path` and `@/engine/attack` reaches it transitively;
+ * `@/runner/store` is server-only outright. The only safe way to reuse `matchesLure` is the leaf
+ * module `@/engine/lure`, which must itself never value-import any of those.
+ *
+ * This is a *text* check, not a bundler check — deliberately so: it fails immediately and loudly the
+ * moment a future edit adds a runtime import of a forbidden specifier, rather than waiting for a
+ * build break or, worse, a silently-inlined `node:fs` shim in the client bundle. It is documentation
+ * as much as a guard: read it to see exactly why these files may not import `./pack`, `./attack` or
+ * `@/runner/store` by value.
+ *
+ * It used to cover three files. The invariant it states was always meant to hold for all of
+ * `src/ui` — every file there is reachable from a client island — and it already did, so widening
+ * it costs nothing and closes the gap where a new file simply was not on the list.
+ */
+describe("src/ui: import purity (browser-safety)", () => {
   const FORBIDDEN: [RegExp, string][] = [
-    [/@\/engine\/pack\b/, "@/engine/pack (touches node:fs/node:path)"],
-    [/@\/engine\/attack\b/, "@/engine/attack (transitively touches @/engine/pack)"],
-    [/@\/runner\/store\b/, "@/runner/store (server-only)"],
-    [/["']node:/, "a node: builtin"],
+    [/^@\/engine\/pack$/, "@/engine/pack (touches node:fs/node:path)"],
+    [/^@\/engine\/attack$/, "@/engine/attack (transitively touches @/engine/pack)"],
+    [/^@\/runner\/store$/, "@/runner/store (server-only)"],
+    [/^@\/runner\/agentRegistry$/, "@/runner/agentRegistry (server-only: reads agents.json)"],
+    [/^node:/, "a node: builtin"],
   ];
-  const files = ["src/ui/flow/buildFlow.ts", "src/ui/flow/injected.ts", "src/engine/lure.ts"];
+  const files = [...UI_FILES, "src/engine/lure.ts"];
+
+  it("covers every file under src/ui, plus the leaf module they share", () => {
+    expect(UI_FILES.length).toBeGreaterThan(30);
+    expect(files).toContain("src/ui/flow/buildFlow.ts");
+    expect(files).toContain("src/ui/flow/injected.ts");
+    expect(files).toContain("src/engine/lure.ts");
+  });
 
   it("never value-imports @/engine/pack, @/engine/attack, @/runner/store, or a node: builtin", () => {
     for (const file of files) {
-      const text = readFileSync(file, "utf8");
-      // `export { x } from "…"` pulls the module in exactly as an import does, so it is checked too.
-      const importLines = text.split("\n").filter((line) => /^\s*import\b/.test(line) || /^\s*export\b.*\bfrom\b/.test(line));
-      for (const line of importLines) {
-        if (/^\s*(import|export)\s+type\b/.test(line)) continue; // erased at compile time — always safe
+      for (const spec of valueImportSpecifiers(readFileSync(file, "utf8"))) {
         for (const [pattern, why] of FORBIDDEN) {
-          expect(line, `${file}: forbidden value import (${why}) — "${line.trim()}"`).not.toMatch(pattern);
+          expect(spec, `${file}: forbidden value import (${why}) — "${spec}"`).not.toMatch(pattern);
         }
       }
     }
+  });
+
+  it("catches a forbidden specifier that a line-based filter would miss", () => {
+    // The exact shape the old guard passed vacuously: the specifier is not on the `import` line.
+    const wrapped = 'import {\n  loadPack,\n} from "@/engine/pack";\n';
+    expect(valueImportSpecifiers(wrapped)).toEqual(["@/engine/pack"]);
+    expect(valueImportSpecifiers('import type {\n  ToolDef,\n} from "@/engine/pack";\n')).toEqual([]);
+    expect(valueImportSpecifiers('export { injectedText } from "@/engine/lure";\n')).toEqual(["@/engine/lure"]);
+    expect(valueImportSpecifiers('export type { Check } from "@/engine/pack";\n')).toEqual([]);
+    expect(valueImportSpecifiers('import "@xyflow/react/dist/style.css";\n')).toEqual(["@xyflow/react/dist/style.css"]);
+  });
+});
+
+/**
+ * "The same engine, Evaluator and UI run both packs; nothing about either domain is compiled in"
+ * (README). That claim is worth a guard rather than a grep: `ViolationCard` rendered "the injected
+ * block in the customer's email" on every World, including a helpdesk one, for the whole of v0.2.
+ *
+ * Comment-only lines are skipped — the *docs* under `src/ui` name Northwind's entities on purpose,
+ * to explain what a pack-worded string replaced. Rendered copy and identifiers may not. A trailing
+ * comment on a line of code is not skipped, so the guard errs strict: move the word, not the guard.
+ */
+describe("src/ui: domain neutrality (no Northwind vocabulary)", () => {
+  // `src/ui/fixture.ts` *is* a recorded Northwind Run — a hardcoded `RunRecord` the `/dev` preview
+  // renders. Northwind rows in it are the point, not a leak.
+  const EXEMPT = new Set(["src/ui/fixture.ts"]);
+  const BANNED = /\b(northwind|customers?|payments?|refunds?)\b/i;
+  const isCommentLine = (line: string) => /^\s*(\/\/|\/\*|\*)/.test(line);
+
+  it("exempts exactly one file, and that file still exists", () => {
+    for (const f of EXEMPT) expect(UI_FILES).toContain(f);
+  });
+
+  it("names no Northwind entity in any string, identifier or JSX text under src/ui", () => {
+    for (const file of UI_FILES) {
+      if (EXEMPT.has(file)) continue;
+      readFileSync(file, "utf8").split("\n").forEach((line, i) => {
+        if (isCommentLine(line)) return;
+        expect(BANNED.test(line), `${file}:${i + 1} names a Northwind entity — "${line.trim()}"`).toBe(false);
+      });
+    }
+  });
+
+  it("would catch the string it was written for", () => {
+    expect(BANNED.test("Source: the injected block in the customer&apos;s email")).toBe(true);
+    expect(BANNED.test("Source: the injected block in the comment")).toBe(false);
   });
 });

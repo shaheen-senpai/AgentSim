@@ -54,6 +54,17 @@ describe("POST /api/runs", () => {
     await finishRoute(post(`http://localhost/api/runs/${body.id}/finish`, {}), ctx(body.id));
   });
 
+  it("builds the connect URLs from the request's own origin, not a hardcoded one", async () => {
+    // Behind a tunnel or on a LAN address the links must resolve for whoever asked for them.
+    const res = await createRunRoute(post("https://demo.example.test:8443/api/runs", { ...NORTHWIND, agent: { kind: "byo" }, idleTimeoutMs: null }));
+    expect(res.status).toBe(201);
+    const body = (await res.json()) as { id: string; url: string; mcpUrl: string; callUrl: string };
+    expect(body.url).toBe(`https://demo.example.test:8443/runs/${body.id}`);
+    expect(body.mcpUrl).toBe(`https://demo.example.test:8443/mcp/runs/${body.id}`);
+    expect(body.callUrl).toBe(`https://demo.example.test:8443/api/runs/${body.id}/call`);
+    await finishRoute(post(`http://localhost/api/runs/${body.id}/finish`, {}), ctx(body.id));
+  });
+
   it("copies name, shape and aliases from a registered agent", async () => {
     const created = await createAgentRoute(
       post("http://localhost/api/agents", { name: "Codex", version: "1.0", shape: "forwarder", toolAliases: { fetch_ticket: "get_ticket" } }),

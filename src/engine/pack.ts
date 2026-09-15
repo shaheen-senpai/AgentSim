@@ -522,6 +522,12 @@ function zodIssues(file: string, error: z.ZodError): ValidationError[] {
 export function parsePackFiles(files: PackFiles): { pack: WorldPack | null; errors: ValidationError[] } {
   const errors: ValidationError[] = [];
 
+  // Report a file outside the pack layout rather than carrying it silently into `pack.files`, where
+  // `savePack` would try to write it. The editor and the validate endpoint surface it either way.
+  for (const rel of Object.keys(files)) {
+    if (!PACK_FILE_RE.test(rel)) errors.push({ file: rel, path: "", message: NOT_A_PACK_FILE });
+  }
+
   const packRaw = parseYamlFile("pack.yaml", files["pack.yaml"] ?? "");
   errors.push(...packRaw.errors);
   let meta: PackMeta | null = null;
@@ -631,11 +637,52 @@ export function loadPack(id: string): WorldPack {
   return pack;
 }
 
-const PACK_ID_RE = /^[a-z0-9][a-z0-9-]{1,40}$/;
+export const PACK_ID_RE = /^[a-z0-9][a-z0-9-]{1,40}$/;
+
+/**
+ * The only file names a pack may contain — and exactly what `readPackFiles` reads back, so a saved
+ * pack always reloads. Every key of a `PackFiles` is joined onto the pack directory, which makes
+ * this the filesystem boundary: no traversal, no absolute paths, no nesting, nothing outside the
+ * `pack.yaml` / `seed.yaml` / `tools.yaml` / `scenarios/<id>.yaml` / `agents/<version>.md` layout.
+ */
+export const PACK_FILE_RE = /^(?:pack|seed|tools)\.yaml$|^scenarios\/[a-z0-9][a-z0-9-]*\.yaml$|^agents\/[a-z0-9][a-z0-9-]*\.md$/;
+
+const NOT_A_PACK_FILE = "Not a World pack file — expected pack.yaml, seed.yaml, tools.yaml, scenarios/<id>.yaml or agents/<version>.md";
+
+/** The id `pack.yaml` declares, or null when it is absent, unparseable or not a string. */
+function declaredPackId(files: PackFiles): string | null {
+  try {
+    const raw = parseYAMLText(files["pack.yaml"] ?? "") as { id?: unknown } | null;
+    return typeof raw?.id === "string" ? raw.id : null;
+  } catch {
+    return null; // `parsePackFiles` reports the real YAML error
+  }
+}
+
+/**
+ * Everything that must hold before a file set may be written as `<packsDir>/<id>`, as
+ * `ValidationError`s so an API can surface them in its usual envelope. `savePack` enforces exactly
+ * this list and throws, so no writer can reach the filesystem without passing it.
+ */
+export function packWriteErrors(id: string, files: PackFiles): ValidationError[] {
+  const errors: ValidationError[] = [];
+  if (!PACK_ID_RE.test(id)) errors.push({ file: "pack.yaml", path: "id", message: `Invalid pack id '${id}'` });
+  for (const rel of Object.keys(files)) {
+    if (!PACK_FILE_RE.test(rel)) errors.push({ file: rel, path: "", message: NOT_A_PACK_FILE });
+  }
+  // The directory name is the id every URL uses; a pack.yaml that disagrees would leave the pack
+  // reachable under one name and described under another.
+  const declared = declaredPackId(files);
+  if (declared !== null && declared !== id) {
+    errors.push({ file: "pack.yaml", path: "id", message: `Pack id '${declared}' does not match the world id '${id}'` });
+  }
+  return errors;
+}
 
 /** Writes pack files atomically (tmp + rename); deletes scenario/agent files no longer present. */
 export function savePack(id: string, files: PackFiles): void {
-  if (!PACK_ID_RE.test(id)) throw new Error(`Invalid pack id '${id}'`);
+  const guard = packWriteErrors(id, files);
+  if (guard.length > 0) throw new Error(guard.map((e) => `${e.file}: ${e.message}`).join("\n"));
   const dir = path.join(packsDir(), id);
   mkdirSync(dir, { recursive: true });
   mkdirSync(path.join(dir, "scenarios"), { recursive: true });

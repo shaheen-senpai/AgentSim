@@ -1,7 +1,7 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
-import { inputJsonSchema, inputZod, listPackIds, loadPack, parsePackFiles, savePack, type PackFiles } from "@/engine/pack";
+import { inputJsonSchema, inputZod, listPackIds, loadPack, packWriteErrors, parsePackFiles, savePack, type PackFiles } from "@/engine/pack";
 import { usePacksDir } from "../helpers/packs";
 
 let dir: string;
@@ -102,5 +102,49 @@ describe("savePack", () => {
     expect(loadPack("copy").scenarios).toEqual([]);
     expect(listPackIds().sort()).toEqual(["copy", "northwind"]);
     expect(dir).toBeTruthy();
+  });
+});
+
+describe("the pack file layout is the filesystem boundary", () => {
+  // Every key of a PackFiles is joined onto the pack directory, so an unchecked one writes anywhere.
+  // Unique per run: an earlier escape would otherwise leave a file in the temp root that a later
+  // run mistakes for its own, turning a real regression into a pass.
+  const ESCAPED = `ESCAPED-${process.pid}-${Date.now()}.txt`;
+  const escapes = () => [`../../${ESCAPED}`, "../sibling/pack.yaml", "/etc/passwd", "scenarios/../../x.yaml", "scenarios/Upper.yaml", "agents/../evil.md", "README.md", "scenarios/nested/deep.yaml"];
+
+  it("savePack refuses the whole call and writes nothing when a key is outside the layout", () => {
+    const f = files();
+    const good = { ...f, "pack.yaml": f["pack.yaml"].replace("id: northwind", "id: guarded") };
+    for (const key of escapes()) {
+      expect(() => savePack("guarded", { ...good, [key]: "pwned" }), key).toThrow(/World pack file/);
+    }
+    expect(existsSync(path.join(dir, "..", ESCAPED))).toBe(false);
+    expect(existsSync(path.join(dir, "sibling"))).toBe(false);
+    expect(existsSync(path.join(dir, "guarded"))).toBe(false); // rejected before anything was created
+  });
+
+  it("savePack refuses a pack.yaml that disagrees with the directory id", () => {
+    const f = files();
+    expect(() => savePack("disagrees", f)).toThrow(/does not match/); // f still declares `northwind`
+    expect(existsSync(path.join(dir, "disagrees"))).toBe(false);
+  });
+
+  it("parsePackFiles reports an unrecognised file rather than silently carrying it", () => {
+    const r = parsePackFiles({ ...files(), "../../ESCAPED.txt": "pwned" });
+    expect(r.pack).toBeNull();
+    expect(r.errors).toContainEqual(expect.objectContaining({ file: "../../ESCAPED.txt", path: "" }));
+    expect(r.errors[0].message).toMatch(/World pack file/);
+  });
+
+  it("packWriteErrors gives the same three guards as ValidationErrors, so a caller can surface them", () => {
+    const f = files();
+    expect(packWriteErrors("northwind", f)).toEqual([]);
+    expect(packWriteErrors("../escape", f)[0]).toMatchObject({ file: "pack.yaml", path: "id" });
+    expect(packWriteErrors("northwind", { ...f, "x.txt": "" })).toContainEqual(expect.objectContaining({ file: "x.txt" }));
+    expect(packWriteErrors("elsewhere", f)[0].message).toMatch(/does not match/);
+  });
+
+  it("still accepts every name loadPack reads back off disk", () => {
+    expect(packWriteErrors("northwind", loadPack("northwind").files)).toEqual([]);
   });
 });

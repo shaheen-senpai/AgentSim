@@ -60,7 +60,9 @@ function readAll(): Agent[] {
 function writeAll(agents: Agent[]): void {
   mkdirSync(dataDir(), { recursive: true });
   const file = agentsFile();
-  const tmp = `${file}.tmp`;
+  // Unique per write: a fixed `agents.json.tmp` lets two concurrent saves write the same scratch
+  // file and rename each other's half-written bytes into place.
+  const tmp = `${file}.${process.pid}.${Math.random().toString(36).slice(2, 8)}.tmp`;
   writeFileSync(tmp, JSON.stringify(agents), "utf8");
   renameSync(tmp, file);
 }

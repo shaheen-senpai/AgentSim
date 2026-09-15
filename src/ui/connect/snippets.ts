@@ -8,6 +8,10 @@
 // knows what a host name looks like and nothing may ever hardcode one — `tests/ui/snippets.test.ts`
 // holds that line, along with the forwarder's 40-line budget.
 //
+// These are a product surface: a customer copies them verbatim and runs them unread. So the tests
+// pin the wire shape (which fields are sent, and when they are omitted) and the claims the comments
+// make, not just the presence of the URL.
+//
 // No React, no DOM, no import of anything under `@/engine` or `@/runner`: strings in, strings out.
 
 /** The name the MCP server is registered under when the agent's own name yields nothing usable. */
@@ -52,6 +56,9 @@ export function mcpJsonConfig(name: string, mcpUrl: string): string {
 /**
  * The ~30-line change to an agent that runs its own tool loop: replace the one place a tool call is
  * executed with this, gated by an env var. Kept under 40 lines on purpose — it is the whole pitch.
+ *
+ * `batchId` is not decoration. It is the only thing that groups an agent's tool calls into a
+ * parallel wave in the flow view, so the snippet takes it and the comment explains it.
  */
 export function forwarderTs(callUrl: string): string {
   return `// AgentSim forwarder — the one place your agent executes a tool call.
@@ -65,26 +72,35 @@ export type ToolOutcome = { ok: true; result: string } | { ok: false; error: str
  * Execute one tool call against the Run. \`tool\` is the name your agent already uses — register
  * its aliases on the Connect page and we map them to ours. \`callId\` is your own id for the call.
  * A refused call comes back \`{ ok: false }\`, not an exception: it is a recorded Event either way.
+ *
+ * Tool calls that share a \`batchId\` are drawn as one parallel wave. Pass the same \`batchId\` for
+ * every call your agent issued in one turn — the assistant message id is the natural choice — which
+ * is how this Run's waves are recorded. Issuing them concurrently is not enough on its own: the
+ * \`batchId\` is what says they belong to the same turn.
  */
-export async function callTool(tool: string, input: unknown = {}, callId?: string): Promise<ToolOutcome> {
+export async function callTool(tool: string, input: unknown = {}, callId?: string, batchId?: string): Promise<ToolOutcome> {
   const res = await fetch(CALL_URL, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ tool, input, callId }),
+    body: JSON.stringify({ tool, input, callId, batchId }),
   });
   if (!res.ok) throw new Error(\`AgentSim \${res.status}: \${await res.text()}\`);
   return (await res.json()) as ToolOutcome;
 }
 
-// Wire it into whatever executes a tool call today:
+// Wire it in wherever a tool call is executed today — one turn's calls, one batchId:
 //
-//   const outcome = await callTool(block.name, block.input, block.id);
-//   const content = outcome.ok ? outcome.result : outcome.error;
-//
-// Tool calls you issue concurrently (Promise.all) are recorded as one parallel wave.`;
+//   const outcome = await callTool(block.name, block.input, block.id, message.id);
+//   const content = outcome.ok ? outcome.result : outcome.error;`;
 }
 
-/** The same forwarder for a Python agent — standard library only, so it drops into any project. */
+/**
+ * The same forwarder for a Python agent — standard library only, so it drops into any project.
+ *
+ * The payload is built up rather than written out in one literal: a `None` default serialises as
+ * an explicit `null`, and an optional id that is present-but-null is a different thing from an
+ * absent one. Omitting the key is the correct client behaviour.
+ */
 export function forwarderPy(callUrl: string): string {
   return `"""AgentSim forwarder — the one place your agent executes a tool call.
 
@@ -98,25 +114,32 @@ import urllib.request
 CALL_URL = os.environ.get("AGENTSIM_CALL_URL", ${JSON.stringify(callUrl)})
 
 
-def call_tool(tool: str, tool_input: dict | None = None, call_id: str | None = None) -> dict:
+def call_tool(tool: str, tool_input: dict | None = None, call_id: str | None = None, batch_id: str | None = None) -> dict:
     """One tool call against the Run.
 
     \`tool\` is the name your agent already uses — register its aliases on the Connect page and we
     map them to ours. Returns {"ok": True, "result": "..."} or {"ok": False, "error": "..."}; a
     refused call is a recorded Event, not an exception.
+
+    Tool calls that share a \`batch_id\` are drawn as one parallel wave. Pass the same \`batch_id\`
+    for every call your agent issued in one turn — the assistant message id is the natural choice —
+    which is how this Run's waves are recorded. Issuing them concurrently is not enough on its own:
+    the \`batch_id\` is what says they belong to the same turn.
     """
-    payload = json.dumps({"tool": tool, "input": tool_input or {}, "callId": call_id}).encode()
-    request = urllib.request.Request(CALL_URL, data=payload, headers={"content-type": "application/json"})
+    body = {"tool": tool, "input": tool_input or {}}
+    if call_id is not None:
+        body["callId"] = call_id
+    if batch_id is not None:
+        body["batchId"] = batch_id
+    request = urllib.request.Request(CALL_URL, data=json.dumps(body).encode(), headers={"content-type": "application/json"})
     with urllib.request.urlopen(request) as response:
         return json.loads(response.read())
 
 
-# Wire it into whatever executes a tool call today:
+# Wire it in wherever a tool call is executed today — one turn's calls, one batch_id:
 #
-#     outcome = call_tool(block.name, block.input, block.id)
-#     content = outcome["result"] if outcome["ok"] else outcome["error"]
-#
-# Tool calls you issue concurrently (threads, asyncio.gather) are recorded as one parallel wave.`;
+#     outcome = call_tool(block.name, block.input, block.id, message.id)
+#     content = outcome["result"] if outcome["ok"] else outcome["error"]`;
 }
 
 /** What the agent can call, under the names it knows them by, with JSON Schemas. */

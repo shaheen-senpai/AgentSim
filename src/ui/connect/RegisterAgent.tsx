@@ -20,7 +20,11 @@ const SHAPES: { value: AgentShape; label: string; blurb: string }[] = [
 
 type Props = {
   editing: Agent | null;
-  /** Resolves to an error message, or null when the agent was saved. */
+  /**
+   * Resolves to an error message, or null when the agent was saved. Success is announced by the
+   * parent, not here: saving an edit clears `editing`, which changes this form's `key` and
+   * remounts it, so any confirmation held in local state would be thrown away before it was read.
+   */
   onSubmit: (submission: AgentSubmission) => Promise<string | null>;
   onCancel: () => void;
 };
@@ -33,12 +37,10 @@ export function RegisterAgent({ editing, onSubmit, onCancel }: Props) {
   const [aliasText, setAliasText] = useState(formatAliases(editing?.toolAliases ?? {}));
   const [notes, setNotes] = useState(editing?.notes ?? "");
   const [errors, setErrors] = useState<string[]>([]);
-  const [saved, setSaved] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    setSaved(null);
     const local = draftErrors({ name, version, aliasText });
     if (local.length > 0) {
       setErrors(local);
@@ -58,7 +60,6 @@ export function RegisterAgent({ editing, onSubmit, onCancel }: Props) {
         setErrors([failure]);
         return;
       }
-      setSaved(editing ? `${name.trim()} updated.` : `${name.trim()} registered.`);
       if (!editing) {
         setName("");
         setVersion("");
@@ -163,7 +164,6 @@ export function RegisterAgent({ editing, onSubmit, onCancel }: Props) {
       </div>
 
       <div role="status" aria-live="polite" className="text-[12px] empty:hidden">
-        {saved && <p className="text-[#2f7d4f] font-semibold">{saved}</p>}
         {errors.length > 0 && (
           <ul className="flex flex-col gap-0.5 border border-[#c8321e] bg-[#fbeeea] rounded p-2">
             {errors.map((e, i) => (

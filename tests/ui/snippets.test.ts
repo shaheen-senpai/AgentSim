@@ -92,9 +92,14 @@ describe("forwarderTs", () => {
   });
 
   it("POSTs { tool, input, callId } to the call URL", () => {
-    expect(snippet).toContain("JSON.stringify({ tool, input, callId })");
+    expect(snippet).toContain("JSON.stringify({ tool, input, callId, batchId })");
     expect(snippet).toContain('method: "POST"');
     expect(snippet).toContain('headers: { "content-type": "application/json" }');
+  });
+
+  it("takes an optional batchId and forwards it — the field the API already accepts", () => {
+    expect(snippet).toMatch(/export async function callTool\([^)]*batchId\?: string[^)]*\)/);
+    expect(snippet).toContain("batchId })");
   });
 
   it("reads AGENTSIM_CALL_URL first, so the Run URL is the default and not a hardcoding", () => {
@@ -105,14 +110,58 @@ describe("forwarderTs", () => {
 describe("forwarderPy", () => {
   const snippet = forwarderPy(CALL_URL);
 
-  it("posts the same three fields under the wire names the API expects", () => {
-    expect(snippet).toContain('"tool": tool');
-    expect(snippet).toContain('"input": tool_input or {}');
-    expect(snippet).toContain('"callId": call_id');
+  it("posts the required fields under the wire names the API expects", () => {
+    expect(snippet).toContain('body = {"tool": tool, "input": tool_input or {}}');
+  });
+
+  it("takes an optional batch_id and forwards it as batchId", () => {
+    expect(snippet).toMatch(/def call_tool\([^)]*batch_id[^)]*\)/);
+    expect(snippet).toContain("if batch_id is not None:");
+    expect(snippet).toContain('body["batchId"] = batch_id');
+  });
+
+  /**
+   * A `None` default serialises as an explicit `null`, and `POST /api/runs/:id/call` distinguishes
+   * a present-but-null id from an absent one. Emitting the key unconditionally made the
+   * two-argument form the signature advertises — `call_tool("get_ticket", {...})` — fail with a
+   * 400 before it reached the gateway. The key must be built up, never written into the literal.
+   */
+  it("omits callId and batchId rather than sending null", () => {
+    expect(snippet).toContain("if call_id is not None:");
+    expect(snippet).toContain('body["callId"] = call_id');
+    // The regression this guards is the key going back into the dict literal, which is the only
+    // place it could be written as a `"key": value` pair — the fixed snippet only ever assigns it.
+    expect(snippet).not.toContain('"callId": call_id');
+    expect(snippet).not.toContain('"batchId": batch_id');
   });
 
   it("reads AGENTSIM_CALL_URL first", () => {
     expect(snippet).toContain('os.environ.get("AGENTSIM_CALL_URL"');
+  });
+});
+
+/**
+ * The comments in these snippets are instructions a customer follows, so they are held to the same
+ * standard as the code. Concurrency alone cannot produce a parallel wave on this engine — a tool
+ * call costs less than a millisecond while a request costs several, so `groupWaves`' time-overlap
+ * branch never fires — and a snippet that promised otherwise sent people after a result they could
+ * not reproduce. The `batchId` branch is what actually groups a turn's calls.
+ */
+describe("what the forwarders' comments promise", () => {
+  const snippets = [forwarderTs(CALL_URL), forwarderPy(CALL_URL)];
+
+  it("never claims that issuing calls concurrently is what produces a parallel wave", () => {
+    for (const snippet of snippets) {
+      expect(snippet).not.toMatch(/concurrently[^.]*(recorded as|are) one parallel wave/i);
+      expect(snippet).not.toMatch(/(Promise\.all|asyncio\.gather|threads)[^.]*one parallel wave/i);
+    }
+  });
+
+  it("says that sharing a batch id is what does, and that concurrency alone is not enough", () => {
+    for (const snippet of snippets) {
+      expect(snippet).toMatch(/share a `batch(Id|_id)` are drawn as one parallel wave/);
+      expect(snippet).toMatch(/concurrently is not enough on its own/);
+    }
   });
 });
 

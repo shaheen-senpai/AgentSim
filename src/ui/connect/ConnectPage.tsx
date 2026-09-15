@@ -52,6 +52,8 @@ export function ConnectPage({ packs, initialAgents }: Props) {
       const saved = (await res.json()) as Agent;
       await reload(saved.id);
       setEditing(null);
+      // Announced here rather than in the form: clearing `editing` remounts the form.
+      setNotice(`${saved.name} ${editingId ? "updated" : "registered"}.`);
       return null;
     } catch {
       return "Network error — nothing was saved.";

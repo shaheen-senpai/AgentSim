@@ -6,11 +6,15 @@ import { loadRun } from "@/runner/store";
 
 export const dynamic = "force-dynamic";
 
+// `callId` and `batchId` are `nullish`, not `optional`: plenty of clients serialise an absent
+// value as an explicit `null` (Python's `json.dumps` of a `None` default is the obvious one), and
+// an agent that sends `"callId": null` means exactly what one that omits the key means. Rejecting
+// it would fail the call on a detail of the caller's serialiser.
 const Body = z.object({
   tool: z.string().min(1),
   input: z.unknown().optional(),
-  callId: z.string().optional(),
-  batchId: z.string().optional(),
+  callId: z.string().nullish(),
+  batchId: z.string().nullish(),
 });
 
 /** Shape B: the agent runs its own loop and forwards each tool call here. */
@@ -31,7 +35,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const result = await live.gateway.execute({
       tool: resolveToolName(live.run.agent, tool),
       input,
-      toolUseId: callId,
+      toolUseId: callId ?? undefined, // a null callId is an absent one; the gateway then names the Event itself
       source: "forwarder",
       batchId,
     });

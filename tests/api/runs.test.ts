@@ -139,6 +139,33 @@ describe("POST /api/runs/:id/call", () => {
     await finishRoute(post(`http://localhost/api/runs/${id}/finish`, {}), ctx(id));
   });
 
+  /**
+   * A client that has no id to send serialises the absent one differently depending on the
+   * language: `JSON.stringify` drops an `undefined`, but Python's `json.dumps` writes an explicit
+   * `null`. Both mean "no id", so both are accepted — an optional field that 400s on `null` makes
+   * the published Python forwarder fail on its own two-argument call path.
+   */
+  it("treats an explicit null callId/batchId exactly as an omitted one", async () => {
+    const { id } = await newRun({ agent: { kind: "byo" }, idleTimeoutMs: null });
+
+    const withNulls = await call(id, { tool: "get_ticket", input: { ticket_id: "tkt_1001" }, callId: null, batchId: null });
+    expect(withNulls.status).toBe(200);
+    expect(withNulls.body.ok).toBe(true);
+
+    const omitted = await call(id, { tool: "get_ticket", input: { ticket_id: "tkt_1001" } });
+    expect(omitted.status).toBe(200);
+
+    const [a, b] = loadRun(id)!.events;
+    expect(a.batchId).toBeNull();
+    expect(b.batchId).toBeNull();
+    // The gateway names an Event itself when the caller gives no id; a null must reach it as absent
+    // rather than as the string "null" or an empty id.
+    expect(a.toolUseId).toBe(`local_${a.seq}`);
+    expect(b.toolUseId).toBe(`local_${b.seq}`);
+
+    await finishRoute(post(`http://localhost/api/runs/${id}/finish`, {}), ctx(id));
+  });
+
   it("returns 200 { ok: false, error } when a guard rejects the call", async () => {
     const { id } = await newRun({ idleTimeoutMs: null });
     const res = await call(id, { tool: "issue_refund", input: { payment_id: "pay_7003", amount: 999_999, reason: "oops" } });

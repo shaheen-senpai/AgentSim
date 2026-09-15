@@ -65,15 +65,20 @@ export function ConnectAgent({ run }: { run: RunRecord | null }) {
           Manage →
         </Link>
       </div>
-      <div role="status" aria-live="polite" className="flex flex-col gap-1">
-        <div className="flex items-center gap-2">
-          <span className="inline-block w-2 h-2 rounded-full bg-[#2f7d4f]" />
-          <span className="font-semibold">
-            Live · {run.events.length} {run.events.length === 1 ? "Event" : "Events"}
-          </span>
-        </div>
-        {remainingMs !== null && <div className="text-[#6b6b66]">Finishes itself in {mmss(remainingMs)} if nothing else happens</div>}
+      {/* Only the Event count is live: it changes when something actually happens, which is worth
+          announcing. The countdown below re-renders every second, and inside this region a screen
+          reader would read the whole block out once a second. */}
+      <div role="status" aria-live="polite" className="flex items-center gap-2">
+        <span className="inline-block w-2 h-2 rounded-full bg-[#2f7d4f]" />
+        <span className="font-semibold">
+          Live · {run.events.length} {run.events.length === 1 ? "Event" : "Events"}
+        </span>
       </div>
+      {remainingMs !== null && (
+        <div aria-live="off" className="text-[#6b6b66]">
+          Finishes itself in {mmss(remainingMs)} if nothing else happens
+        </div>
+      )}
       {mcpUrl && (
         <>
           <code className={`${mono} bg-[#fafaf8] border border-[#cfcfcb] rounded p-2 break-all`}>{mcpUrl}</code>

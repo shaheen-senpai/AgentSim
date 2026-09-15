@@ -1,7 +1,33 @@
 @import "tailwindcss";
+/* xyflow ships its own stylesheet; without it the flow's nodes render unpositioned (spec §6.1). */
+@import "@xyflow/react/dist/style.css";
 
 body {
   background: #f4f4f2;
   color: #1d1d1b;
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+/* Flow view: keep xyflow's chrome in the product's palette, and make keyboard focus visible. */
+.react-flow__node:focus-visible {
+  outline: 2px solid #1d1d1b;
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+.react-flow__controls-button {
+  background: #fff;
+  border-bottom: 1px solid #e6e6e2;
+  fill: #1d1d1b;
+}
+
+.react-flow__controls-button:hover {
+  background: #f4f4f2;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .react-flow__edge-path,
+  .react-flow__node {
+    transition: none !important;
+  }
 }

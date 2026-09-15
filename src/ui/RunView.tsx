@@ -6,6 +6,9 @@ import { Launcher } from "./Launcher";
 import { ConnectAgent } from "./ConnectAgent";
 import { RecentRuns } from "./RecentRuns";
 import { Timeline } from "./Timeline";
+import { FlowView } from "./flow/FlowView";
+import { FlowToolbar } from "./flow/FlowToolbar";
+import { useFlowState } from "./flow/useFlowState";
 import { ScorePanel } from "./ScorePanel";
 import { DiffPanel } from "./DiffPanel";
 import { useReplay } from "./useReplay";
@@ -18,6 +21,9 @@ export type RunViewProps = { run: RunRecord | null; packs: PackOption[]; tools: 
 export function RunView({ run, packs, tools, recent }: RunViewProps) {
   const [diffOpen, setDiffOpen] = useState(false);
   const replay = useReplay(run);
+  // Flow is the default view; List keeps the Timeline. Both read the same `visible`, so the
+  // Replay scrubber drives whichever one is showing.
+  const flow = useFlowState();
 
   // Narrative (Opus-written explanation) is generated after a Run completes, off the critical path.
   // useRun's polling freezes `run` at the first "completed" snapshot (narrative: null) and never
@@ -53,7 +59,21 @@ export function RunView({ run, packs, tools, recent }: RunViewProps) {
         <main className={`${panel} flex flex-col overflow-hidden`}>
           {displayRun ? (
             <>
-              <Timeline run={displayRun} visible={replay.visible} tools={tools} />
+              <FlowToolbar state={flow} tools={tools} />
+              {flow.view === "flow" ? (
+                <FlowView
+                  run={displayRun}
+                  visible={replay.visible}
+                  selectedSeq={flow.selected}
+                  onSelect={flow.select}
+                  filters={flow.filters}
+                  follow={flow.follow}
+                  fitSignal={flow.fitSignal}
+                  tools={tools}
+                />
+              ) : (
+                <Timeline run={displayRun} visible={replay.visible} tools={tools} />
+              )}
               {displayRun.status !== "running" && <ReplayScrubber replay={replay} />}
             </>
           ) : <div className="p-6 text-[#6b6b66]">Pick a Scenario and press Run.</div>}

@@ -16,9 +16,10 @@ import { ReplayScrubber } from "./ReplayScrubber";
 import { PromptDiffSheet } from "./PromptDiffSheet";
 import { panel } from "./styles";
 
-export type RunViewProps = { run: RunRecord | null; packs: PackOption[]; tools: Record<string, ToolDef>; recent: RunSummary[] };
+/** `principalLabel`: the Run's pack's principal entity label, for the World diff's reads counter. */
+export type RunViewProps = { run: RunRecord | null; packs: PackOption[]; tools: Record<string, ToolDef>; principalLabel: string; recent: RunSummary[] };
 
-export function RunView({ run, packs, tools, recent }: RunViewProps) {
+export function RunView({ run, packs, tools, principalLabel, recent }: RunViewProps) {
   const [diffOpen, setDiffOpen] = useState(false);
   const replay = useReplay(run);
   // Flow is the default view; List keeps the Timeline. Both read the same `visible`, so the
@@ -80,7 +81,7 @@ export function RunView({ run, packs, tools, recent }: RunViewProps) {
         </main>
         <aside className="flex flex-col gap-4">
           <ScorePanel run={displayRun} replaying={replay.replaying} />
-          <DiffPanel run={displayRun} />
+          <DiffPanel run={displayRun} principalLabel={principalLabel} />
         </aside>
       </div>
       <PromptDiffSheet open={diffOpen} onClose={() => setDiffOpen(false)} run={displayRun} />

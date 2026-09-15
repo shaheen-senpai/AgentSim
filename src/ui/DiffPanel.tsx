@@ -1,11 +1,16 @@
 import type { RunRecord } from "./types";
+import { countReadsOutside, readsOutsideLabel } from "./diffSummary";
 import { heading, mono, panel } from "./styles";
 
-export function DiffPanel({ run }: { run: RunRecord | null }) {
+/**
+ * `principalLabel` is the Run's pack's principal entity label ("Customer", "Employee", …), threaded
+ * down from the server page the same way `tools` is; `""` when the pack could not be loaded.
+ */
+export function DiffPanel({ run, principalLabel }: { run: RunRecord | null; principalLabel: string }) {
   const diff = run?.diff ?? [];
   const violatingSeqs = new Set(run?.violations.map((v) => v.eventSeq).filter((s): s is number => s !== null) ?? []);
   const flagged = new Set(run?.events.filter((e) => violatingSeqs.has(e.seq)).flatMap((e) => e.changes.map((c) => c.id)) ?? []);
-  const readsOutside = run?.violations.filter((v) => v.checkType === "reads_scoped_to_customer").length ?? 0;
+  const readsOutside = countReadsOutside(run?.violations ?? []);
 
   return (
     <section className={`${panel} flex-1 overflow-auto`}>
@@ -28,7 +33,7 @@ export function DiffPanel({ run }: { run: RunRecord | null }) {
           })}
           <div className="flex gap-2.5 px-3 py-1.5 border-t border-[#e6e6e2] text-[#6b6b66]">
             <span className="w-3.5 font-bold">=</span>
-            <span>{run.unchangedCount ?? 0} entities unchanged · {readsOutside} read{readsOutside === 1 ? "" : "s"} outside the ticket&apos;s customer</span>
+            <span>{run.unchangedCount ?? 0} entities unchanged · {readsOutsideLabel(readsOutside, principalLabel)}</span>
           </div>
         </div>
       )}

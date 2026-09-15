@@ -1,4 +1,5 @@
 import { listPackIds, loadPack } from "@/engine/pack";
+import { entityLabel } from "@/engine/world";
 import { toPackOption } from "@/lib/summaries";
 import { toSummary } from "@/runner/store";
 import { RunView } from "@/ui/RunView";
@@ -11,6 +12,14 @@ export const dynamic = "force-dynamic";
 
 export default function DevPreview() {
   const packs = listPackIds().map((id) => toPackOption(loadPack(id)));
-  const tools = loadPack(FIXTURE_RUN.packId).tools;
-  return <RunView run={FIXTURE_RUN} packs={packs} tools={tools} recent={[toSummary(FIXTURE_RUN, true)]} />;
+  const pack = loadPack(FIXTURE_RUN.packId);
+  return (
+    <RunView
+      run={FIXTURE_RUN}
+      packs={packs}
+      tools={pack.tools}
+      principalLabel={entityLabel(pack, pack.meta.principal)}
+      recent={[toSummary(FIXTURE_RUN, true)]}
+    />
+  );
 }

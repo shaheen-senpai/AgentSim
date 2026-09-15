@@ -8,5 +8,5 @@ export const dynamic = "force-dynamic";
 const packs = (): PackOption[] => listPackIds().map((id) => toPackOption(loadPack(id)));
 
 export default function Home() {
-  return <RunPage id={null} initialRun={null} packs={packs()} tools={{}} recent={listRuns()} />;
+  return <RunPage id={null} initialRun={null} packs={packs()} tools={{}} principalLabel="" recent={listRuns()} />;
 }

@@ -24,6 +24,17 @@ npm run dev              # http://localhost:3000
 
 The API key is needed only for Reference Agent Runs, post-Run narratives and World generation. Opening the app, replaying the golden Runs, connecting your own agent and every test work without it — `npm test` makes no network calls at all.
 
+## Install as a Claude Code plugin
+
+From inside this repo, with `npm run dev` running:
+
+```
+claude plugin marketplace add ./claude-plugin
+claude plugin install agentsim-worldbuilder
+```
+
+Then, from your *own* agent's repo, in a Claude Code session: "Use agentsim-worldbuilder to build a test world for this agent." It reads your tools, schema and OpenAPI spec straight from the codebase — see `claude-plugin/skills/init-world/SKILL.md` for exactly what it does. If AgentSim is not on `localhost:3000`, edit the URL in `claude-plugin/.mcp.json` first.
+
 ## The three pages
 
 | Page | What it is |

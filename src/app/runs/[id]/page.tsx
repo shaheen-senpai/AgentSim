@@ -1,14 +1,16 @@
 import { notFound } from "next/navigation";
 import { listPackIds, loadPack } from "@/engine/pack";
+import { toScenarioSummary, type ScenarioSummary } from "@/lib/summaries";
 import { listRuns, loadRun } from "@/runner/store";
 import { RunPage } from "@/ui/RunPage";
-import type { ScenarioSummary } from "@/ui/types";
 
 export const dynamic = "force-dynamic";
 
-// Task 9 replaces this with GET /api/scenarios?packId= and a pack-aware Launcher.
 const scenarios = (): ScenarioSummary[] =>
-  listPackIds().flatMap((id) => loadPack(id).scenarios.map((s) => ({ id: s.id, title: s.title, attacks: s.attacks.map((a) => ({ id: a.id, title: a.title })) })));
+  listPackIds().flatMap((id) => {
+    const pack = loadPack(id);
+    return pack.scenarios.map((s) => toScenarioSummary(s, pack.meta.id));
+  });
 
 export default async function RunRoute({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

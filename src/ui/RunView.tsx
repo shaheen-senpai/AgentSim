@@ -47,7 +47,7 @@ export function RunView({ run, scenarios, recent }: RunViewProps) {
       <div className="grid grid-cols-[240px_1fr_400px] gap-4 p-4 h-[calc(100vh-48px)]">
         <aside className="flex flex-col gap-4">
           <Launcher scenarios={scenarios} run={displayRun} onPromptDiff={() => setDiffOpen(true)} />
-          <ConnectAgent run={displayRun} />
+          <ConnectAgent run={displayRun} scenarios={scenarios} />
           <RecentRuns runs={recent} currentId={displayRun?.id ?? null} />
         </aside>
         <main className={`${panel} flex flex-col overflow-hidden`}>

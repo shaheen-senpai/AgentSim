@@ -1,10 +1,10 @@
 "use client";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import type { RunRecord } from "./types";
+import type { RunRecord, ScenarioSummary } from "./types";
 import { heading, mono, panel } from "./styles";
 
-export function ConnectAgent({ run }: { run: RunRecord | null }) {
+export function ConnectAgent({ run, scenarios }: { run: RunRecord | null; scenarios: ScenarioSummary[] }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const isByo = run?.agent.kind === "byo" && run.status === "running";
@@ -12,7 +12,11 @@ export function ConnectAgent({ run }: { run: RunRecord | null }) {
   async function create() {
     setBusy(true);
     try {
-      const res = await fetch("/api/runs", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ scenarioId: run?.scenarioId ?? "duplicate-charge-refund", agent: "byo", attackId: run?.attack?.id ?? null }) });
+      const target = run ? { packId: run.packId, scenarioId: run.scenarioId } : scenarios[0] && { packId: scenarios[0].packId, scenarioId: scenarios[0].id };
+      if (!target) return;
+      const body = { ...target, agent: { kind: "byo" as const }, attackId: run?.attack?.id ?? null };
+      const res = await fetch("/api/runs", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+      if (!res.ok) return;
       const { id } = (await res.json()) as { id: string };
       router.push(`/runs/${id}`);
     } finally { setBusy(false); }

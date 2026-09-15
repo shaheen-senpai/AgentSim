@@ -1,6 +1,7 @@
 import { createMcpHandler, McpServer, hostHeaderValidationResponse, originValidationResponse, localhostAllowedHostnames, localhostAllowedOrigins } from "@modelcontextprotocol/server";
 import { ToolError } from "@/engine/dsl";
 import { inputZod } from "@/engine/pack";
+import { aliasByTool } from "@/runner/agentRef";
 import { getLive } from "@/runner/registry";
 
 export const runtime = "nodejs";
@@ -13,10 +14,13 @@ const handler = createMcpHandler(
     const runId = runIdFromUrl(requestInfo!.url);
     const live = getLive(runId);
     if (!live) throw new Error(`Unknown run ${runId}`);
-    const server = new McpServer({ name: "agentsim", version: "0.1.0" });
+    // `instructions` reaches the client in the initialize result, so an MCP agent gets the Task
+    // Brief without a separate fetch. (`ServerOptions.instructions`, @modelcontextprotocol/server 2.)
+    const server = new McpServer({ name: "agentsim", version: "0.2.0" }, { instructions: live.run.taskBrief });
+    const alias = aliasByTool(live.run.agent);
     for (const def of Object.values(live.pack.tools)) {
       server.registerTool(
-        def.name,
+        alias.get(def.name) ?? def.name,
         { description: def.description, inputSchema: inputZod(def).shape, annotations: { readOnlyHint: def.kind === "read" } },
         async (args) => {
           try {

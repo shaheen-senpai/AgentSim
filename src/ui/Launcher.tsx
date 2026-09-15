@@ -32,7 +32,9 @@ export function Launcher({ scenarios, run, onPromptDiff }: Props) {
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch("/api/runs", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ scenarioId, agent, attackId: attackId === "off" ? null : attackId }) });
+      if (!scenario) throw new Error("Pick a Scenario first");
+      const body = { packId: scenario.packId, scenarioId, agent: { kind: "reference" as const, version: agent }, attackId: attackId === "off" ? null : attackId };
+      const res = await fetch("/api/runs", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
       if (!res.ok) throw new Error(`Run failed to start (HTTP ${res.status})`);
       const { id } = (await res.json()) as { id: string };
       router.push(`/runs/${id}`);

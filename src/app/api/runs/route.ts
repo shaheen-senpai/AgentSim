@@ -1,40 +1,45 @@
 import { z } from "zod";
-import { listPackIds, loadPack } from "@/engine/pack";
-import { startRun } from "@/runner/run";
-import { listRuns } from "@/runner/store";
+import { runUrls } from "@/lib/runUrls";
+import { getAgent } from "@/runner/agentRegistry";
+import { startRun, type CreateRunOptions } from "@/runner/run";
+import { listRuns, loadRun } from "@/runner/store";
 
 export const dynamic = "force-dynamic";
 
-// Task 9 replaces this with the v2 body (pack, agent ref, idle timeout) and the richer response.
 const Body = z.object({
-  packId: z.string().optional(),
-  scenarioId: z.string(),
-  agent: z.enum(["naive", "fixed", "generic", "byo"]),
-  attackId: z.string().nullable().optional(),
-  idleTimeoutMs: z.number().nullable().optional(),
+  packId: z.string().min(1),
+  scenarioId: z.string().min(1),
+  attackId: z.string().nullish(),
+  agent: z.discriminatedUnion("kind", [
+    z.object({ kind: z.literal("reference"), version: z.string().min(1) }),
+    z.object({ kind: z.literal("byo"), agentId: z.string().nullish() }),
+  ]),
+  idleTimeoutMs: z.number().nullish(),
 });
-
-/** Until the UI sends a pack, find the one that owns the Scenario. */
-function resolvePackId(scenarioId: string, given?: string): string {
-  if (given) return given;
-  const owner = listPackIds().find((id) => loadPack(id).scenarios.some((s) => s.id === scenarioId));
-  if (!owner) throw new Error(`No World pack contains scenario ${scenarioId}`);
-  return owner;
-}
 
 export async function POST(req: Request) {
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return Response.json({ error: parsed.error.message }, { status: 400 });
-  const { scenarioId, agent, attackId, idleTimeoutMs } = parsed.data;
+  const { packId, scenarioId, attackId, agent, idleTimeoutMs } = parsed.data;
+
+  // A registered agent contributes its display name, shape and aliases; the Run keeps a copy, so
+  // later edits to the registry never rewrite a finished Run's history.
+  let ref: CreateRunOptions["agent"] = agent;
+  if (agent.kind === "byo" && agent.agentId) {
+    const registered = getAgent(agent.agentId);
+    if (!registered) return Response.json({ error: `Unknown agent ${agent.agentId}` }, { status: 404 });
+    ref = { kind: "byo", agentId: registered.id, name: registered.name, shape: registered.shape, toolAliases: registered.toolAliases };
+  }
+
   try {
     const id = startRun({
-      packId: resolvePackId(scenarioId, parsed.data.packId),
+      packId,
       scenarioId,
       attackId: attackId ?? null,
-      agent: agent === "byo" ? { kind: "byo" } : { kind: "reference", version: agent },
+      agent: ref,
       ...(idleTimeoutMs === undefined ? {} : { idleTimeoutMs }),
     });
-    return Response.json({ id }, { status: 201 });
+    return Response.json({ id, ...runUrls(req, id), taskBrief: loadRun(id)?.taskBrief ?? "" }, { status: 201 });
   } catch (e) {
     return Response.json({ error: e instanceof Error ? e.message : String(e) }, { status: 400 });
   }

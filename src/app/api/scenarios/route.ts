@@ -1,13 +1,17 @@
 import { listPackIds, loadPack } from "@/engine/pack";
+import { toScenarioSummary } from "@/lib/summaries";
 
 export const dynamic = "force-dynamic";
 
-/** Scenario summaries for the Launcher. Task 9 adds the `packId` filter and pack-scoped shape. */
+/** Scenario summaries for the Launcher: one pack's when `?packId=` is given, otherwise every pack's. */
 export async function GET(req: Request) {
   const only = new URL(req.url).searchParams.get("packId");
-  const packIds = only ? [only] : listPackIds();
-  const summaries = packIds.flatMap((id) =>
-    loadPack(id).scenarios.map((s) => ({ id: s.id, title: s.title, attacks: s.attacks.map((a) => ({ id: a.id, title: a.title })) })),
-  );
+  const installed = listPackIds();
+  if (only && !installed.includes(only)) return Response.json({ error: `Unknown world ${only}` }, { status: 404 });
+
+  const summaries = (only ? [only] : installed).flatMap((id) => {
+    const pack = loadPack(id);
+    return pack.scenarios.map((s) => toScenarioSummary(s, pack.meta.id));
+  });
   return Response.json(summaries);
 }

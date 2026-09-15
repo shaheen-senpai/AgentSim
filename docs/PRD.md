@@ -116,6 +116,8 @@ We never guess a customer's data model when we can read it. Sources, in decreasi
 | **Recorded traffic** | responses captured from staging through our recorder | medium — shapes inferred from real payloads | run the agent once against staging |
 | **A domain pack** | our curated schema for the domain (support/commerce, helpdesk, CRM…) | generic | none — for a first look or a benchmark |
 
+The agent's-tool-schemas row above is live, not just paste-box: `/mcp/worlds` is AgentSim run as an MCP *server* for building, not just running — a developer's own MCP client connects directly, calls `register_agent` with its agent's real tools, and reviews/iterates the draft (`get_world_draft`, `refine_world`) before calling `create_world`. The schema dump and OpenAPI rows above still work the same way, as arguments to the same call.
+
 **Schema only — never data.** Structure comes from the customer; rows are ours. Production data is PII and a liability; a synthetic world needs only dozens of coherent rows.
 
 ```

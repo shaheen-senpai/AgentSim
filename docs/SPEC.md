@@ -138,6 +138,10 @@ The agent stays where it is, in the team's repo, on their model, with their prom
 
 Agents built directly on the Anthropic Messages API have a shorter route still: pass the Run URL as an `mcp_servers` entry and the API fetches our tools itself (needs a publicly reachable URL).
 
+### Shape A′ · MCP, for building instead of running
+
+The same MCP server pattern as Shape A, pointed at pack authoring rather than a Run: `/mcp/worlds` exposes `register_agent`, `refine_world`, `get_world_draft`, `create_world`. A developer's own MCP client connects, hands over its agent's own tool schema, and gets back a reviewable, then created, World pack — the mechanism `docs/PRD.md`'s "How AgentSim learns the tables and the schema" describes for the agent's-tool-schemas source, made live instead of copy-paste.
+
 **All four routes end at the same gateway.** A call from an MCP client, a forwarded function call, an emulated REST request and a SQL statement produce the same Event shape and are scored identically. That is what makes "any agent" true rather than a slogan, and it is the conformance test every adapter must pass (§16).
 
 **How the Task Brief reaches the agent.** Whatever normally wakes it: the CLI prints it for a paste; the forwarder SDK exposes `run.taskBrief`; the MCP endpoint publishes it as the server's `instructions` and as a `task_brief` resource; M2 adds simulated triggers (a synthetic "new ticket" webhook) for agents that wake on events.

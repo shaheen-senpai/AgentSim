@@ -193,3 +193,9 @@ Written to be accurate rather than flattering. Everything below is true of this 
 - Post-Run **narratives** call Opus once per completed Reference Agent Run, automatically, from the Run page. Golden and BYO Runs are refused by the route itself, so nothing is spent on them however the POST arrives. It is off the critical path, but it is a model call you did not explicitly ask for.
 - The agents registry (`data/agents.json`) and Runs (`data/runs/`) are plain files with no locking; two concurrent writers race.
 - `npm run build` succeeds but emits ten Turbopack warnings: `engine/pack.ts` and `runner/store.ts` read directories whose paths are only known at runtime (`AGENTSIM_PACKS_DIR`, `AGENTSIM_DATA_DIR`), which makes Turbopack trace the whole project into the server bundle. Harmless locally; it would bloat — or break — a size-limited serverless deploy.
+
+**/mcp/worlds**
+
+- The `/mcp/worlds` draft store is in-memory — a draft is lost if the dev server restarts before `create_world` runs. Finish or abandon a draft within one session.
+- `/mcp/worlds` has the same access control as `/mcp/runs/:id`: a Host/Origin allowlist (localhost by default, widened only via `AGENTSIM_ALLOWED_HOSTS`), no auth token.
+- External APIs a registered agent depends on (Stripe, Twilio, and similar) are modeled as ordinary in-World entities and tools, the same way `northwind`'s `payments` system stands in for Stripe — not a REST-shaped emulator. There is no Shape C.

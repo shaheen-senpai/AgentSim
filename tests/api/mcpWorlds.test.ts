@@ -104,6 +104,22 @@ describe("/mcp/worlds", () => {
     expect(res.result.isError).toBe(true);
     expect(existsSync(path.join(packsDir(), "Not Valid!"))).toBe(false);
   });
+
+  it("register_agent rejects an oversized tool inputSchema before it can spend anything", async () => {
+    delete process.env.ANTHROPIC_API_KEY; // proves this never even reaches the API-key guard
+    const init = await initialize();
+    const oversized = { big: "x".repeat(6_000) };
+
+    const res = await call(init.sessionId, "register_agent", {
+      name: "Test",
+      domain: "d",
+      description: "desc",
+      tools: [{ name: "t", inputSchema: oversized }],
+    });
+
+    expect(res.result.isError).toBe(true);
+    expect(textOf(res.result)).toContain("inputSchema is too large");
+  });
 });
 
 describe("/mcp/worlds host allowlist", () => {

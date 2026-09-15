@@ -79,6 +79,21 @@ describe("registry", () => {
     expect(fired).not.toHaveBeenCalled();
   });
 
+  it("registerLive clears a displaced entry's idle timer instead of orphaning it", () => {
+    vi.useFakeTimers();
+    const run = record();
+    registerLive(run.id, createGateway(pack, seedWorld(pack)), run, pack);
+    const fired = vi.fn();
+    armIdle(run.id, 1000, fired);
+
+    // Something re-registers the same Run id (e.g. a dev-server module reload) before the timer fires.
+    registerLive(run.id, createGateway(pack, seedWorld(pack)), run, pack);
+
+    vi.advanceTimersByTime(5000);
+    expect(fired).not.toHaveBeenCalled();
+    unregisterLive(run.id);
+  });
+
   it("ignores arming and touching a Run that is not live", () => {
     vi.useFakeTimers();
     const fired = vi.fn();

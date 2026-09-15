@@ -10,6 +10,8 @@ const g = globalThis as unknown as { __agentsimLive?: Map<string, Live> };
 const live = (g.__agentsimLive ??= new Map<string, Live>());
 
 export const registerLive = (id: string, gateway: Gateway, run: RunRecord, pack: WorldPack): void => {
+  const prev = live.get(id);
+  if (prev?.idle) clearTimeout(prev.idle.timer); // don't orphan a displaced entry's idle timer
   live.set(id, { gateway, run, pack });
 };
 

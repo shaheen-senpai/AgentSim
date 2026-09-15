@@ -479,9 +479,10 @@ describe("buildFlow: import purity (browser-safety)", () => {
   it("never value-imports @/engine/pack, @/engine/attack, @/runner/store, or a node: builtin", () => {
     for (const file of files) {
       const text = readFileSync(file, "utf8");
-      const importLines = text.split("\n").filter((line) => /^\s*import\b/.test(line));
+      // `export { x } from "…"` pulls the module in exactly as an import does, so it is checked too.
+      const importLines = text.split("\n").filter((line) => /^\s*import\b/.test(line) || /^\s*export\b.*\bfrom\b/.test(line));
       for (const line of importLines) {
-        if (/^\s*import\s+type\b/.test(line)) continue; // erased at compile time — always safe
+        if (/^\s*(import|export)\s+type\b/.test(line)) continue; // erased at compile time — always safe
         for (const [pattern, why] of FORBIDDEN) {
           expect(line, `${file}: forbidden value import (${why}) — "${line.trim()}"`).not.toMatch(pattern);
         }

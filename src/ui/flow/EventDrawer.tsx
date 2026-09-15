@@ -24,6 +24,9 @@ export type EventDrawerProps = {
   scoreReady: boolean;
 };
 
+/** The drawer's width. `useFlowCamera` aims the camera past it, so the two must not drift apart. */
+export const DRAWER_W = 380;
+
 type Tab = "details" | "violations" | "injected";
 const TAB_LABEL: Record<Tab, string> = { details: "Details", violations: "Violations", injected: "Injected" };
 
@@ -230,9 +233,17 @@ export function EventDrawer({ run, events, selected, onSelect, onJump, tools, sy
         return;
       }
       if (typeof selected !== "number") return;
-      const i = events.findIndex((e) => e.seq === selected);
-      const next = events[i + dir];
-      if (i !== -1 && next) onJump(next.seq);
+      // Nearest visible neighbour in the pressed direction, rather than an index step: for a live
+      // selection that *is* the next/previous Event, and for a stale one (the Replay scrubbed back
+      // past it) it steps to the nearest Event still on screen instead of to the list's end.
+      let next: Event | undefined;
+      for (const e of events) {
+        if (dir === 1 ? e.seq > selected : e.seq < selected) {
+          next = e;
+          if (dir === 1) break; // ascending: the first match is the nearest above
+        }
+      }
+      if (next) onJump(next.seq);
     },
     [events, selected, onJump],
   );
@@ -298,7 +309,8 @@ export function EventDrawer({ run, events, selected, onSelect, onJump, tools, sy
       tabIndex={-1}
       role="complementary"
       aria-label={`Details for ${title}`}
-      className="absolute right-0 top-0 bottom-0 z-10 flex w-[380px] max-w-full flex-col overflow-hidden border-l border-[#cfcfcb] bg-white shadow-[-4px_0_16px_rgba(29,29,27,.06)] outline-none"
+      style={{ width: DRAWER_W }}
+      className="absolute right-0 top-0 bottom-0 z-10 flex max-w-full flex-col overflow-hidden border-l border-[#cfcfcb] bg-white shadow-[-4px_0_16px_rgba(29,29,27,.06)] outline-none"
     >
       <header className="flex items-start gap-2 border-b border-[#cfcfcb] px-3 py-2.5">
         <div className="min-w-0 flex-1">

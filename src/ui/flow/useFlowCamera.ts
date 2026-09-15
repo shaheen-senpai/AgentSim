@@ -2,11 +2,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNodesInitialized, useReactFlow } from "@xyflow/react";
 import { NODE_H, NODE_W, type FlowNode } from "./buildFlow";
+// The drawer owns its width; the camera only needs to know how much of the pane it hides.
+import { DRAWER_W } from "./EventDrawer";
 
 /** A fit that zooms out past this is unreadable; below it the reader pans instead (Task 13 review). */
 export const FIT = { padding: 0.2, minZoom: 0.5 } as const;
-/** Must match `EventDrawer`'s width: the camera centres on the pane, but the reader sees its left. */
-const DRAWER_W = 380;
 
 const reducedMotion = (): boolean => typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true;
 const duration = (): number => (reducedMotion() ? 0 : 300);

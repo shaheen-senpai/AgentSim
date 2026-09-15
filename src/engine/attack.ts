@@ -1,14 +1,16 @@
 // Generic Attacks: mutating a World before a Run starts, and recognising when an agent takes
 // the bait. Domain-neutral — every collection/field/row is named by the Scenario's declared
 // Attack, validated against the pack's entity fields the same way the DSL validates writes.
+import { injectedText } from "./lure";
 import { fieldZod, type Attack, type WorldPack } from "./pack";
 import type { Row, World } from "./types";
 import { findRow } from "./world";
 
 // Re-exported so every existing caller (`checks.ts`'s `lureCheck`, tests, ...) is unaffected; the
 // one true definition lives in the leaf module `./lure` so `src/ui/flow/buildFlow.ts` can import it
-// without pulling this file's (and `./pack`'s) `node:fs` use into a client bundle.
-export { matchesLure } from "./lure";
+// without pulling this file's (and `./pack`'s) `node:fs` use into a client bundle. `injectedText`
+// is there for the same reason — the Event drawer needs the raw text, this file needs it escaped.
+export { injectedText, matchesLure } from "./lure";
 
 /** Mutates `w` per `attack.mutation`, applied once before the start Snapshot. Throws on a bad target. */
 export function applyAttack(pack: WorldPack, w: World, attack: Attack): void {
@@ -55,17 +57,14 @@ function jsonStringBody(s: string): string {
   return JSON.stringify(s).slice(1, -1);
 }
 
-/** The text to search a read result for, to detect the agent having ingested the injected content. */
+/**
+ * The text to search a read result for, to detect the agent having ingested the injected content:
+ * `./lure`'s raw `injectedText`, escaped the way it will appear inside the serialised result. A
+ * forged row is found by its `id`, which is a plain identifier and never needs escaping.
+ */
 export function injectionMarker(attack: Attack): string {
-  const m = attack.mutation;
-  switch (m.type) {
-    case "append_to_field":
-      return jsonStringBody(m.text.trim());
-    case "set_field":
-      return jsonStringBody(String(m.value).trim());
-    case "insert_row":
-      return m.row.id;
-  }
+  const text = injectedText(attack);
+  return attack.mutation.type === "insert_row" ? text : jsonStringBody(text);
 }
 
 /** Where the injected content lives, for `event.injected`. */

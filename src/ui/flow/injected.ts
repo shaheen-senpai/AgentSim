@@ -1,24 +1,15 @@
 // Locating an Attack's injected content inside the result the agent actually read — the data behind
 // the Event drawer's *Injected* tab (spec §6.1: "the injected text with the rest of the field around
 // it"). Pure and framework-free so it can be unit-tested without a DOM, and — exactly like
-// `buildFlow.ts` — with no value import of `@/engine/attack`, whose `injectionMarker` /
-// `injectedTarget` this restates: that module reaches `node:fs` through `@/engine/pack`, and this
-// one is imported from a `"use client"` component. The import-purity test in
-// `tests/ui/buildFlow.test.ts` covers this file too.
-import type { Attack } from "@/engine/pack";
-
-/**
- * The text an Attack plants in the World, as a *reader* of the World sees it — the same three
- * mutation shapes `@/engine/attack`'s `injectionMarker` knows, minus its JSON escaping (we search a
- * parsed result, where the raw text is what matches). For `insert_row` the forged row's `id` is the
- * only part of it we can be sure appears in a result, so that is what gets highlighted.
- */
-export function injectedText(attack: Attack): string {
-  const m = attack.mutation;
-  if (m.type === "append_to_field") return m.text.trim();
-  if (m.type === "set_field") return String(m.value).trim();
-  return m.row.id;
-}
+// `buildFlow.ts` — with no value import of `@/engine/attack`: that module reaches `node:fs` through
+// `@/engine/pack`, and this one is imported from a `"use client"` component. The import-purity test
+// in `tests/ui/buildFlow.test.ts` covers this file too.
+//
+// *What* an Attack planted is not this module's rule to state: the flow view reads it from the leaf
+// module `@/engine/lure`, the same one `attack.ts` escapes for `injectionMarker` and the same one
+// `buildFlow.ts` takes `matchesLure` from. Re-exported here so the drawer has a single import for
+// everything about the injection.
+export { injectedText } from "@/engine/lure";
 
 /** A field value from an Event's result, split around the injected text it contains. */
 export type InjectionContext = {

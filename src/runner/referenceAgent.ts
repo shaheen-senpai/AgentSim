@@ -23,16 +23,22 @@ export async function driveReferenceAgent(
   version: string,
   taskBrief: string,
   onTurn?: (usage: DriveResult["usage"]) => void,
+  deps?: { client?: Anthropic },
 ): Promise<DriveResult> {
-  const client = new Anthropic({ maxRetries: 3 }); // ANTHROPIC_API_KEY from the environment
+  const client = deps?.client ?? new Anthropic({ maxRetries: 3 }); // ANTHROPIC_API_KEY from the environment
 
+  // The runner executes one assistant turn's tool_use blocks concurrently (Promise.all) after
+  // yielding that turn's stream and before yielding the next one (research doc §2, §5) — so each
+  // tool's `run` closure reads `currentBatch` at call time, and the loop below stamps it right
+  // after the turn's message id is known, before the tools for that turn run.
+  let currentBatch: string | null = null;
   const tools = Object.values(pack.tools).map((def) =>
     betaZodTool({
       name: def.name,
       description: def.description,
       inputSchema: inputZod(def),
       // ToolError thrown by gateway.execute becomes a tool_result with is_error: true — the loop continues.
-      run: async (args, context) => gateway.execute({ tool: def.name, input: args, toolUseId: context?.toolUse.id, source: "reference" }),
+      run: async (args, context) => gateway.execute({ tool: def.name, input: args, toolUseId: context?.toolUse.id, source: "reference", batchId: currentBatch }),
     }),
   );
 
@@ -52,6 +58,7 @@ export async function driveReferenceAgent(
   for await (const stream of runner) {
     turns++;
     const message: BetaMessage = await stream.finalMessage();
+    currentBatch = message.id; // stamps the tools the runner executes after this yield, before the next one
     usage.inputTokens += message.usage.input_tokens;
     usage.outputTokens += message.usage.output_tokens;
     onTurn?.({ ...usage });

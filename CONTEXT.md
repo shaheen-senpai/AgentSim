@@ -4,10 +4,36 @@ A simulated business environment in which AI agents are run against realistic ta
 
 ## Language
 
+### World packs
+
+**World pack**:
+Everything needed to simulate one domain, as files under `worldpacks/<id>/`: the entity model and Ownership map (`pack.yaml`), the Seed (`seed.yaml`), the tools (`tools.yaml`), the Scenarios and the Reference Agent prompts. The unit a team authors, reviews and commits next to their agent.
+_Avoid_: domain config, world definition, scenario pack, template
+
+**Domain pack**:
+A World pack AgentSim curates and ships for a common domain, so a team can see a Run before sharing anything of their own. Two exist: `northwind` (commerce) and `halvard-helpdesk` (IT helpdesk).
+_Avoid_: sample pack, demo world, starter kit
+
+**Principal**:
+The entity every row in a World ultimately belongs to — the customer, employee, tenant or account. Declared once per World pack. It is what makes "did the agent touch someone else's data" a mechanical Check rather than a judgement.
+_Avoid_: owner, tenant, subject, actor
+
+**Ownership map**:
+The declared chain of references from every collection to the Principal (`refund → payment → order → customer`). The engine follows it to answer who a row belongs to. When a World pack is generated, it is the one judgement call a human confirms.
+_Avoid_: relationships, foreign keys, schema graph
+
+**Realism rule**:
+A business constraint the schema does not encode, declared on a tool as a guard — "a refund cannot exceed the payment", "an Issue that is Done cannot be transitioned again". A call a Realism rule rejects is still an Event.
+_Avoid_: validation, guardrail, business logic, constraint
+
+**System**:
+A named group of a World pack's tools, declared in `pack.yaml` — Email, Support, Orders and Payments in `northwind`; Directory, Helpdesk and Chat in `halvard-helpdesk`. Every System reads and writes the one shared World, and the UI colours Events by System.
+_Avoid_: app, mock, integration, service, sim
+
 ### Scenarios
 
 **Scenario**:
-A reusable definition of a test: the seeded World, the Task Brief, the Policy, and its Checks. A Scenario has many Runs.
+A reusable definition of a test, living inside one World pack: the Task Brief, the Policy, the Checks, and any Attacks. The World it runs in comes from the pack's Seed. A Scenario has many Runs.
 _Avoid_: test, test case, episode, simulation
 
 **Task Brief**:
@@ -15,7 +41,7 @@ The instruction the Runner hands the agent at the start of a Run: which Ticket t
 _Avoid_: prompt, task, instruction
 
 **Seed**:
-A file defining a base World — a whole small business — that Scenarios reference and may patch. Declares the frozen clock (`now`).
+The `seed.yaml` of a World pack: the rows of a whole small business, and the frozen clock (`now`) every Run of that pack starts from. One Seed per World pack, shared by every Scenario in it; a Scenario cannot patch it — an Attack mutates the World at Run start instead.
 _Avoid_: fixture, dataset, world file
 
 **Policy**:
@@ -31,7 +57,7 @@ A Check against the final World: what must be true — and what must not — whe
 _Avoid_: expected outcome, forbidden outcome, goal
 
 **Action Rule**:
-A Check applied to every tool call as it happens ("refund amount ≤ Policy maximum", "no reads of a customer other than the ticket's").
+A Check applied to every tool call as it happens ("refund amount ≤ Policy maximum", "no reads of a Principal other than the ticket's").
 _Avoid_: guardrail, constraint, invariant
 
 **Attack**:
@@ -45,7 +71,7 @@ _Avoid_: payload, goal, target action
 ### Runs
 
 **Runner**:
-The component that executes a Run: seeds the World from the Scenario, applies the Attack, hands the agent its Task Brief, drives the agent to completion, then invokes the Evaluator.
+The component that executes a Run: seeds the World from the World pack, applies the Attack, hands the agent its Task Brief, and invokes the Evaluator when the Run finishes. It drives the Reference Agent to completion itself; an external agent drives itself, and the Run ends when the agent says so, when a human presses Finish, or on the idle timeout.
 _Avoid_: harness, orchestrator, executor
 
 **Run**:
@@ -53,16 +79,28 @@ One execution of one agent against one Scenario, with or without an Attack, prod
 _Avoid_: session, episode, execution, test run
 
 **World**:
-The shared business state — customers, emails, tickets, orders, payments — that every System reads and writes. Seeded by the Scenario; static except in response to the agent.
+The shared business state — every collection the World pack declares — that every System reads and writes. Seeded from the pack, changed only through the Gateway, discarded when the Run ends. Static except in response to the agent.
 _Avoid_: environment, state, database, sandbox
 
-**System**:
-One of the four simulated business applications — Email, Support, Orders, Payments — exposed to the agent as a small group of tools over the shared World.
-_Avoid_: app, mock, integration, service, sim
+**Gateway**:
+The single path every action takes into the World, whatever route it arrived by — Reference Agent, MCP, forwarder or script. It runs the tool, applies its Realism rules, mutates the World and appends the Event. One implementation, so every Integration shape is recorded and scored identically.
+_Avoid_: dispatcher, router, adapter, handler
+
+**Storage backend**:
+Where a Run's World lives. The spec declares three interchangeable implementations — in-memory, SQLite and Postgres. Only in-memory exists today; the SQL backends, and the per-Run database replica they would make possible, are not built.
+_Avoid_: database, persistence layer, store
 
 **Event**:
 One recorded step in a Run's timeline: a tool call, its result, and the World changes it caused.
 _Avoid_: step, action, log entry, trace
+
+**Batch**:
+The id an agent stamps on every tool call it issued in one turn — the assistant message id is the natural choice. It is what tells AgentSim those calls belong together.
+_Avoid_: turn, group, parallel call set
+
+**Wave**:
+One column of the flow view: the tool calls a Run made concurrently, drawn side by side. Events join a Wave by sharing a Batch, or by overlapping in wall-clock time.
+_Avoid_: step, round, layer, parallel group
 
 **Snapshot**:
 The complete World captured at a moment in a Run. Start and end Snapshots give the world-state diff.
@@ -78,8 +116,10 @@ _Avoid_: replay, retry, re-execute
 
 ### World entities
 
+These are the entities of the `northwind` Domain pack, not of the engine. A World pack declares its own collections, labels and Ownership map; `halvard-helpdesk` has Employees, Groups, Issues, Memberships, MFA resets, Comments and Messages instead. They are listed here because the golden Runs and most examples speak this vocabulary.
+
 **Customer**:
-A person who buys from the shop. Owns Orders, Threads and Tickets; every other entity resolves to exactly one Customer.
+A person who buys from the shop. The `northwind` pack's Principal: it owns Orders, Threads and Tickets, and every other entity resolves to exactly one Customer.
 _Avoid_: user, account, client
 
 **Order**:
@@ -117,7 +157,7 @@ A record of one Check failing on one Run: which Check, which Event triggered it,
 _Avoid_: failure, error, breach, finding
 
 **Trust Score**:
-A Run's headline 0–100 score, aggregated from five Dimensions and hard-capped when any Policy Compliance, Safety or Data Access Violation exists.
+A Run's headline 0–100 score, aggregated from five Dimensions and hard-capped at 40 when any Policy Compliance, Safety or Data Access Violation exists.
 _Avoid_: grade, rating, pass rate
 
 **Dimension**:
@@ -126,6 +166,10 @@ _Avoid_: category, metric, criterion
 
 ### Agents
 
+**Integration shape**:
+One of the four ways an agent's actions reach the Gateway: **A** an MCP server URL it already knows how to consume, **B** a forwarder dropped into its own tool loop, **C** an emulated third-party REST API, **D** a per-Run database replica. A and B work today; C and D are designed and not built.
+_Avoid_: connector, integration mode, transport, adapter
+
 **Reference Agent**:
-The customer-support agent AgentSim ships to demonstrate itself. Exists in a naïve version that fails the attacked Scenario and a fixed version that passes it.
+The agent AgentSim ships inside a World pack to demonstrate itself, as `agents/<version>.md`. Both Domain packs ship a `naive` version and a `fixed` version; a pack that ships none falls back to a domain-neutral generic prompt.
 _Avoid_: demo agent, sample agent, test agent

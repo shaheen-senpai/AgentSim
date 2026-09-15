@@ -1,6 +1,7 @@
 import { label } from "@/engine/dimensions";
+import { agentLabel } from "@/runner/agentRef";
 import type { RunRecord } from "./types";
-import { agentName, fmtArgs } from "./format";
+import { fmtArgs } from "./format";
 import { heading, mono, panel } from "./styles";
 
 export function CompareColumn({ run }: { run: RunRecord }) {
@@ -10,7 +11,7 @@ export function CompareColumn({ run }: { run: RunRecord }) {
     <div className="flex flex-col gap-3 overflow-hidden">
       <div className={`${panel} p-4 flex gap-4 items-center`}>
         <div className="w-40">
-          <div className={heading}>{agentName(run.agent)} agent · {run.id.slice(0, 12)}</div>
+          <div className={heading}>{agentLabel(run.agent)} agent · {run.id.slice(0, 12)}</div>
           <div className="flex items-baseline gap-2">
             <span className={`${mono} text-[56px] font-extrabold leading-none ${s?.capped ? "text-[#c8321e]" : ""}`}>{s?.headline ?? "—"}</span>
             {s?.capped && <span className="px-2 py-0.5 bg-[#c8321e] text-white text-[11px] font-bold uppercase rounded-sm">Capped</span>}

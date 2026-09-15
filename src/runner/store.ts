@@ -4,14 +4,15 @@ import type { DiffEntry } from "@/engine/diff";
 import type { Score, Violation } from "@/engine/evaluator";
 import type { Attack } from "@/engine/pack";
 import type { Event, Snapshot } from "@/engine/types";
+import { agentKind, agentLabel, type AgentShape, type RunAgentRef } from "./agentRef";
+
+// Re-exported so existing server-side imports of `AgentShape`/`RunAgentRef`/`agentLabel` from
+// `store.ts` keep working. Client components must import `agentLabel`/`RunAgentRef` from
+// `@/runner/agentRef` directly — this module pulls in `node:fs`.
+export { agentKind, agentLabel };
+export type { AgentShape, RunAgentRef };
 
 export type RunStatus = "running" | "completed" | "failed";
-export type AgentShape = "mcp" | "forwarder" | "connector";
-
-/** Who ran the Scenario: one of the pack's Reference Agent prompts, or someone's own agent. */
-export type RunAgentRef =
-  | { kind: "reference"; version: string; model: string }
-  | { kind: "byo"; agentId: string | null; name: string; shape: AgentShape; toolAliases: Record<string, string> };
 
 export type FinishedBy = "agent" | "user" | "idle_timeout" | "error";
 
@@ -52,24 +53,6 @@ export type RunSummary = Pick<RunRecord, "id" | "createdAt" | "status" | "packId
   capped: boolean;
   golden: boolean;
 };
-
-/**
- * Display name for a Run's agent: a Reference version ("naive" → "naïve") or the BYO agent's name.
- * Defensive about v1 records still on disk, where `agent` was the version string (Task 10 migrates them).
- */
-export function agentLabel(a: RunAgentRef): string {
-  const legacy = a as unknown;
-  if (typeof legacy === "string") return legacy === "naive" ? "naïve" : legacy;
-  if (!a || typeof a !== "object") return "—";
-  if (a.kind === "byo") return a.name;
-  return a.version === "naive" ? "naïve" : a.version;
-}
-
-function agentKind(a: RunAgentRef): "reference" | "byo" {
-  const legacy = a as unknown;
-  if (typeof legacy === "string") return legacy === "byo" ? "byo" : "reference";
-  return a?.kind === "byo" ? "byo" : "reference";
-}
 
 export const dataDir = () => process.env.AGENTSIM_DATA_DIR ?? path.join(process.cwd(), "data");
 const runsDir = () => path.join(dataDir(), "runs");

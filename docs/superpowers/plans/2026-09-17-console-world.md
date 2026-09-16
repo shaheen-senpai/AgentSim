@@ -7,10 +7,17 @@ mockup's Overview / Entities / Tools / Scenarios (+ Agents) tab structure, repla
 "Seed" tab with a per-entity drill-down that can preview an Attack's effect on seed data, and
 migrating `src/ui/worlds/*` off its own hand-rolled palette onto the shared `src/ui/styles.ts` tokens.
 
-**Architecture:** One new component (`EntityBrowser.tsx`, replacing `SeedTables.tsx`) reusing the
-engine's own `seedWorld`/`applyAttack` for the Attack preview and `packView.ts`'s existing
-`previewRows`/`cellText` for row rendering; a tab-set rename in `packView.ts`; a chrome swap on 3
-route files; a mechanical, literal-only color migration across the rest of `src/ui/worlds/*`.
+**Architecture:** One new component (`EntityBrowser.tsx`, replacing `SeedTables.tsx`) — a purely
+presentational client component reusing `packView.ts`'s existing `previewRows`/`cellText` for row
+rendering, receiving pre-computed seed-row sets as props rather than computing them itself. The
+engine's own `seedWorld`/`applyAttack` (the Attack preview's actual computation) run **server-side**,
+in `src/app/worlds/[id]/page.tsx`'s `Body()` — that file lives under `src/app/`, not `src/ui/`, so it
+is exempt from this repo's `tests/ui/buildFlow.test.ts` "import purity (browser-safety)" guard, which
+categorically forbids every file under `src/ui/` from value-importing `@/engine/attack` (it
+transitively touches `@/engine/pack`'s `node:fs`/`node:path` use) — the same reason `matchesLure` was
+long ago extracted into the client-safe leaf module `@/engine/lure.ts`. A tab-set rename in
+`packView.ts`; a chrome swap on 3 route files; a mechanical, literal-only color migration across the
+rest of `src/ui/worlds/*`.
 
 **Tech Stack:** Next.js 16 App Router, React client component for the one interactive tab
 (`EntityBrowser`), Tailwind arbitrary values matching every other `src/ui` file, `src/ui/styles.ts`.
@@ -41,13 +48,16 @@ route files; a mechanical, literal-only color migration across the rest of `src/
 - Test: `tests/ui/entityBrowser.test.ts`
 
 **Interfaces:**
-- Consumes: `seedWorld(pack: WorldPack): World` (`src/engine/world.ts`), `applyAttack(pack, world,
-  attack): void` (`src/engine/attack.ts`), `previewRows`/`cellText` (`src/ui/worlds/packView.ts`,
-  unchanged), `WorldPack`/`Scenario`/`Attack`/`Row` types (`@/engine/pack`, `@/engine/types`).
-- Produces: `EntityBrowser({ pack: WorldPack })` component and an exported pure helper
-  `attackOptions(scenarios: Scenario[]): { key: string; label: string; attack: Attack }[]` — consumed
-  by Task 2 (`[id]/page.tsx`'s `Body`, which already has a `pack: WorldPack` in scope) and by this
-  task's own test.
+- Consumes: `previewRows`/`cellText` (`src/ui/worlds/packView.ts`, unchanged), and **type-only**
+  imports of `PackMeta`/`Scenario`/`Attack` (`@/engine/pack`) and `Row` (`@/engine/types`) — never a
+  value import of `@/engine/pack` or `@/engine/attack` (forbidden for every file under `src/ui/`, see
+  Architecture above).
+- Produces: `EntityBrowser({ meta: PackMeta; modes: SeedMode[] })` component, the `SeedMode` type
+  (`{ key: string; label: string; rowsByEntity: Record<string, Row[]> }`), and an exported pure
+  helper `attackOptions(scenarios: Scenario[]): { key: string; label: string; attack: Attack }[]` —
+  all three consumed by Task 2 (`[id]/page.tsx`'s `Body`, which computes each `SeedMode`'s
+  `rowsByEntity` server-side via `seedWorld`/`applyAttack` — those functions are never imported by
+  this task's file). `attackOptions` is also covered by this task's own test.
 
 - [ ] **Step 1: Write the failing test for `attackOptions`**
 
@@ -102,14 +112,19 @@ Expected: FAIL — `attackOptions` is not exported (the file doesn't exist yet).
 ```tsx
 "use client";
 // The Entities tab (replaces the old Seed tab): browse one entity at a time — its field defs, and
-// its seed rows either as seeded, or as they'd look under one of the pack's Attacks. The "under
-// Attack" preview is computed with the engine's own seedWorld/applyAttack — the exact functions a
-// real Run calls before its start Snapshot — never reimplemented here.
-import { useMemo, useState } from "react";
-import { applyAttack } from "@/engine/attack";
-import type { Attack, Scenario, WorldPack } from "@/engine/pack";
+// its seed rows either as seeded, or as they'd look under one of the pack's Attacks.
+//
+// This component is purely presentational: every `SeedMode`'s `rowsByEntity` is computed
+// server-side (`src/app/worlds/[id]/page.tsx`'s `Body`, via the engine's own `seedWorld`/
+// `applyAttack` — the exact functions a real Run calls before its start Snapshot, never
+// reimplemented here) and handed down as plain data. This file therefore never value-imports
+// `@/engine/pack` or `@/engine/attack` — only types, which this repo's `tests/ui/buildFlow.test.ts`
+// "import purity" guard does not (and cannot) forbid, since a type import is erased at compile time
+// and has no runtime footprint at all. Every file under `src/ui/` is covered by that guard, on the
+// stated invariant that any of them may end up reachable from a client bundle.
+import { useState } from "react";
+import type { Attack, PackMeta, Scenario } from "@/engine/pack";
 import type { Row } from "@/engine/types";
-import { seedWorld } from "@/engine/world";
 import { dangerBg, dangerFg, focusRing, heading, mono } from "@/ui/styles";
 import { cellText, previewRows } from "./packView";
 
@@ -132,33 +147,28 @@ export function attackOptions(scenarios: Scenario[]): AttackOption[] {
   return out;
 }
 
+/** One seed-data view: "as seeded", or as it looks after one Attack's mutation is applied. */
+export type SeedMode = { key: string; label: string; rowsByEntity: Record<string, Row[]> };
+
 function UntrustedDot() {
   return <span aria-hidden="true" className="inline-block w-1.5 h-1.5 rounded-full align-middle" style={{ background: dangerFg }} />;
 }
 
-export function EntityBrowser({ pack }: { pack: WorldPack }) {
-  const { meta, seed, scenarios } = pack;
+export function EntityBrowser({ meta, modes }: { meta: PackMeta; modes: SeedMode[] }) {
   const entityNames = Object.keys(meta.entities);
   const [selected, setSelected] = useState(meta.principal);
-  const options = useMemo(() => attackOptions(scenarios), [scenarios]);
-  const [mode, setMode] = useState<string>("seeded");
-
-  const rows = useMemo(() => {
-    if (mode === "seeded") return seed.rows;
-    const opt = options.find((o) => o.key === mode);
-    if (!opt) return seed.rows;
-    const world = seedWorld(pack);
-    applyAttack(pack, world, opt.attack);
-    return world.collections;
-  }, [pack, mode, options, seed.rows]);
+  const [modeKey, setModeKey] = useState(modes[0]?.key ?? "seeded");
+  const mode = modes.find((m) => m.key === modeKey) ?? modes[0];
+  const seededMode = modes[0]; // Body() always puts the "seeded" mode first — see Task 2.
+  const rows: Record<string, Row[]> = mode?.rowsByEntity ?? {};
 
   const sel = meta.entities[selected];
   const fields = Object.entries(sel.fields);
   const selRows: Row[] = rows[selected] ?? [];
   const preview = previewRows(selRows);
   const untrustedFieldName = fields.find(([, f]) => f.untrusted)?.[0] ?? null;
-  const seededIds = new Set((seed.rows[selected] ?? []).map((r) => r.id));
-  const isPlanted = (row: Row) => mode !== "seeded" && !seededIds.has(row.id);
+  const seededIds = new Set((seededMode?.rowsByEntity[selected] ?? []).map((r) => r.id));
+  const isPlanted = (row: Row) => modeKey !== "seeded" && !seededIds.has(row.id);
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-4 items-start">
@@ -194,17 +204,16 @@ export function EntityBrowser({ pack }: { pack: WorldPack }) {
               <UntrustedDot /> {untrustedFieldName} is untrusted
             </span>
           )}
-          {options.length > 0 && (
+          {modes.length > 1 && (
             <select
-              value={mode}
-              onChange={(e) => setMode(e.target.value)}
+              value={modeKey}
+              onChange={(e) => setModeKey(e.target.value)}
               aria-label="Seed data mode"
               className={`ml-auto text-[12px] border border-[#E3E0D5] rounded px-2 py-1 bg-white ${focusRing}`}
             >
-              <option value="seeded">as seeded</option>
-              {options.map((o) => (
-                <option key={o.key} value={o.key}>
-                  under Attack — {o.label}
+              {modes.map((m) => (
+                <option key={m.key} value={m.key}>
+                  {m.key === "seeded" ? m.label : `under Attack — ${m.label}`}
                 </option>
               ))}
             </select>
@@ -241,7 +250,7 @@ export function EntityBrowser({ pack }: { pack: WorldPack }) {
         <div>
           <div className={heading}>
             Seed data — {preview.caption}
-            {mode !== "seeded" ? " · Attack applied" : ""}
+            {modeKey !== "seeded" ? " · Attack applied" : ""}
           </div>
           {selRows.length === 0 ? (
             <p className="text-[12px] mt-1 text-[#6E6B60]">Seeded empty. Every row here is written by the Run itself.</p>
@@ -313,7 +322,10 @@ git commit -m "feat(worlds): add the Entities tab — per-entity drill-down with
   whether any exist before assuming)
 
 **Interfaces:**
-- Consumes: `EntityBrowser` from Task 1.
+- Consumes: `EntityBrowser`, `SeedMode`, `attackOptions` from Task 1 (`@/ui/worlds/EntityBrowser`);
+  `seedWorld` (`@/engine/world`), `applyAttack` (`@/engine/attack`) — safe to value-import here since
+  this file lives under `src/app/`, not `src/ui/`, and is exempt from the browser-safety guard (see
+  Architecture).
 - Produces: `WORLD_TABS = ["overview","entities","tools","scenarios","agents"]` — consumed by
   `PackTabs.tsx` (unchanged import, already iterates `WORLD_TABS`) and Task 3/4's files.
 
@@ -333,7 +345,29 @@ position in the object so the tab strip's order is unchanged).
 
 - [ ] **Step 2: Update `Body()` in `src/app/worlds/[id]/page.tsx`**
 
-Replace the `SeedTables` import with `EntityBrowser`, and change:
+Replace the `SeedTables` import with `EntityBrowser`, `SeedMode`, `attackOptions` (all from
+`@/ui/worlds/EntityBrowser`), and add imports for `seedWorld` (`@/engine/world`) and `applyAttack`
+(`@/engine/attack`). Add this helper above `Body`:
+
+```tsx
+/**
+ * Every seed-data view the Entities tab can show: "as seeded" first, then one entry per distinct
+ * Attack in the pack. `seedWorld`/`applyAttack` are the engine's real functions — this is the
+ * server-side computation `EntityBrowser.tsx` itself is deliberately forbidden from doing (see the
+ * "import purity" comment at the top of that file).
+ */
+function seedModes(pack: WorldPack): SeedMode[] {
+  const modes: SeedMode[] = [{ key: "seeded", label: "as seeded", rowsByEntity: pack.seed.rows }];
+  for (const opt of attackOptions(pack.scenarios)) {
+    const world = seedWorld(pack);
+    applyAttack(pack, world, opt.attack);
+    modes.push({ key: opt.key, label: opt.label, rowsByEntity: world.collections });
+  }
+  return modes;
+}
+```
+
+Then change:
 ```tsx
 case "seed":
   return <SeedTables meta={pack.meta} seed={pack.seed} />;
@@ -341,7 +375,7 @@ case "seed":
 to:
 ```tsx
 case "entities":
-  return <EntityBrowser pack={pack} />;
+  return <EntityBrowser meta={pack.meta} modes={seedModes(pack)} />;
 ```
 (`rowCounts` stays computed only for the `"overview"` case that still needs it — do not remove that
 computation.)

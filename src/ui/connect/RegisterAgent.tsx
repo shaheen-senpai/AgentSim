@@ -122,8 +122,8 @@ export function RegisterAgent({ editing, lockedShape, onSubmit, onCancel }: Prop
         </fieldset>
       ) : (
         <p className={hint}>
-          Shape: <span className="font-semibold text-[#1d1d1b]">{SHAPES.find((s) => s.value === lockedShape)?.label}</span> —{" "}
-          {SHAPES.find((s) => s.value === lockedShape)?.blurb}
+          Shape: <span className="font-semibold text-[#1d1d1b]">{SHAPES.find((s) => s.value === shape)?.label}</span> —{" "}
+          {SHAPES.find((s) => s.value === shape)?.blurb}
         </p>
       )}
 

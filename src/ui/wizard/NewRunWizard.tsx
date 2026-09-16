@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Agent, WizardPack } from "@/ui/types";
 import { StepStrip } from "./StepStrip";
+import { ConnectStep } from "./steps/ConnectStep";
 import { WorldStep } from "./steps/WorldStep";
 import { ScenarioStep } from "./steps/ScenarioStep";
 import { MandateStep } from "./steps/MandateStep";
@@ -60,7 +61,7 @@ export function NewRunWizard({ packs, agents }: { packs: WizardPack[]; agents: A
 
       <StepStrip labels={STEP_LABELS} current={state.step} onSelect={(step) => step <= state.step && update({ step })} />
 
-      {state.step === 0 && <p className={hint}>Connect step — added by Task 4.</p>}
+      {state.step === 0 && <ConnectStep state={state} pack={pack} agents={agents} onChange={update} />}
       {state.step === 1 && <WorldStep packs={packs} state={state} onChange={update} />}
       {state.step === 2 && pack && <ScenarioStep pack={pack} state={state} onChange={update} />}
       {state.step === 3 && scenario && <MandateStep scenario={scenario} />}

@@ -29,13 +29,23 @@ type Search = Promise<{ tab?: string | string[] }>;
  * Attack in the pack. `seedWorld`/`applyAttack` are the engine's real functions — this is the
  * server-side computation `EntityBrowser.tsx` itself is deliberately forbidden from doing (see the
  * "import purity" comment at the top of that file).
+ *
+ * `seedWorld`/`applyAttack` throw on a malformed pack (a bad `insert_row` target, for instance —
+ * pack validation does not fully cover `insert_row`'s row-field types before it reaches
+ * `applyAttack`). A generated-but-not-yet-fixed pack can pass `parsePackFiles` and still throw
+ * here, so one Attack option is wrapped per-iteration and simply skipped on failure rather than
+ * letting it take down the whole Entities tab — `SeedMode` has no error field to surface it with.
  */
 function seedModes(pack: WorldPack): SeedMode[] {
   const modes: SeedMode[] = [{ key: "seeded", label: "as seeded", rowsByEntity: pack.seed.rows }];
   for (const opt of attackOptions(pack.scenarios)) {
-    const world = seedWorld(pack);
-    applyAttack(pack, world, opt.attack);
-    modes.push({ key: opt.key, label: opt.label, rowsByEntity: world.collections });
+    try {
+      const world = seedWorld(pack);
+      applyAttack(pack, world, opt.attack);
+      modes.push({ key: opt.key, label: opt.label, rowsByEntity: world.collections });
+    } catch {
+      // Skip this Attack option — the "as seeded" mode (and any other Attack option) still renders.
+    }
   }
   return modes;
 }
@@ -52,7 +62,7 @@ function Body({ pack, tab }: { pack: WorldPack; tab: WorldTab }) {
     case "agents":
       return <AgentPrompts agents={pack.agents} />;
     case "overview":
-      return <EntityMap meta={pack.meta} rowCounts={rowCounts} tools={pack.tools} />;
+      return <EntityMap meta={pack.meta} rowCounts={rowCounts} tools={pack.tools} now={pack.seed.now} currency={pack.seed.currency} />;
   }
 }
 
@@ -63,7 +73,7 @@ function LoadError({ id, message, tab }: { id: string; message: string; tab: Wor
       <main className="p-4 flex flex-col gap-3 max-w-[1200px]">
         <h1 className="text-[17px] font-extrabold tracking-tight">{id}</h1>
         <PackTabs packId={id} current={tab} />
-        <section className="border border-[#c8321e] bg-[#fbeeea] rounded p-3 flex flex-col gap-1">
+        <section className="border border-[#B23A22] bg-[#FBEAE7] rounded p-3 flex flex-col gap-1">
           <h2 className={heading}>This World pack failed to load</h2>
           <pre className={`${mono} text-[12px] whitespace-pre-wrap`}>{message}</pre>
         </section>
@@ -91,12 +101,12 @@ export default async function WorldPage({ params, searchParams }: { params: Para
       <main className="p-4 flex flex-col gap-3 max-w-[1200px]">
         <div className="flex flex-wrap items-baseline gap-2">
           <h1 className="text-[17px] font-extrabold tracking-tight">{pack.meta.name}</h1>
-          <span className="text-[11px] border border-[#cfcfcb] rounded-full px-2 py-0.5 text-[#6b6b66]">{pack.meta.domain}</span>
-          <span className={`${mono} text-[11px] text-[#6b6b66]`}>{pack.meta.id}</span>
+          <span className="text-[11px] border border-[#E3E0D5] rounded-full px-2 py-0.5 text-[#6E6B60]">{pack.meta.domain}</span>
+          <span className={`${mono} text-[11px] text-[#6E6B60]`}>{pack.meta.id}</span>
           <div className="flex-1" />
-          <span className="text-[11px] text-[#6b6b66]">{countsLabel(toPackSummary(pack))}</span>
+          <span className="text-[11px] text-[#6E6B60]">{countsLabel(toPackSummary(pack))}</span>
         </div>
-        <p className="text-[12px] text-[#6b6b66] max-w-[70ch]">{pack.meta.description}</p>
+        <p className="text-[12px] text-[#6E6B60] max-w-[70ch]">{pack.meta.description}</p>
 
         <PackEditor worldId={pack.meta.id} principal={pack.meta.principal} initialTab={tab} files={pack.files}>
           <Body pack={pack} tab={tab} />

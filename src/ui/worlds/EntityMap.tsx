@@ -67,7 +67,19 @@ function Box({ box }: { box: EntityBox }) {
   );
 }
 
-export function EntityMap({ meta, rowCounts, tools }: { meta: PackMeta; rowCounts: Record<string, number>; tools: Record<string, ToolDef> }) {
+export function EntityMap({
+  meta,
+  rowCounts,
+  tools,
+  now,
+  currency,
+}: {
+  meta: PackMeta;
+  rowCounts: Record<string, number>;
+  tools: Record<string, ToolDef>;
+  now: string;
+  currency: string;
+}) {
   const layout = layoutEntityMap({ entities: meta.entities, rowCounts, principal: meta.principal });
   const systems = Object.keys(meta.systems);
   const counts = systemCounts(meta, tools);
@@ -78,6 +90,15 @@ export function EntityMap({ meta, rowCounts, tools }: { meta: PackMeta; rowCount
 
   return (
     <div className="flex flex-col gap-5">
+      <section className="flex flex-col gap-1">
+        <h2 className={heading}>Seed clock</h2>
+        <p className="text-[12px]">
+          <span className={mono}>{now}</span>
+          <span className="text-[#6E6B60]"> · </span>
+          <span className={mono}>{currency}</span>
+        </p>
+      </section>
+
       <section className="flex flex-col gap-2">
         <h2 className={heading}>Entity model</h2>
         <div className="overflow-x-auto">

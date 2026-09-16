@@ -32,11 +32,11 @@ export default function NewWorldPage() {
       <main className="p-4 flex flex-col gap-4 max-w-[1200px]">
         <div className="flex items-baseline gap-3">
           <h1 className="text-[17px] font-extrabold tracking-tight">New world</h1>
-          <Link href="/worlds" className="text-[12px] text-[#6b6b66] underline decoration-dotted hover:text-[#1d1d1b]">
+          <Link href="/worlds" className="text-[12px] text-[#6E6B60] underline decoration-dotted hover:text-[#1B1A17]">
             ← All worlds
           </Link>
         </div>
-        <p className="text-[12px] text-[#6b6b66] max-w-[80ch]">
+        <p className="text-[12px] text-[#6E6B60] max-w-[80ch]">
           A World pack is the simulated business a Run happens inside. Copy one that already works, or describe a domain and let Claude draft it from
           your schema, tool list or OpenAPI spec — then review it before it is created.
         </p>

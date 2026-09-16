@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { attackOptions } from "@/ui/worlds/EntityBrowser";
+import { attackOptions } from "@/ui/worlds/packView";
 import type { Scenario } from "@/engine/pack";
 
 function scenario(id: string, title: string, attackIds: string[]): Scenario {

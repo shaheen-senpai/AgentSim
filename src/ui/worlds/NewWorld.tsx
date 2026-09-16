@@ -393,7 +393,7 @@ function GenerateWithClaude({ ids, onCreated }: { ids: string; onCreated: (id: s
           <p className="border border-[#E3E0D5] bg-white rounded p-2">
             Draft ready after {draft.attempts} {draft.attempts === 1 ? "attempt" : "attempts"}.{" "}
             {draft.errors.length === 0 ? (
-              <span className="text-[#2f7d4f] font-semibold">It validates.</span>
+              <span className="text-[#1E7A43] font-semibold">It validates.</span>
             ) : (
               <span className="text-[#B23A22] font-semibold">
                 {draft.errors.length} {draft.errors.length === 1 ? "error" : "errors"} left to fix below.

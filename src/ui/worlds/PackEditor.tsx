@@ -216,7 +216,7 @@ export function PackEditor({
     if (lastAction === null) return <p className="text-[#6E6B60]">Not yet validated.</p>;
     if (errors.length === 0) {
       const done = draft ? "Created." : "Saved.";
-      return <p className="text-[#2f7d4f] font-semibold">{lastAction === "save" ? done : "Valid — no errors."}</p>;
+      return <p className="text-[#1E7A43] font-semibold">{lastAction === "save" ? done : "Valid — no errors."}</p>;
     }
     const fileCount = Object.keys(errorsByFile).length;
     return (

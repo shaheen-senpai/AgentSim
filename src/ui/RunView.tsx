@@ -14,7 +14,7 @@ import { DiffPanel } from "./DiffPanel";
 import { useReplay } from "./useReplay";
 import { ReplayScrubber } from "./ReplayScrubber";
 import { PromptDiffSheet } from "./PromptDiffSheet";
-import { panel } from "./styles";
+import { panel, serif } from "./styles";
 
 /**
  * `principalLabel`: the Run's pack's principal entity label, for the World diff's reads counter.
@@ -82,7 +82,13 @@ export function RunView({ run, packs, tools, principalLabel, injectedLabel, rece
               )}
               {displayRun.status !== "running" && <ReplayScrubber replay={replay} />}
             </>
-          ) : <div className="p-6 text-[#6E6B60]">Pick a Scenario and press Run.</div>}
+          ) : (
+            <div className="flex h-full items-center justify-center p-6">
+              <p className={`${serif} text-center text-[28px] sm:text-[40px] font-medium leading-tight text-[#1B1A17] max-w-[20ch]`}>
+                Pick a Scenario and press Run.
+              </p>
+            </div>
+          )}
         </main>
         <aside className="flex flex-col gap-4">
           <ScorePanel run={displayRun} replaying={replay.replaying} />

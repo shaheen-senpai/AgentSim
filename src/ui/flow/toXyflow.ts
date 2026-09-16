@@ -8,7 +8,7 @@ import type { FlowFilters, FlowSelection } from "./useFlowState";
 import type { RunRecord, ToolDef } from "../types";
 import { RED } from "../styles";
 
-const RULE = "#cfcfcb";
+const RULE = "#E3E0D5";
 
 /** `buildFlow` for a `RunRecord`: the toolbar's filters and the pack's tools, in its own vocabulary. */
 export function runGraph(run: RunRecord, visible: number, filters: FlowFilters, tools: Record<string, ToolDef>): { nodes: FlowNode[]; edges: FlowEdge[] } {

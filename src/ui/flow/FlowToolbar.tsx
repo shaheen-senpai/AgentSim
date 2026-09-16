@@ -5,8 +5,8 @@ import { systemColor } from "../systemColor";
 import type { ToolDef } from "../types";
 
 const BTN = "h-6 rounded border px-2 text-[11px] leading-none";
-const OFF = "border-[#cfcfcb] bg-white text-[#6b6b66] hover:text-[#1d1d1b]";
-const ON = "border-[#1d1d1b] bg-[#1d1d1b] text-white";
+const OFF = "border-[#E3E0D5] bg-white text-[#6E6B60] hover:text-[#1B1A17]";
+const ON = "border-[#1B1A17] bg-[#1B1A17] text-white";
 
 function Toggle({ on, onClick, children }: { on: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
@@ -22,16 +22,16 @@ export function FlowToolbar({ state, tools }: { state: FlowState; tools: Record<
   const flow = state.view === "flow";
 
   return (
-    <div className="border-b border-[#e6e6e2] px-3 py-2">
+    <div className="border-b border-[#E3E0D5] px-3 py-2">
       <div className="flex flex-wrap items-center gap-2">
-        <div className="flex overflow-hidden rounded border border-[#1d1d1b]" role="group" aria-label="View">
+        <div className="flex overflow-hidden rounded border border-[#1B1A17]" role="group" aria-label="View">
           {(["flow", "list"] as const).map((v) => (
             <button
               key={v}
               type="button"
               aria-pressed={state.view === v}
               onClick={() => state.setView(v)}
-              className={`h-6 px-2.5 text-[11px] leading-none capitalize ${state.view === v ? "bg-[#1d1d1b] text-white" : "bg-white text-[#6b6b66]"}`}
+              className={`h-6 px-2.5 text-[11px] leading-none capitalize ${state.view === v ? "bg-[#1B1A17] text-white" : "bg-white text-[#6E6B60]"}`}
             >
               {v}
             </button>
@@ -64,12 +64,12 @@ export function FlowToolbar({ state, tools }: { state: FlowState; tools: Record<
             );
           })}
           {state.filters.systems.size > 0 && (
-            <button type="button" onClick={state.clearSystems} className="text-[10px] text-[#6b6b66] underline underline-offset-2">all systems</button>
+            <button type="button" onClick={state.clearSystems} className="text-[10px] text-[#6E6B60] underline underline-offset-2">all systems</button>
           )}
-          <span className="ml-auto flex items-center gap-2 text-[9px] uppercase tracking-[.04em] text-[#6b6b66]">
-            <span className="rounded-sm bg-[#fbeeea] px-1 py-px font-semibold text-[#c8321e]">Violation</span>
-            <span className="rounded-sm bg-[#c8321e] px-1 py-px font-semibold text-white">Lure taken</span>
-            <span className="rounded-sm border border-[#c8321e] bg-white px-1 py-px font-semibold text-[#c8321e]">reads injected content</span>
+          <span className="ml-auto flex items-center gap-2 text-[9px] uppercase tracking-[.04em] text-[#6E6B60]">
+            <span className="rounded-sm bg-[#FBEAE7] px-1 py-px font-semibold text-[#B23A22]">Violation</span>
+            <span className="rounded-sm bg-[#B23A22] px-1 py-px font-semibold text-white">Lure taken</span>
+            <span className="rounded-sm border border-[#B23A22] bg-white px-1 py-px font-semibold text-[#B23A22]">reads injected content</span>
           </span>
         </div>
       )}

@@ -41,7 +41,7 @@ export function ConnectAgent({ run }: { run: RunRecord | null }) {
         <div className={heading}>Connect your agent</div>
         <Link
           href="/connect"
-          className="font-semibold underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1d1d1b] rounded"
+          className="font-semibold underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B1A17] rounded"
         >
           Connect →
         </Link>
@@ -60,7 +60,7 @@ export function ConnectAgent({ run }: { run: RunRecord | null }) {
         <div className={heading}>Connect your agent</div>
         <Link
           href="/connect"
-          className="underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1d1d1b] rounded"
+          className="underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B1A17] rounded"
         >
           Manage →
         </Link>
@@ -69,19 +69,19 @@ export function ConnectAgent({ run }: { run: RunRecord | null }) {
           announcing. The countdown below re-renders every second, and inside this region a screen
           reader would read the whole block out once a second. */}
       <div role="status" aria-live="polite" className="flex items-center gap-2">
-        <span className="inline-block w-2 h-2 rounded-full bg-[#2f7d4f]" />
+        <span className="inline-block w-2 h-2 rounded-full bg-[#1E7A43]" />
         <span className="font-semibold">
           Live · {run.events.length} {run.events.length === 1 ? "Event" : "Events"}
         </span>
       </div>
       {remainingMs !== null && (
-        <div aria-live="off" className="text-[#6b6b66]">
+        <div aria-live="off" className="text-[#6E6B60]">
           Finishes itself in {mmss(remainingMs)} if nothing else happens
         </div>
       )}
       {mcpUrl && (
         <>
-          <code className={`${mono} bg-[#fafaf8] border border-[#cfcfcb] rounded p-2 break-all`}>{mcpUrl}</code>
+          <code className={`${mono} bg-[#F7F5EF] border border-[#E3E0D5] rounded p-2 break-all`}>{mcpUrl}</code>
           <CopyButton text={mcpUrl} what="MCP URL" />
         </>
       )}

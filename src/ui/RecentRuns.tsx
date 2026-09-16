@@ -12,19 +12,19 @@ export function RecentRuns({ runs, currentId }: { runs: RunSummary[]; currentId:
             <Link href={`/runs/${r.id}`} title={r.id} className={`flex flex-col gap-0.5 ${r.id === currentId ? "font-semibold" : ""}`}>
               <span className="truncate">
                 {r.packId} · {r.scenarioId}
-                {r.golden && <span className="ml-1 text-[10px] uppercase tracking-[.08em] border border-[#cfcfcb] rounded px-1">golden</span>}
+                {r.golden && <span className="ml-1 text-[10px] uppercase tracking-[.08em] border border-[#E3E0D5] rounded px-1">golden</span>}
               </span>
-              <span className="flex justify-between gap-2 text-[#6b6b66]">
+              <span className="flex justify-between gap-2 text-[#6E6B60]">
                 <span className="truncate">{r.agentLabel} · {r.attackId ? "attack" : "clean"}</span>
-                <span className={`${mono} shrink-0 flex items-center gap-1 ${r.capped ? "text-[#c8321e] font-bold" : ""}`}>
+                <span className={`${mono} shrink-0 flex items-center gap-1 ${r.capped ? "text-[#B23A22] font-bold" : ""}`}>
                   {r.status === "running" ? "…" : r.headline ?? "—"}
-                  {r.capped && <span className="px-1 py-0.5 bg-[#c8321e] text-white text-[9px] font-bold uppercase rounded-sm">Capped</span>}
+                  {r.capped && <span className="px-1 py-0.5 bg-[#B23A22] text-white text-[9px] font-bold uppercase rounded-sm">Capped</span>}
                 </span>
               </span>
             </Link>
           </li>
         ))}
-        {runs.length === 0 && <li className="text-[#6b6b66]">No runs yet</li>}
+        {runs.length === 0 && <li className="text-[#6E6B60]">No runs yet</li>}
       </ul>
     </section>
   );

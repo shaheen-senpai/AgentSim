@@ -82,7 +82,7 @@ export function RunView({ run, packs, tools, principalLabel, injectedLabel, rece
               )}
               {displayRun.status !== "running" && <ReplayScrubber replay={replay} />}
             </>
-          ) : <div className="p-6 text-[#6b6b66]">Pick a Scenario and press Run.</div>}
+          ) : <div className="p-6 text-[#6E6B60]">Pick a Scenario and press Run.</div>}
         </main>
         <aside className="flex flex-col gap-4">
           <ScorePanel run={displayRun} replaying={replay.replaying} />

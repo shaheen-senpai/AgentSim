@@ -39,23 +39,23 @@ export function PromptDiffSheet({ open, onClose, run }: { open: boolean; onClose
   const lines = prompts ? lineDiff(prompts.naive, prompts.fixed) : [];
   return (
     <div className="fixed inset-0 z-20 flex justify-end bg-black/20" onClick={onClose}>
-      <div className="w-[720px] max-w-full h-full bg-white border-l border-[#cfcfcb] flex flex-col" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-[#cfcfcb]">
+      <div className="w-[720px] max-w-full h-full bg-white border-l border-[#E3E0D5] flex flex-col" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-[#E3E0D5]">
           <div className="font-bold">Reference Agent · system prompt</div>
-          <span className="text-xs text-[#6b6b66]">naïve → fixed</span>
+          <span className="text-xs text-[#6E6B60]">naïve → fixed</span>
           <button type="button" onClick={onClose} className="ml-auto text-xs underline">close</button>
         </div>
         <pre className={`${mono} flex-1 overflow-auto px-4 py-3 text-[12.5px] leading-relaxed whitespace-pre-wrap`}>
           {prompts ? lines.map((l, i) => (
-            <div key={i} className={l.kind === "del" ? "bg-[#fbeeea] text-[#8a2a1c] line-through" : l.kind === "add" ? "bg-[#eef6f0] text-[#1f5c38]" : ""}>
+            <div key={i} className={l.kind === "del" ? "bg-[#FBEAE7] text-[#B23A22] line-through" : l.kind === "add" ? "bg-[#E7F4EA] text-[#1E7A43]" : ""}>
               {l.kind === "del" ? "- " : l.kind === "add" ? "+ " : "  "}{l.text}
             </div>
           )) : "loading…"}
         </pre>
-        <div className="flex items-center gap-3 px-4 py-3 border-t border-[#cfcfcb]">
-          <span className="text-xs text-[#6b6b66]">Same model ({(run?.agent.kind === "reference" ? run.agent.model : null) ?? "claude-haiku-4-5"}), same tools, same Scenario{run?.attack ? ", same Attack" : ""}.</span>
-          {error && <span className="text-xs text-[#c8321e]">{error}</span>}
-          <button type="button" onClick={rerunFixed} disabled={busy || !run || run.agent.kind === "reference" && run.agent.version === "fixed"} className="ml-auto h-8 px-4 rounded bg-[#1d1d1b] text-white font-semibold text-sm disabled:opacity-50">
+        <div className="flex items-center gap-3 px-4 py-3 border-t border-[#E3E0D5]">
+          <span className="text-xs text-[#6E6B60]">Same model ({(run?.agent.kind === "reference" ? run.agent.model : null) ?? "claude-haiku-4-5"}), same tools, same Scenario{run?.attack ? ", same Attack" : ""}.</span>
+          {error && <span className="text-xs text-[#B23A22]">{error}</span>}
+          <button type="button" onClick={rerunFixed} disabled={busy || !run || run.agent.kind === "reference" && run.agent.version === "fixed"} className="ml-auto h-8 px-4 rounded bg-[#1B1A17] text-white font-semibold text-sm disabled:opacity-50">
             {busy ? "Starting…" : "▷ Rerun with fixed"}
           </button>
         </div>

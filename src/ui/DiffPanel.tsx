@@ -16,22 +16,22 @@ export function DiffPanel({ run, principalLabel }: { run: RunRecord | null; prin
     <section className={`${panel} flex-1 overflow-auto`}>
       <div className={`${heading} px-3 py-2.5`}>World diff · start → end</div>
       {!run || run.status === "running" ? (
-        <div className="px-3 py-3 text-xs text-[#6b6b66]">{run ? "World is changing…" : "—"}</div>
+        <div className="px-3 py-3 text-xs text-[#6E6B60]">{run ? "World is changing…" : "—"}</div>
       ) : (
         <div className="text-[13px]">
           {diff.map((d) => {
             const bad = flagged.has(d.entityId);
-            const tone = bad ? "bg-[#fbeeea]" : d.op === "added" ? "bg-[#eef6f0]" : "bg-[#fbf6e8]";
+            const tone = bad ? "bg-[#FBEAE7]" : d.op === "added" ? "bg-[#E7F4EA]" : "bg-[#FDF3DF]";
             return (
-              <div key={`${d.collection}-${d.entityId}`} className={`flex gap-2.5 px-3 py-1.5 border-t border-[#e6e6e2] ${tone}`}>
+              <div key={`${d.collection}-${d.entityId}`} className={`flex gap-2.5 px-3 py-1.5 border-t border-[#E3E0D5] ${tone}`}>
                 <span className="w-3.5 font-bold">{d.op === "added" ? "+" : "~"}</span>
                 <span className={mono}>{d.entityId}</span>
                 <span>{d.summary}</span>
-                {bad && <span className="ml-auto text-[#6b6b66]">violation</span>}
+                {bad && <span className="ml-auto text-[#6E6B60]">violation</span>}
               </div>
             );
           })}
-          <div className="flex gap-2.5 px-3 py-1.5 border-t border-[#e6e6e2] text-[#6b6b66]">
+          <div className="flex gap-2.5 px-3 py-1.5 border-t border-[#E3E0D5] text-[#6E6B60]">
             <span className="w-3.5 font-bold">=</span>
             <span>{run.unchangedCount ?? 0} entities unchanged · {readsOutsideLabel(readsOutside, principalLabel)}</span>
           </div>

@@ -39,9 +39,9 @@ const BADGE = "min-w-0 truncate rounded-sm px-1 py-px text-[9px] font-semibold u
 /** The three flow badges of spec §6.1 — text, never colour alone. */
 export function Badge({ kind, children }: { kind: "violation" | "lure" | "injected"; children: React.ReactNode }) {
   const style =
-    kind === "lure" ? "bg-[#c8321e] text-white"
-    : kind === "violation" ? "bg-[#fbeeea] text-[#c8321e]"
-    : "border border-[#c8321e] text-[#c8321e] bg-white";
+    kind === "lure" ? "bg-[#B23A22] text-white"
+    : kind === "violation" ? "bg-[#FBEAE7] text-[#B23A22]"
+    : "border border-[#B23A22] text-[#B23A22] bg-white";
   return <span className={`${BADGE} ${style}`}>{children}</span>;
 }
 
@@ -50,8 +50,8 @@ export function NodeShell({ selected, dimmed, bad, children }: { selected: boole
   return (
     <div
       className={`flex h-full w-full flex-col overflow-hidden rounded border px-2 py-1.5 text-left transition-opacity ${
-        bad ? "border-[#c8321e] bg-[#fbeeea]" : "border-[#cfcfcb] bg-white"
-      } ${selected ? "ring-2 ring-[#1d1d1b]" : ""} ${dimmed ? "opacity-30" : ""}`}
+        bad ? "border-[#B23A22] bg-[#FBEAE7]" : "border-[#E3E0D5] bg-white"
+      } ${selected ? "ring-2 ring-[#1B1A17]" : ""} ${dimmed ? "opacity-30" : ""}`}
     >
       {children}
     </div>
@@ -76,19 +76,19 @@ export function EventNode({ data, selected }: NodeProps<AppNode>) {
           <div className="flex items-center gap-1.5 text-[10px] leading-none">
             <span
               className={`h-1.5 w-1.5 shrink-0 rounded-full ${pulse ? "animate-pulse motion-reduce:animate-none" : ""}`}
-              style={{ background: ev.isError || bad ? RED : "#2f7d4f" }}
+              style={{ background: ev.isError || bad ? RED : "#1E7A43" }}
             />
-            <span className={`${mono} shrink-0 text-[#6b6b66]`}>#{ev.seq}</span>
+            <span className={`${mono} shrink-0 text-[#6E6B60]`}>#{ev.seq}</span>
             {data.system && color && (
               <span className="truncate rounded-sm px-1 py-px text-[9px] font-semibold uppercase tracking-[.04em]" style={{ background: color.bg, color: color.fg }}>
                 {data.system}
               </span>
             )}
-            <span className={`${mono} ml-auto shrink-0 text-[#6b6b66]`}>{ev.endedAt - ev.startedAt} ms</span>
+            <span className={`${mono} ml-auto shrink-0 text-[#6E6B60]`}>{ev.endedAt - ev.startedAt} ms</span>
           </div>
           <div className={`${mono} mt-1 truncate text-[12px] font-semibold leading-4`}>{ev.tool}</div>
-          {args && <div className={`${mono} truncate text-[10px] leading-3 text-[#6b6b66]`}>{args}</div>}
-          {result && <div className="truncate text-[10px] leading-3 text-[#6b6b66]">{result}</div>}
+          {args && <div className={`${mono} truncate text-[10px] leading-3 text-[#6E6B60]`}>{args}</div>}
+          {result && <div className="truncate text-[10px] leading-3 text-[#6E6B60]">{result}</div>}
           <div className="mt-auto flex items-center gap-1 overflow-hidden pt-1">
             {data.violations.length > 0 && (
               <Badge kind="violation">{data.violations.length > 1 ? `${data.violations.length} Violations` : "Violation"}</Badge>

@@ -32,11 +32,11 @@ export const DRAWER_W = 380;
 type Tab = "details" | "violations" | "injected";
 const TAB_LABEL: Record<Tab, string> = { details: "Details", violations: "Violations", injected: "Injected" };
 
-const MUTED = "text-[#6b6b66]";
+const MUTED = "text-[#6E6B60]";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="border-t border-[#e6e6e2] px-3 py-2.5 first:border-t-0">
+    <section className="border-t border-[#E3E0D5] px-3 py-2.5 first:border-t-0">
       <h3 className={heading}>{title}</h3>
       <div className="mt-1.5 text-[12px]">{children}</div>
     </section>
@@ -45,7 +45,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 /** A pre block that wraps rather than widening the drawer — long results scroll, never push. */
 function Json({ text }: { text: string }) {
-  return <pre className={`${mono} max-h-64 overflow-y-auto whitespace-pre-wrap break-words rounded border border-[#e6e6e2] bg-[#f4f4f2] p-2 text-[11px] leading-4`}>{text}</pre>;
+  return <pre className={`${mono} max-h-64 overflow-y-auto whitespace-pre-wrap break-words rounded border border-[#E3E0D5] bg-[#F7F5EF] p-2 text-[11px] leading-4`}>{text}</pre>;
 }
 
 function Field({ name, children }: { name: string; children: React.ReactNode }) {
@@ -70,7 +70,7 @@ function Details({ ev }: { ev: Event }) {
       </Section>
       {ev.error && (
         <Section title="Error">
-          <p className="text-[#c8321e]">{ev.error}</p>
+          <p className="text-[#B23A22]">{ev.error}</p>
         </Section>
       )}
       {ev.result && (
@@ -140,11 +140,11 @@ function Injected({ run, ev }: { run: RunRecord; ev: Event }) {
               : "This Run no longer carries the Attack that wrote here, so the injected text cannot be shown."}
           </p>
         )}
-        <pre className="max-h-80 overflow-y-auto whitespace-pre-wrap break-words rounded border border-[#e6e6e2] bg-white p-2 text-[11px] leading-4">
+        <pre className="max-h-80 overflow-y-auto whitespace-pre-wrap break-words rounded border border-[#E3E0D5] bg-white p-2 text-[11px] leading-4">
           {context ? (
             <>
               {context.before}
-              <mark className="bg-[#fbeeea] font-semibold text-[#c8321e]">{context.match}</mark>
+              <mark className="bg-[#FBEAE7] font-semibold text-[#B23A22]">{context.match}</mark>
               {context.after}
             </>
           ) : (
@@ -163,21 +163,21 @@ function EndOfRun({ run, outcome, scoreReady }: { run: RunRecord; outcome: Viola
     <>
       <Section title="Trust Score">
         {run.status === "failed" ? (
-          <p className="text-[#c8321e]">Run failed: {run.error}</p>
+          <p className="text-[#B23A22]">Run failed: {run.error}</p>
         ) : !scoreReady || !score ? (
           <p className={MUTED}>evaluating…</p>
         ) : (
           <>
             <div className="flex items-baseline gap-2">
-              <span className={`${mono} text-[40px] font-bold leading-none tracking-tight ${score.capped ? "text-[#c8321e]" : ""}`}>{score.headline}</span>
-              {score.capped && <span className="rounded-sm bg-[#c8321e] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[.08em] text-white">Capped</span>}
+              <span className={`${mono} text-[40px] font-bold leading-none tracking-tight ${score.capped ? "text-[#B23A22]" : ""}`}>{score.headline}</span>
+              {score.capped && <span className="rounded-sm bg-[#B23A22] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[.08em] text-white">Capped</span>}
             </div>
             {score.capReason && <p className={`mt-1.5 ${MUTED}`}>{score.capReason}</p>}
             <div className="mt-2 flex flex-col gap-1">
               {score.dimensions.map((d) => (
                 <div key={d.name} className="flex justify-between gap-2">
                   <span>{dimensionLabel(d.name)}</span>
-                  <span className={`${mono} ${d.score < 100 ? "font-bold text-[#c8321e]" : ""}`}>
+                  <span className={`${mono} ${d.score < 100 ? "font-bold text-[#B23A22]" : ""}`}>
                     {d.score} <span className={`${MUTED} font-normal`}>{d.total === 0 ? "(no checks)" : `(${d.passed}/${d.total})`}</span>
                   </span>
                 </div>
@@ -312,9 +312,9 @@ export function EventDrawer({ run, events, selected, onSelect, onJump, tools, sy
       role="complementary"
       aria-label={`Details for ${title}`}
       style={{ width: DRAWER_W }}
-      className="absolute right-0 top-0 bottom-0 z-10 flex max-w-full flex-col overflow-hidden border-l border-[#cfcfcb] bg-white shadow-[-4px_0_16px_rgba(29,29,27,.06)] outline-none"
+      className="absolute right-0 top-0 bottom-0 z-10 flex max-w-full flex-col overflow-hidden border-l border-[#E3E0D5] bg-white shadow-[-4px_0_16px_rgba(29,29,27,.06)] outline-none"
     >
-      <header className="flex items-start gap-2 border-b border-[#cfcfcb] px-3 py-2.5">
+      <header className="flex items-start gap-2 border-b border-[#E3E0D5] px-3 py-2.5">
         <div className="min-w-0 flex-1">
           <div className={`${mono} truncate text-[13px] font-semibold`}>{title}</div>
           <div className={`mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] ${MUTED}`}>
@@ -327,13 +327,13 @@ export function EventDrawer({ run, events, selected, onSelect, onJump, tools, sy
             {!ev && <span>{rewound ? "not yet shown" : selected === "start" ? run.scenarioTitle : `${run.events.length} Events`}</span>}
           </div>
         </div>
-        <button type="button" onClick={close} aria-label="Close details" className="-mr-1 h-6 w-6 shrink-0 rounded border border-[#cfcfcb] text-[13px] leading-none text-[#6b6b66] hover:text-[#1d1d1b]">
+        <button type="button" onClick={close} aria-label="Close details" className="-mr-1 h-6 w-6 shrink-0 rounded border border-[#E3E0D5] text-[13px] leading-none text-[#6E6B60] hover:text-[#1B1A17]">
           ×
         </button>
       </header>
 
       {ev && (
-        <div role="tablist" aria-label="Event details" onKeyDown={onTabKeyDown} className="flex gap-1 border-b border-[#cfcfcb] px-3 py-1.5">
+        <div role="tablist" aria-label="Event details" onKeyDown={onTabKeyDown} className="flex gap-1 border-b border-[#E3E0D5] px-3 py-1.5">
           {tabs.map((t) => (
             <button
               key={t}
@@ -347,10 +347,10 @@ export function EventDrawer({ run, events, selected, onSelect, onJump, tools, sy
               aria-controls="drawer-panel"
               tabIndex={t === tab ? 0 : -1}
               onClick={() => setTab(t)}
-              className={`h-6 rounded border px-2 text-[11px] leading-none ${t === tab ? "border-[#1d1d1b] bg-[#1d1d1b] text-white" : "border-[#cfcfcb] bg-white text-[#6b6b66] hover:text-[#1d1d1b]"}`}
+              className={`h-6 rounded border px-2 text-[11px] leading-none ${t === tab ? "border-[#1B1A17] bg-[#1B1A17] text-white" : "border-[#E3E0D5] bg-white text-[#6E6B60] hover:text-[#1B1A17]"}`}
             >
               {TAB_LABEL[t]}
-              {t === "violations" && mine.length > 0 && <span className="ml-1 font-semibold text-[#c8321e]">{mine.length}</span>}
+              {t === "violations" && mine.length > 0 && <span className="ml-1 font-semibold text-[#B23A22]">{mine.length}</span>}
             </button>
           ))}
         </div>
@@ -376,7 +376,7 @@ export function EventDrawer({ run, events, selected, onSelect, onJump, tools, sy
         {ev && tab === "injected" && <Injected run={run} ev={ev} />}
       </div>
 
-      <footer className={`border-t border-[#e6e6e2] px-3 py-1.5 text-[10px] ${MUTED}`}>
+      <footer className={`border-t border-[#E3E0D5] px-3 py-1.5 text-[10px] ${MUTED}`}>
         <kbd className={mono}>←</kbd> <kbd className={mono}>→</kbd> move · <kbd className={mono}>Esc</kbd> close
       </footer>
     </aside>

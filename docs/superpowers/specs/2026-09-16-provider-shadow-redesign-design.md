@@ -24,6 +24,27 @@ This is unrelated to `docs/superpowers/specs/2026-09-16-ui-redesign-design.md`, 
 visual/typography-only pass over the *current* app with an explicit "no functional changes"
 constraint — that spec's scope and this one's don't overlap.
 
+## Coordination with the in-flight Console UI work
+
+A sibling session is live on branch `sn/build/console-world` (worktree `.worktrees/sn-console-world`,
+spec `docs/superpowers/specs/2026-09-16-console-world-design.md`), reorganizing `/worlds` onto a
+Console sidebar shell. Its file scope — `src/ui/worlds/*`, `src/app/worlds/*`, `src/ui/connect/*` —
+has **zero overlap** with this spec's (`src/engine/`, `src/providers/` (new), `src/app/mcp/`,
+`src/app/api/`, `src/runner/`), except the shared `worldpacks/*.yaml` data and the `PackMeta` type
+both read.
+
+That spec already investigated whether a World's Overview tab should show a "sources" list (shadowed
+MCPs, mocked DBs) matching the mockup, and found `PackMeta`/`WorldPack` carry no source-provenance
+field today — so it deliberately kept `EntityMap`'s existing Systems/SVG view rather than invent one.
+**This spec is what removes that constraint** (§1 adds `kind`/`mode`/`provider` to `pack.systems`).
+Two consequences drive this spec's design:
+
+- The schema change in §1 is **additive to the existing `systems` key, not a rename to `sources`** —
+  `src/ui/worlds/EntityMap.tsx` and `PackEditor.tsx` read `pack.systems.<key>.label` today and must
+  keep working unmodified, in-flight, without a merge conflict.
+- Wiring a real sources list into the Overview tab is a natural follow-up for that session once this
+  lands — not part of this spec, and not this session's to schedule.
+
 ## Decisions made during brainstorming
 
 1. **Shadow fidelity: byte-compatible MCP tool shape.** A shadowed source's tools carry the real
@@ -42,22 +63,25 @@ constraint — that spec's scope and this one's don't overlap.
 
 ## Design
 
-### 1. Worldpack format — `sources` replaces `systems`
+### 1. Worldpack format — `systems` gains provenance fields
 
-`pack.yaml`'s `systems:` map (today: `{label}`, pure UI grouping/color) is extended in place, not
-duplicated:
+`pack.yaml`'s `systems:` map (today: `{label}`, pure UI grouping/color) gains three new, optional
+fields per entry. The key name and `label` are unchanged — see *Coordination* above for why this is
+additive rather than a rename:
 
 ```yaml
-sources:
+systems:
   stripe:   { label: Stripe,   kind: mcp,  mode: shadowed, provider: stripe }
   support:  { label: Zendesk,  kind: mcp,  mode: shadowed, provider: zendesk }
   orders:   { label: "orders-svc · Postgres", kind: db, mode: mocked }
   own:      { label: "Northwind Support Bot's own tools", kind: tools, mode: pasted }
 ```
 
-Every tool in `tools.yaml` still declares `system: <key>`, now resolving into `sources` instead of
-`systems`. `kind` and `mode` are new, optional-with-default fields (`mode: pasted` when absent, for
-backward compatibility with hand-authored packs); `provider` is required only when `mode: shadowed`.
+Every tool in `tools.yaml` still declares `system: <key>`, resolving into `systems` exactly as
+today. `kind` and `mode` are optional (`mode: pasted` when absent, matching every hand-authored
+pack's current behavior with zero migration required); `provider` is required only when
+`mode: shadowed`. The term "source" from the design artifact is a UI-layer label over this same
+`systems` map — the artifact's `sources` and this spec's `systems` are the same data.
 
 ### 2. Provider catalog — `src/providers/<id>/tools.yaml`
 
@@ -144,8 +168,8 @@ name, docs), that's a separate, larger rename this spec deliberately doesn't tak
 
 ### 8. Migration of existing packs
 
-`northwind`, `halvard-helpdesk`, `meridian-bank-support`: convert each `systems:` block to
-`sources:`, extract the tool definitions that match a cataloged provider (payments→Stripe,
+`northwind`, `halvard-helpdesk`, `meridian-bank-support`: add `kind`/`mode`/`provider` to each
+existing `systems:` entry, extract the tool definitions that match a cataloged provider (payments→Stripe,
 support→Zendesk, email→Google Workspace, directory→Okta, chat→Slack) into the new catalog files,
 and leave genuinely pack-specific tools (orders, anything with no real-vendor equivalent) as
 `pasted`/`mocked` in the pack's own `tools.yaml`. One migration per pack; mechanical once the

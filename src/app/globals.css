@@ -3,26 +3,26 @@
 @import "@xyflow/react/dist/style.css";
 
 body {
-  background: #f4f4f2;
-  color: #1d1d1b;
+  background: #f7f5ef;
+  color: #1b1a17;
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
 /* Flow view: keep xyflow's chrome in the product's palette, and make keyboard focus visible. */
 .react-flow__node:focus-visible {
-  outline: 2px solid #1d1d1b;
+  outline: 2px solid #1b1a17;
   outline-offset: 2px;
   border-radius: 6px;
 }
 
 .react-flow__controls-button {
   background: #fff;
-  border-bottom: 1px solid #e6e6e2;
-  fill: #1d1d1b;
+  border-bottom: 1px solid #e3e0d5;
+  fill: #1b1a17;
 }
 
 .react-flow__controls-button:hover {
-  background: #f4f4f2;
+  background: #f7f5ef;
 }
 
 @media (prefers-reduced-motion: reduce) {

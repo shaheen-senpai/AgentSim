@@ -1,7 +1,8 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import type { PackOption, RunRecord, RunSummary, ToolDef } from "./types";
-import { Header } from "./Header";
+import { ConsoleShell } from "./ConsoleShell";
+import { RunHeader } from "./RunHeader";
 import { Launcher } from "./Launcher";
 import { ConnectAgent } from "./ConnectAgent";
 import { RecentRuns } from "./RecentRuns";
@@ -53,49 +54,51 @@ export function RunView({ run, packs, tools, principalLabel, injectedLabel, rece
   const displayRun = run && narrative && narrative.id === run.id ? { ...run, narrative: narrative.text } : run;
 
   return (
-    <div className="min-h-screen text-sm">
-      <Header run={displayRun} />
-      <div className="grid grid-cols-[240px_1fr_400px] gap-4 p-4 h-[calc(100vh-48px)]">
-        <aside className="flex flex-col gap-4">
-          <Launcher packs={packs} run={displayRun} onPromptDiff={() => setDiffOpen(true)} />
-          <ConnectAgent run={displayRun} />
-          <RecentRuns runs={recent} currentId={displayRun?.id ?? null} />
-        </aside>
-        <main className={`${panel} flex flex-col overflow-hidden`}>
-          {displayRun ? (
-            <>
-              <FlowToolbar state={flow} tools={tools} />
-              {flow.view === "flow" ? (
-                <FlowView
-                  run={displayRun}
-                  visible={replay.visible}
-                  selectedSeq={flow.selected}
-                  onSelect={flow.select}
-                  filters={flow.filters}
-                  follow={flow.follow}
-                  fitSignal={flow.fitSignal}
-                  tools={tools}
-                  injectedLabel={injectedLabel}
-                />
-              ) : (
-                <Timeline run={displayRun} visible={replay.visible} tools={tools} injectedLabel={injectedLabel} />
-              )}
-              {displayRun.status !== "running" && <ReplayScrubber replay={replay} />}
-            </>
-          ) : (
-            <div className="flex h-full items-center justify-center p-6">
-              <p className={`${serif} text-center text-[28px] sm:text-[40px] font-medium leading-tight text-[#1B1A17] max-w-[20ch]`}>
-                Pick a Scenario and press Run.
-              </p>
-            </div>
-          )}
-        </main>
-        <aside className="flex flex-col gap-4">
-          <ScorePanel run={displayRun} replaying={replay.replaying} />
-          <DiffPanel run={displayRun} principalLabel={principalLabel} />
-        </aside>
+    <ConsoleShell>
+      <div className="flex flex-col gap-4 p-4 h-screen">
+        {displayRun && <RunHeader run={displayRun} />}
+        <div className="grid grid-cols-[240px_1fr_400px] gap-4 flex-1 min-h-0">
+          <aside className="flex flex-col gap-4">
+            <Launcher packs={packs} run={displayRun} onPromptDiff={() => setDiffOpen(true)} />
+            <ConnectAgent run={displayRun} />
+            <RecentRuns runs={recent} currentId={displayRun?.id ?? null} />
+          </aside>
+          <main className={`${panel} flex flex-col overflow-hidden`}>
+            {displayRun ? (
+              <>
+                <FlowToolbar state={flow} tools={tools} />
+                {flow.view === "flow" ? (
+                  <FlowView
+                    run={displayRun}
+                    visible={replay.visible}
+                    selectedSeq={flow.selected}
+                    onSelect={flow.select}
+                    filters={flow.filters}
+                    follow={flow.follow}
+                    fitSignal={flow.fitSignal}
+                    tools={tools}
+                    injectedLabel={injectedLabel}
+                  />
+                ) : (
+                  <Timeline run={displayRun} visible={replay.visible} tools={tools} injectedLabel={injectedLabel} />
+                )}
+                {displayRun.status !== "running" && <ReplayScrubber replay={replay} />}
+              </>
+            ) : (
+              <div className="flex h-full items-center justify-center p-6">
+                <p className={`${serif} text-center text-[28px] sm:text-[40px] font-medium leading-tight text-[#1B1A17] max-w-[20ch]`}>
+                  Pick a Scenario and press Run.
+                </p>
+              </div>
+            )}
+          </main>
+          <aside className="flex flex-col gap-4">
+            <ScorePanel run={displayRun} replaying={replay.replaying} />
+            <DiffPanel run={displayRun} principalLabel={principalLabel} />
+          </aside>
+        </div>
       </div>
       <PromptDiffSheet open={diffOpen} onClose={() => setDiffOpen(false)} run={displayRun} />
-    </div>
+    </ConsoleShell>
   );
 }

@@ -3,7 +3,7 @@
 // components under `src/ui/worlds/` are thin renderers over these, and `tests/ui/packView.test.ts`
 // covers the logic without a DOM environment.
 import { label as dimensionLabel, DIMENSIONS, type Dimension } from "@/engine/dimensions";
-import type { Check, FieldSpec, Mutation, Lure, PackMeta, ToolDef } from "@/engine/pack";
+import type { Attack, Check, FieldSpec, Mutation, Lure, PackMeta, Scenario, ToolDef } from "@/engine/pack";
 import type { PackSummary } from "@/lib/summaries";
 
 export const WORLD_TABS = ["overview", "entities", "tools", "scenarios", "agents"] as const;
@@ -88,6 +88,25 @@ export function checksByDimension(checks: Check[]): DimensionGroup[] {
     label: dimensionLabel(dimension),
     checks: checks.filter((c) => c.dimension === dimension),
   })).filter((g) => g.checks.length > 0);
+}
+
+export type AttackOption = { key: string; label: string; attack: Attack };
+
+/** Every distinct Attack across every Scenario in the pack, deduped by Scenario+Attack id. */
+export function attackOptions(scenarios: Scenario[]): AttackOption[] {
+  const contributing = new Set(scenarios.filter((s) => s.attacks.length > 0).map((s) => s.id));
+  const multi = contributing.size > 1;
+  const seen = new Set<string>();
+  const out: AttackOption[] = [];
+  for (const s of scenarios) {
+    for (const a of s.attacks) {
+      const key = `${s.id}::${a.id}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push({ key, label: multi ? `${a.id} (${s.title})` : a.id, attack: a });
+    }
+  }
+  return out;
 }
 
 function scalar(v: unknown): string {

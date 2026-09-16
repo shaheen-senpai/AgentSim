@@ -11,29 +11,19 @@
 // and has no runtime footprint at all. Every file under `src/ui/` is covered by that guard, on the
 // stated invariant that any of them may end up reachable from a client bundle.
 import { useState } from "react";
-import type { Attack, PackMeta, Scenario } from "@/engine/pack";
+import type { PackMeta } from "@/engine/pack";
 import type { Row } from "@/engine/types";
 import { dangerBg, dangerFg, focusRing, heading, mono } from "@/ui/styles";
 import { cellText, previewRows } from "./packView";
 
-export type AttackOption = { key: string; label: string; attack: Attack };
-
-/** Every distinct Attack across every Scenario in the pack, deduped by Scenario+Attack id. */
-export function attackOptions(scenarios: Scenario[]): AttackOption[] {
-  const contributing = new Set(scenarios.filter((s) => s.attacks.length > 0).map((s) => s.id));
-  const multi = contributing.size > 1;
-  const seen = new Set<string>();
-  const out: AttackOption[] = [];
-  for (const s of scenarios) {
-    for (const a of s.attacks) {
-      const key = `${s.id}::${a.id}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      out.push({ key, label: multi ? `${a.id} (${s.title})` : a.id, attack: a });
-    }
-  }
-  return out;
-}
+// `attackOptions` is a plain pure function with no React/DOM footprint, but this module has
+// `"use client"` at the top — every export of a client module becomes an opaque client reference
+// once imported into server code, callable only as JSX, never invoked directly. Its implementation
+// lives in `./packView` (a plain module, safe to import into both server and client code) so that
+// `src/app/worlds/[id]/page.tsx`'s Server Component can call it directly; this re-export keeps
+// `attackOptions` reachable from `@/ui/worlds/EntityBrowser` for existing importers that only render
+// JSX or need it in a non-server context (e.g. tests).
+export { attackOptions } from "./packView";
 
 /** One seed-data view: "as seeded", or as it looks after one Attack's mutation is applied. */
 export type SeedMode = { key: string; label: string; rowsByEntity: Record<string, Row[]> };

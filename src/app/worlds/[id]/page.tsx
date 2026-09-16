@@ -10,13 +10,13 @@ import { seedWorld } from "@/engine/world";
 import { ConsoleShell } from "@/ui/ConsoleShell";
 import { heading, mono } from "@/ui/styles";
 import { AgentPrompts } from "@/ui/worlds/AgentPrompts";
-import { attackOptions, EntityBrowser, type SeedMode } from "@/ui/worlds/EntityBrowser";
+import { EntityBrowser, type SeedMode } from "@/ui/worlds/EntityBrowser";
 import { EntityMap } from "@/ui/worlds/EntityMap";
 import { PackEditor } from "@/ui/worlds/PackEditor";
 import { PackTabs } from "@/ui/worlds/PackTabs";
 import { ScenarioCards } from "@/ui/worlds/ScenarioCards";
 import { ToolCards } from "@/ui/worlds/ToolCards";
-import { countsLabel, parseTab, type WorldTab } from "@/ui/worlds/packView";
+import { attackOptions, countsLabel, parseTab, type WorldTab } from "@/ui/worlds/packView";
 import { toPackSummary } from "@/lib/summaries";
 
 export const dynamic = "force-dynamic";

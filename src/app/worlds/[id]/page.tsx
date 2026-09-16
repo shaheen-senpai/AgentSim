@@ -7,7 +7,7 @@ import { notFound } from "next/navigation";
 import { applyAttack } from "@/engine/attack";
 import { listPackIds, loadPack, PACK_ID_RE, type WorldPack } from "@/engine/pack";
 import { seedWorld } from "@/engine/world";
-import { Header } from "@/ui/Header";
+import { ConsoleShell } from "@/ui/ConsoleShell";
 import { heading, mono } from "@/ui/styles";
 import { AgentPrompts } from "@/ui/worlds/AgentPrompts";
 import { attackOptions, EntityBrowser, type SeedMode } from "@/ui/worlds/EntityBrowser";
@@ -59,8 +59,7 @@ function Body({ pack, tab }: { pack: WorldPack; tab: WorldTab }) {
 /** A pack that does not parse renders its validation errors instead of taking the route down. */
 function LoadError({ id, message, tab }: { id: string; message: string; tab: WorldTab }) {
   return (
-    <div className="min-h-screen text-sm">
-      <Header run={null} />
+    <ConsoleShell>
       <main className="p-4 flex flex-col gap-3 max-w-[1200px]">
         <h1 className="text-[17px] font-extrabold tracking-tight">{id}</h1>
         <PackTabs packId={id} current={tab} />
@@ -69,7 +68,7 @@ function LoadError({ id, message, tab }: { id: string; message: string; tab: Wor
           <pre className={`${mono} text-[12px] whitespace-pre-wrap`}>{message}</pre>
         </section>
       </main>
-    </div>
+    </ConsoleShell>
   );
 }
 
@@ -88,8 +87,7 @@ export default async function WorldPage({ params, searchParams }: { params: Para
   }
 
   return (
-    <div className="min-h-screen text-sm">
-      <Header run={null} />
+    <ConsoleShell>
       <main className="p-4 flex flex-col gap-3 max-w-[1200px]">
         <div className="flex flex-wrap items-baseline gap-2">
           <h1 className="text-[17px] font-extrabold tracking-tight">{pack.meta.name}</h1>
@@ -104,6 +102,6 @@ export default async function WorldPage({ params, searchParams }: { params: Para
           <Body pack={pack} tab={tab} />
         </PackEditor>
       </main>
-    </div>
+    </ConsoleShell>
   );
 }

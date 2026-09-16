@@ -3,7 +3,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { loadPacks, toPackSummary } from "@/lib/summaries";
-import { Header } from "@/ui/Header";
+import { ConsoleShell } from "@/ui/ConsoleShell";
 import { heading, mono } from "@/ui/styles";
 import { PackCard } from "@/ui/worlds/PackCard";
 
@@ -17,8 +17,7 @@ export default function WorldsPage() {
   const { packs: loaded, broken } = loadPacks();
   const packs = loaded.map(toPackSummary);
   return (
-    <div className="min-h-screen text-sm">
-      <Header run={null} />
+    <ConsoleShell>
       <main className="p-4 flex flex-col gap-4 max-w-[1200px]">
         <div className="flex items-baseline gap-3">
           <h1 className="text-[17px] font-extrabold tracking-tight">Worlds</h1>
@@ -59,6 +58,6 @@ export default function WorldsPage() {
           </section>
         )}
       </main>
-    </div>
+    </ConsoleShell>
   );
 }

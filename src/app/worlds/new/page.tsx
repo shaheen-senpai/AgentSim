@@ -6,7 +6,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { listPackIds, loadPack } from "@/engine/pack";
 import { examplePackFiles, loadFormatDoc } from "@/generate/formatDoc";
-import { Header } from "@/ui/Header";
+import { ConsoleShell } from "@/ui/ConsoleShell";
 import { NewWorld, type Template } from "@/ui/worlds/NewWorld";
 
 export const dynamic = "force-dynamic";
@@ -28,8 +28,7 @@ function templates(): Template[] {
 
 export default function NewWorldPage() {
   return (
-    <div className="min-h-screen text-sm">
-      <Header run={null} />
+    <ConsoleShell>
       <main className="p-4 flex flex-col gap-4 max-w-[1200px]">
         <div className="flex items-baseline gap-3">
           <h1 className="text-[17px] font-extrabold tracking-tight">New world</h1>
@@ -43,6 +42,6 @@ export default function NewWorldPage() {
         </p>
         <NewWorld templates={templates()} skeleton={examplePackFiles(loadFormatDoc())} />
       </main>
-    </div>
+    </ConsoleShell>
   );
 }

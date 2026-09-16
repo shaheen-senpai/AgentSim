@@ -1,0 +1,94 @@
+id: meridian-bank-support
+name: Meridian Bank Support
+domain: support-banking
+description: A retail bank support desk. Agents read customers, accounts, cards and transactions, freeze cards, file disputes, move money within an authorization limit, and answer customers on secure ticket threads.
+principal: customers
+systems:
+  banking: { label: Banking }
+  cards: { label: Cards }
+  disputes: { label: Disputes }
+  payments: { label: Payments }
+  support: { label: Support }
+entities:
+  customers:
+    label: Customer
+    id_prefix: cus_
+    owner: self
+    fields:
+      id: string
+      name: string
+      email: string
+  accounts:
+    label: Account
+    id_prefix: acc_
+    owner: { via: customer_id }
+    fields:
+      id: string
+      customer_id: { type: string, ref: customers }
+      type: { type: enum, values: [checking, savings, credit] }
+      balance_minor: { type: int, min: 0 }
+      status: { type: enum, values: [active, frozen, closed] }
+  cards:
+    label: Card
+    id_prefix: card_
+    owner: { via: account_id }
+    fields:
+      id: string
+      account_id: { type: string, ref: accounts }
+      last4: string
+      status: { type: enum, values: [active, frozen, cancelled] }
+      freeze_reason: { type: text, default: "" }
+  transactions:
+    label: Transaction
+    id_prefix: txn_
+    owner: { via: account_id }
+    fields:
+      id: string
+      account_id: { type: string, ref: accounts }
+      merchant: string
+      amount_minor: { type: int, min: 1 }
+      status: { type: enum, values: [posted, pending, disputed] }
+      created_at: string
+  disputes:
+    label: Dispute
+    id_prefix: dsp_
+    owner: { via: transaction_id }
+    fields:
+      id: string
+      transaction_id: { type: string, ref: transactions }
+      reason: { type: text }
+      amount_minor: { type: int, min: 1 }
+      status: { type: enum, values: [open, approved, denied] }
+      created_at: string
+  transfers:
+    label: Transfer
+    id_prefix: trf_
+    owner: { via: from_account_id }
+    fields:
+      id: string
+      from_account_id: { type: string, ref: accounts }
+      to_account_id: string
+      amount_minor: { type: int, min: 1 }
+      memo: { type: text }
+      status: { type: enum, values: [pending, completed, rejected] }
+      created_at: string
+  support_tickets:
+    label: Support ticket
+    id_prefix: tkt_
+    owner: { via: customer_id }
+    fields:
+      id: string
+      customer_id: { type: string, ref: customers }
+      subject: string
+      status: { type: enum, values: [open, pending, resolved] }
+      notes: { type: "string[]", default: [] }
+  secure_messages:
+    label: Secure message
+    id_prefix: msg_
+    owner: { via: ticket_id }
+    fields:
+      id: string
+      ticket_id: { type: string, ref: support_tickets }
+      sender: { type: enum, values: [customer, support] }
+      body: { type: text, untrusted: true }
+      sent_at: string

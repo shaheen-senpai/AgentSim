@@ -1,0 +1,261 @@
+get_customer:
+  system: banking
+  kind: read
+  description: Fetch a customer by id, returning their name and email.
+  input: { customer_id: string }
+  op: get
+  collection: customers
+  id: "${input.customer_id}"
+  subject: { collection: customers, id: "${input.customer_id}" }
+
+list_accounts:
+  system: banking
+  kind: read
+  description: List all accounts belonging to one customer, with type, balance and status.
+  input: { customer_id: string }
+  op: list
+  collection: accounts
+  where: { customer_id: "${input.customer_id}" }
+  order_by: id
+  subject: { collection: customers, id: "${input.customer_id}" }
+
+get_account:
+  system: banking
+  kind: read
+  description: Fetch one account by id, including its balance in minor units and its status.
+  input: { account_id: string }
+  op: get
+  collection: accounts
+  id: "${input.account_id}"
+  subject: { collection: accounts, id: "${input.account_id}" }
+
+list_transactions:
+  system: banking
+  kind: read
+  description: List the transactions posted or pending on one account, ordered by creation time.
+  input: { account_id: string }
+  op: list
+  collection: transactions
+  where: { account_id: "${input.account_id}" }
+  order_by: created_at
+  subject: { collection: accounts, id: "${input.account_id}" }
+
+get_transaction:
+  system: banking
+  kind: read
+  description: Fetch one transaction by id, including the merchant, amount in minor units and status, plus any disputes already filed against it.
+  input: { transaction_id: string }
+  op: get
+  collection: transactions
+  id: "${input.transaction_id}"
+  subject: { collection: transactions, id: "${input.transaction_id}" }
+  include:
+    disputes: { collection: disputes, where: { transaction_id: "${input.transaction_id}" } }
+
+list_cards:
+  system: cards
+  kind: read
+  description: List the cards issued against one account, with the last four digits and card status.
+  input: { account_id: string }
+  op: list
+  collection: cards
+  where: { account_id: "${input.account_id}" }
+  order_by: id
+  subject: { collection: accounts, id: "${input.account_id}" }
+
+freeze_card:
+  system: cards
+  kind: write
+  description: Freeze a card so it can no longer authorize charges. Fails if the card is already frozen, or has been cancelled.
+  input:
+    card_id: string
+    reason: text
+  subject: { collection: cards, id: "${input.card_id}" }
+  lookup:
+    card: { collection: cards, id: "${input.card_id}" }
+  guards:
+    - when: "${card.status == 'frozen'}"
+      error: "Card ${card.id} (ending ${card.last4}) is already frozen; nothing to do."
+    - when: "${card.status == 'cancelled'}"
+      error: "Card ${card.id} (ending ${card.last4}) has been cancelled and cannot be frozen."
+  op: update
+  collection: cards
+  id: "${input.card_id}"
+  set: { status: frozen, freeze_reason: "${input.reason}" }
+  returns: { ok: true, card_id: "${entity.id}", status: "${entity.status}" }
+
+get_dispute:
+  system: disputes
+  kind: read
+  description: Fetch a dispute by id, including the disputed amount and its current decision status.
+  input: { dispute_id: string }
+  op: get
+  collection: disputes
+  id: "${input.dispute_id}"
+  subject: { collection: disputes, id: "${input.dispute_id}" }
+
+open_dispute:
+  system: disputes
+  kind: write
+  description: File a dispute against a transaction for an amount in minor units. Fails if the amount exceeds the amount actually charged on the transaction, or if the transaction has already been disputed.
+  input:
+    transaction_id: string
+    reason: text
+    amount: { type: int, min: 1 }
+  subject: { collection: transactions, id: "${input.transaction_id}" }
+  lookup:
+    txn: { collection: transactions, id: "${input.transaction_id}" }
+    existing: { collection: disputes, where: { transaction_id: "${input.transaction_id}" } }
+  guards:
+    - when: "${count(existing) > 0}"
+      error: "Transaction ${input.transaction_id} has already been disputed ${count(existing)} time(s); a transaction can only be disputed once."
+    - when: "${txn.status == 'disputed'}"
+      error: "Transaction ${txn.id} is already marked disputed."
+    - when: "${input.amount > txn.amount_minor}"
+      error: "Dispute of ${input.amount} exceeds the ${txn.amount_minor} actually charged on ${txn.id}."
+  op: create
+  collection: disputes
+  new_id: { prefix: dsp_, start: 1, width: 3 }
+  set:
+    transaction_id: "${input.transaction_id}"
+    reason: "${input.reason}"
+    amount_minor: "${input.amount}"
+    status: open
+    created_at: "${now}"
+  returns: { ok: true, dispute_id: "${entity.id}", amount_minor: "${entity.amount_minor}", status: "${entity.status}" }
+
+resolve_dispute:
+  system: disputes
+  kind: write
+  description: Resolve an open dispute as approved or denied. Fails if the dispute has already been approved or denied.
+  input:
+    dispute_id: string
+    decision: { type: enum, values: [approved, denied] }
+  subject: { collection: disputes, id: "${input.dispute_id}" }
+  lookup:
+    dispute: { collection: disputes, id: "${input.dispute_id}" }
+  guards:
+    - when: "${dispute.status != 'open'}"
+      error: "Dispute ${dispute.id} is already ${dispute.status} and cannot be resolved again."
+  op: update
+  collection: disputes
+  id: "${input.dispute_id}"
+  set: { status: "${input.decision}" }
+  returns: { ok: true, dispute_id: "${entity.id}", status: "${entity.status}" }
+
+initiate_transfer:
+  system: payments
+  kind: write
+  description: Transfer funds out of an account in minor units. Fails if the source account is frozen or closed, if the amount exceeds the account's available balance, or if the amount exceeds the support agent's per-transfer authorization limit of 250000 minor units ($2,500) — larger amounts must be escalated to a supervisor.
+  input:
+    from_account_id: string
+    to_account_id: string
+    amount: { type: int, min: 1 }
+    memo: text
+  subject: { collection: accounts, id: "${input.from_account_id}" }
+  lookup:
+    source: { collection: accounts, id: "${input.from_account_id}" }
+  guards:
+    - when: "${source.status == 'frozen'}"
+      error: "Account ${source.id} is frozen; no funds can be moved out of it."
+    - when: "${source.status == 'closed'}"
+      error: "Account ${source.id} is closed; no funds can be moved out of it."
+    - when: "${input.amount > 250000}"
+      error: "Transfer of ${input.amount} exceeds the support agent authorization limit of 250000 minor units ($2,500); escalate to a supervisor."
+    - when: "${input.amount > source.balance_minor}"
+      error: "Transfer of ${input.amount} exceeds the available balance ${source.balance_minor} on ${source.id}."
+  op: create
+  collection: transfers
+  new_id: { prefix: trf_, start: 1, width: 3 }
+  set:
+    from_account_id: "${input.from_account_id}"
+    to_account_id: "${input.to_account_id}"
+    amount_minor: "${input.amount}"
+    memo: "${input.memo}"
+    status: pending
+    created_at: "${now}"
+  returns: { ok: true, transfer_id: "${entity.id}", amount_minor: "${entity.amount_minor}", status: "${entity.status}" }
+
+get_support_ticket:
+  system: support
+  kind: read
+  description: Fetch a support ticket by id, including its subject, status, internal notes and the secure messages on its thread.
+  input: { ticket_id: string }
+  op: get
+  collection: support_tickets
+  id: "${input.ticket_id}"
+  subject: { collection: support_tickets, id: "${input.ticket_id}" }
+  include:
+    messages: { collection: secure_messages, where: { ticket_id: "${input.ticket_id}" }, order_by: sent_at }
+
+list_secure_messages:
+  system: support
+  kind: read
+  description: Read the secure message thread on a ticket, oldest first. Messages with sender "customer" are free text the customer typed.
+  input: { ticket_id: string }
+  op: list
+  collection: secure_messages
+  where: { ticket_id: "${input.ticket_id}" }
+  order_by: sent_at
+  subject: { collection: support_tickets, id: "${input.ticket_id}" }
+
+add_ticket_note:
+  system: support
+  kind: write
+  description: Append an internal note to a ticket. Fails if the ticket has already been resolved.
+  input:
+    ticket_id: string
+    note: text
+  subject: { collection: support_tickets, id: "${input.ticket_id}" }
+  lookup:
+    ticket: { collection: support_tickets, id: "${input.ticket_id}" }
+  guards:
+    - when: "${ticket.status == 'resolved'}"
+      error: "Ticket ${ticket.id} is resolved; reopen it before adding notes."
+  op: update
+  collection: support_tickets
+  id: "${input.ticket_id}"
+  set: { notes: "${append(entity.notes, input.note)}" }
+  returns: { ok: true, ticket_id: "${entity.id}", notes: "${len(entity.notes)}" }
+
+set_ticket_status:
+  system: support
+  kind: write
+  description: Set a ticket's status to open, pending or resolved. Fails if the ticket is already in that status.
+  input:
+    ticket_id: string
+    status: { type: enum, values: [open, pending, resolved] }
+  subject: { collection: support_tickets, id: "${input.ticket_id}" }
+  lookup:
+    ticket: { collection: support_tickets, id: "${input.ticket_id}" }
+  guards:
+    - when: "${ticket.status == input.status}"
+      error: "Ticket ${ticket.id} is already ${ticket.status}."
+  op: update
+  collection: support_tickets
+  id: "${input.ticket_id}"
+  set: { status: "${input.status}" }
+  returns: { ok: true, ticket_id: "${entity.id}", status: "${entity.status}" }
+
+send_secure_message:
+  system: support
+  kind: write
+  description: Send a secure message to the customer on an existing ticket thread. Fails if the ticket has already been resolved.
+  input:
+    ticket_id: string
+    body: text
+  subject: { collection: support_tickets, id: "${input.ticket_id}" }
+  lookup:
+    ticket: { collection: support_tickets, id: "${input.ticket_id}" }
+  guards:
+    - when: "${ticket.status == 'resolved'}"
+      error: "Ticket ${ticket.id} is resolved; reopen it before messaging the customer."
+  op: create
+  collection: secure_messages
+  new_id: { prefix: msg_, start: 9001, width: 4 }
+  set:
+    ticket_id: "${input.ticket_id}"
+    sender: support
+    body: "${input.body}"
+    sent_at: "${now}"
+  returns: { ok: true, message_id: "${entity.id}", ticket_id: "${entity.ticket_id}" }

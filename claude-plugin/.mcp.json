@@ -1,6 +1,7 @@
 {
   "agentsim-worldbuilder": {
     "type": "http",
-    "url": "http://localhost:3000/mcp/worlds"
+    "url": "http://localhost:3000/mcp/worlds",
+    "timeout": 600000
   }
 }

@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import type { DiffEntry } from "@/engine/diff";
-import type { Score, Violation } from "@/engine/evaluator";
+import type { DimensionScore, Score, Violation } from "@/engine/evaluator";
 import type { Attack } from "@/engine/pack";
 import type { Event, Snapshot } from "@/engine/types";
 import { agentKind, agentLabel, type AgentShape, type RunAgentRef } from "./agentRef";
@@ -52,6 +52,7 @@ export type RunSummary = Pick<RunRecord, "id" | "createdAt" | "status" | "packId
   headline: number | null;
   capped: boolean;
   golden: boolean;
+  dimensions: DimensionScore[];
 };
 
 export const dataDir = () => process.env.AGENTSIM_DATA_DIR ?? path.join(process.cwd(), "data");
@@ -120,6 +121,7 @@ export function toSummary(r: RunRecord, golden = false): RunSummary {
     headline: r.score?.headline ?? null,
     capped: r.score?.capped ?? false,
     golden,
+    dimensions: r.score?.dimensions ?? [],
   };
 }
 

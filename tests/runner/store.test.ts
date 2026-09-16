@@ -38,6 +38,21 @@ describe("store", () => {
     expect(toSummary(b)).toMatchObject({ headline: 40, capped: true, attackId: null, packId: "northwind", agentKind: "reference", agentLabel: "naïve" });
     expect(listRuns("other-scenario")).toEqual([]);
   });
+
+  it("carries a Run's per-Dimension scores in its summary", () => {
+    const dims = [
+      { name: "task_completion" as const, score: 100, passed: 3, total: 3 },
+      { name: "policy_compliance" as const, score: 0, passed: 0, total: 2 },
+    ];
+    const r = record({ status: "completed", finishedBy: "agent", score: { headline: 40, capped: true, capReason: "x", dimensions: dims } });
+    expect(toSummary(r)).toMatchObject({ dimensions: dims });
+  });
+
+  it("gives a Run with no score yet an empty dimensions array, not undefined", () => {
+    const r = record(); // status: "running", score: null
+    expect(toSummary(r).dimensions).toEqual([]);
+  });
+
   it("summarises a BYO Run under the agent's name", () => {
     const r = record({ agent: { kind: "byo", agentId: null, name: "Claude Code", shape: "mcp", toolAliases: {} } });
     expect(toSummary(r)).toMatchObject({ agentKind: "byo", agentLabel: "Claude Code" });

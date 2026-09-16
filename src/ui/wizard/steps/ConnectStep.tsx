@@ -49,16 +49,21 @@ export function ConnectStep({
   }
 
   async function register(submission: AgentSubmission): Promise<string | null> {
-    const res = await fetch("/api/agents", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(submission) });
-    const data = (await res.json().catch(() => ({}))) as Partial<Agent> & { error?: string };
-    if (!res.ok || !data.id) return data.error ?? `The agent was not saved (HTTP ${res.status}).`;
-    // `POST /api/agents` responds with the full saved Agent (`saveAgent`'s return value) on success,
-    // not just an id — so `data` is a complete `Agent` here, safe to hand to `onAgentRegistered`.
-    const saved = data as Agent;
-    onChange({ existingAgentId: saved.id });
-    onAgentRegistered(saved);
-    setRegistering(false);
-    return null;
+    try {
+      const res = await fetch("/api/agents", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(submission) });
+      const data = (await res.json().catch(() => ({}))) as Partial<Agent> & { error?: string };
+      if (!res.ok || !data.id) return data.error ?? `The agent was not saved (HTTP ${res.status}).`;
+      // `POST /api/agents` responds with the full saved Agent (`saveAgent`'s return value) on
+      // success, not just an id — so `data` is a complete `Agent` here, safe to hand to
+      // `onAgentRegistered`.
+      const saved = data as Agent;
+      onChange({ existingAgentId: saved.id });
+      onAgentRegistered(saved);
+      setRegistering(false);
+      return null;
+    } catch {
+      return "Network error — the agent was not saved.";
+    }
   }
 
   return (
@@ -147,12 +152,19 @@ export function ConnectStep({
               </div>
             )}
             {registering && (
-              <RegisterAgent
-                editing={null}
-                lockedShape={state.connect}
-                onSubmit={register}
-                onCancel={() => setRegistering(false)}
-              />
+              <div className="flex flex-col gap-2">
+                {matching.length > 0 && (
+                  <button type="button" onClick={() => setRegistering(false)} className="self-start text-[12px] underline underline-offset-2 text-[#1B1A17]">
+                    ← Cancel, pick an existing agent instead
+                  </button>
+                )}
+                <RegisterAgent
+                  editing={null}
+                  lockedShape={state.connect}
+                  onSubmit={register}
+                  onCancel={() => setRegistering(false)}
+                />
+              </div>
             )}
             {!registering && selectedAgent && (
               <>

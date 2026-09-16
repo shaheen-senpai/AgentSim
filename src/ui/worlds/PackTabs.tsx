@@ -25,19 +25,19 @@ export function PackTabs({
   onSelect?: (tab: WorldTab) => void;
 }) {
   return (
-    <nav aria-label="World pack sections" className="flex items-end gap-1 border-b border-[#cfcfcb]">
+    <nav aria-label="World pack sections" className="flex items-end gap-1 border-b border-[#E3E0D5]">
       {WORLD_TABS.map((tab) => {
         const active = tab === current;
         const hasError = errorTabs?.has(tab) ?? false;
-        const className = `-mb-px rounded-t border border-b-0 px-3 py-1.5 text-[13px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1d1d1b] ${
-          active ? "bg-white border-[#cfcfcb] font-semibold text-[#1d1d1b]" : "border-transparent text-[#6b6b66] hover:text-[#1d1d1b]"
+        const className = `-mb-px rounded-t border border-b-0 px-3 py-1.5 text-[13px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B1A17] ${
+          active ? "bg-white border-[#E3E0D5] font-semibold text-[#1B1A17]" : "border-transparent text-[#6E6B60] hover:text-[#1B1A17]"
         }`;
         const label = (
           <>
             {tabLabel(tab)}
             {hasError && (
               <>
-                <span aria-hidden="true" className="ml-1 text-[#c8321e]">●</span>
+                <span aria-hidden="true" className="ml-1 text-[#B23A22]">●</span>
                 <span className="sr-only"> (has validation errors)</span>
               </>
             )}

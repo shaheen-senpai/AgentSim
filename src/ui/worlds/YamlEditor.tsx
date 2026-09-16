@@ -57,18 +57,18 @@ export function YamlEditor({
 
   return (
     <div className="flex flex-col gap-1.5">
-      <label htmlFor={textareaId} className="text-[12px] font-semibold text-[#1d1d1b]">
+      <label htmlFor={textareaId} className="text-[12px] font-semibold text-[#1B1A17]">
         {label}
       </label>
-      <div className="flex border border-[#cfcfcb] rounded overflow-hidden bg-white">
+      <div className="flex border border-[#E3E0D5] rounded overflow-hidden bg-white">
         <div
           ref={gutterRef}
           aria-hidden="true"
-          className={`${mono} text-[11px] text-right select-none text-[#6b6b66] bg-[#f4f4f2] border-r border-[#e6e6e2] px-2 py-2 overflow-hidden shrink-0 min-h-[280px] max-h-[70vh]`}
+          className={`${mono} text-[11px] text-right select-none text-[#6E6B60] bg-[#F7F5EF] border-r border-[#E3E0D5] px-2 py-2 overflow-hidden shrink-0 min-h-[280px] max-h-[70vh]`}
           style={{ lineHeight: `${LINE_HEIGHT}px` }}
         >
           {Array.from({ length: lineCount }, (_, i) => i + 1).map((n) => (
-            <div key={n} className={errorLines.has(n) ? "text-[#c8321e] bg-[#fbeeea] font-semibold -mx-2 px-2" : undefined}>
+            <div key={n} className={errorLines.has(n) ? "text-[#B23A22] bg-[#FBEAE7] font-semibold -mx-2 px-2" : undefined}>
               {n}
             </div>
           ))}
@@ -89,9 +89,9 @@ export function YamlEditor({
         />
       </div>
       {errors.length > 0 && (
-        <ul id={errorsId} className="flex flex-col gap-0.5 border border-[#c8321e] bg-[#fbeeea] rounded p-2">
+        <ul id={errorsId} className="flex flex-col gap-0.5 border border-[#B23A22] bg-[#FBEAE7] rounded p-2">
           {errors.map((e, i) => (
-            <li key={`${e.path}-${i}`} className="text-[11.5px] text-[#c8321e]">
+            <li key={`${e.path}-${i}`} className="text-[11.5px] text-[#B23A22]">
               <span className={mono}>{e.path || "(file)"}</span> — {e.message}
             </li>
           ))}

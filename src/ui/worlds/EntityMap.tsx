@@ -16,10 +16,10 @@ import { systemColor } from "@/ui/systemColor";
 import { arrowMidpoint, arrowPath, entityMapLabel, layoutEntityMap, type EntityBox } from "./entityLayout";
 import { systemCounts } from "./packView";
 
-const RULE = "#cfcfcb";
-const INK = "#1d1d1b";
-const MUTED = "#6b6b66";
-const RED = "#c8321e";
+const RULE = "#E3E0D5";
+const INK = "#1B1A17";
+const MUTED = "#6E6B60";
+const RED = "#B23A22";
 const ARROWHEAD = "entity-map-arrowhead";
 
 /**
@@ -112,7 +112,7 @@ export function EntityMap({ meta, rowCounts, tools }: { meta: PackMeta; rowCount
             ))}
           </svg>
         </div>
-        <p className="text-[11px] text-[#6b6b66]">
+        <p className="text-[11px] text-[#6E6B60]">
           Arrows point along a <span className={mono}>ref</span> field, from the collection that holds it to the collection it names — the same
           hops <span className={mono}>owner: {"{ via }"}</span> follows to reach the principal.
         </p>
@@ -124,21 +124,21 @@ export function EntityMap({ meta, rowCounts, tools }: { meta: PackMeta; rowCount
           {layout.boxes.map((b) => {
             const refs = refsOut.get(b.collection) ?? [];
             return (
-              <li key={b.collection} className="border-b border-[#e6e6e2] pb-1">
+              <li key={b.collection} className="border-b border-[#E3E0D5] pb-1">
                 <span className="font-semibold">{b.label}</span>{" "}
-                <span className={`${mono} text-[#6b6b66]`}>{b.collection}</span>{" "}
-                <span className="text-[#6b6b66]">
+                <span className={`${mono} text-[#6E6B60]`}>{b.collection}</span>{" "}
+                <span className="text-[#6E6B60]">
                   · {b.rows} {b.rows === 1 ? "row" : "rows"}
                 </span>
-                {b.principal && <span className="ml-1 text-[10px] border border-[#1d1d1b] rounded-full px-1.5 py-0.5">principal</span>}
+                {b.principal && <span className="ml-1 text-[10px] border border-[#1B1A17] rounded-full px-1.5 py-0.5">principal</span>}
                 {refs.length > 0 && (
-                  <span className="text-[#6b6b66]">
+                  <span className="text-[#6E6B60]">
                     {" · references "}
                     {refs.map((r) => `${r.to} via ${r.field}`).join(", ")}
                   </span>
                 )}
                 {b.untrusted.length > 0 && (
-                  <span className="text-[#c8321e]">
+                  <span className="text-[#B23A22]">
                     {" · untrusted "}
                     {b.untrusted.join(", ")}
                   </span>
@@ -147,8 +147,8 @@ export function EntityMap({ meta, rowCounts, tools }: { meta: PackMeta; rowCount
             );
           })}
         </ul>
-        <p className="text-[11px] text-[#6b6b66]">
-          An <span className="text-[#c8321e]">untrusted</span> field holds content the World did not write — the surface an Attack plants text in.
+        <p className="text-[11px] text-[#6E6B60]">
+          An <span className="text-[#B23A22]">untrusted</span> field holds content the World did not write — the surface an Attack plants text in.
         </p>
       </section>
 
@@ -160,15 +160,15 @@ export function EntityMap({ meta, rowCounts, tools }: { meta: PackMeta; rowCount
             return (
               <li
                 key={s.system}
-                className="flex items-center gap-2 text-[12px] border border-[#cfcfcb] rounded px-2 py-1"
+                className="flex items-center gap-2 text-[12px] border border-[#E3E0D5] rounded px-2 py-1"
                 style={{ background: colour.bg }}
               >
                 <span aria-hidden="true" className="inline-block w-1 h-4 rounded-sm" style={{ background: colour.stripe }} />
                 <span className="font-semibold" style={{ color: colour.fg }}>
                   {s.label}
                 </span>
-                <span className={`${mono} text-[10px] text-[#6b6b66]`}>{s.system}</span>
-                <span className="text-[#6b6b66]">
+                <span className={`${mono} text-[10px] text-[#6E6B60]`}>{s.system}</span>
+                <span className="text-[#6E6B60]">
                   {s.tools} {s.tools === 1 ? "tool" : "tools"}
                 </span>
               </li>

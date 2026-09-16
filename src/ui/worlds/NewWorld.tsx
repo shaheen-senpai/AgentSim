@@ -49,8 +49,8 @@ export function NewWorld({ templates, skeleton }: { templates: Template[]; skele
             type="button"
             onClick={() => setMode(m)}
             aria-pressed={mode === m}
-            className={`h-8 rounded px-3 text-[13px] border focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1d1d1b] ${
-              mode === m ? "bg-[#1d1d1b] text-white border-[#1d1d1b] font-semibold" : "bg-white text-[#6b6b66] border-[#cfcfcb] hover:text-[#1d1d1b]"
+            className={`h-8 rounded px-3 text-[13px] border focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B1A17] ${
+              mode === m ? "bg-[#1B1A17] text-white border-[#1B1A17] font-semibold" : "bg-white text-[#6E6B60] border-[#E3E0D5] hover:text-[#1B1A17]"
             }`}
           >
             {m === "template" ? "From template" : m === "generate" ? "Generate with Claude" : "Connect your agent"}
@@ -90,9 +90,9 @@ function ConnectYourAgent() {
   const mcpUrl = `${origin || "http://localhost:3000"}/mcp/worlds`;
 
   return (
-    <section className="bg-white border border-[#cfcfcb] rounded p-3 flex flex-col gap-3 max-w-[820px]">
+    <section className="bg-white border border-[#E3E0D5] rounded p-3 flex flex-col gap-3 max-w-[820px]">
       <h2 className={heading}>Connect your agent</h2>
-      <p className="text-[12px] text-[#6b6b66]">
+      <p className="text-[12px] text-[#6E6B60]">
         AgentSim also runs as an MCP server for building Worlds, not just running them. Add it to your own agent&rsquo;s Claude Code session, then
         ask it to register itself — it drafts a World pack from your agent&rsquo;s real tools, and you review the draft in that same chat before
         anything is created.
@@ -108,7 +108,7 @@ function ConnectYourAgent() {
         <pre className={`${FIELD} ${mono} whitespace-pre-wrap`}>{mcpJsonConfig(WORLDBUILDER_NAME, mcpUrl)}</pre>
       </div>
 
-      <p className="text-[12px] text-[#6b6b66]">
+      <p className="text-[12px] text-[#6E6B60]">
         Then, in that session: &ldquo;Use {WORLDBUILDER_NAME} to register yourself and build a test world.&rdquo; It calls{" "}
         <span className={mono}>register_agent</span> with your tools, then <span className={mono}>get_world_draft</span> and{" "}
         <span className={mono}>refine_world</span> to iterate, and <span className={mono}>create_world</span> once it looks right — the new World
@@ -173,9 +173,9 @@ function FromTemplate({
   }
 
   return (
-    <section className="bg-white border border-[#cfcfcb] rounded p-3 flex flex-col gap-3 max-w-[620px]">
+    <section className="bg-white border border-[#E3E0D5] rounded p-3 flex flex-col gap-3 max-w-[620px]">
       <h2 className={heading}>Copy an existing pack</h2>
-      <p className="text-[12px] text-[#6b6b66]">
+      <p className="text-[12px] text-[#6E6B60]">
         The fastest way to a working World: take a pack that already validates and edit it into the domain you want.
       </p>
 
@@ -216,15 +216,15 @@ function FromTemplate({
         <button type="button" onClick={handleCreate} disabled={pending} className={PRIMARY_BUTTON}>
           Create world
         </button>
-        {pending && <span className="text-[12px] text-[#6b6b66]">Creating…</span>}
+        {pending && <span className="text-[12px] text-[#6E6B60]">Creating…</span>}
       </div>
 
       <div role="status" aria-live="polite" className="text-[12px] empty:hidden">
-        {message && <p className="text-[#c8321e] font-semibold">{message}</p>}
+        {message && <p className="text-[#B23A22] font-semibold">{message}</p>}
         {errors.length > 0 && (
-          <ul className="mt-1 flex flex-col gap-0.5 border border-[#c8321e] bg-[#fbeeea] rounded p-2">
+          <ul className="mt-1 flex flex-col gap-0.5 border border-[#B23A22] bg-[#FBEAE7] rounded p-2">
             {errors.map((e, i) => (
-              <li key={i} className="text-[11px] text-[#c8321e]">
+              <li key={i} className="text-[11px] text-[#B23A22]">
                 <span className={`${mono} font-semibold`}>{e.file}</span>
                 {e.path ? <span className={mono}> · {e.path}</span> : null} — {e.message}
               </li>
@@ -310,12 +310,12 @@ function GenerateWithClaude({ ids, onCreated }: { ids: string; onCreated: (id: s
 
   return (
     <div className="flex flex-col gap-4">
-      <form onSubmit={handleGenerate} className="bg-white border border-[#cfcfcb] rounded p-3 flex flex-col gap-3 max-w-[820px]">
+      <form onSubmit={handleGenerate} className="bg-white border border-[#E3E0D5] rounded p-3 flex flex-col gap-3 max-w-[820px]">
         <h2 className={heading}>Describe the domain</h2>
-        <p className="text-[12px] text-[#6b6b66]">
+        <p className="text-[12px] text-[#6E6B60]">
           Claude reads the World pack format and drafts the entities, the ownership map, a small synthetic Seed, the tools with their guards, and a
           first Scenario with an Attack. Paste a schema, a tool list or an OpenAPI spec and it reads the real shape instead of guessing —{" "}
-          <strong className="font-semibold text-[#1d1d1b]">schema only, never real data</strong>. You review the draft before anything is created.
+          <strong className="font-semibold text-[#1B1A17]">schema only, never real data</strong>. You review the draft before anything is created.
         </p>
 
         <div className="grid gap-3 sm:grid-cols-2">
@@ -348,7 +348,7 @@ function GenerateWithClaude({ ids, onCreated }: { ids: string; onCreated: (id: s
           />
         </div>
 
-        <details className="border border-[#e6e6e2] rounded p-2">
+        <details className="border border-[#E3E0D5] rounded p-2">
           <summary className="text-[12px] font-semibold cursor-pointer">Source material (optional, but it is what makes the pack yours)</summary>
           <div className="pt-2 flex flex-col gap-3">
             <div className="flex flex-col gap-1">
@@ -383,19 +383,19 @@ function GenerateWithClaude({ ids, onCreated }: { ids: string; onCreated: (id: s
 
       <div role="status" aria-live="polite" className="text-[12px] max-w-[820px] empty:hidden">
         {running && (
-          <p className="border border-[#cfcfcb] bg-white rounded p-2">
+          <p className="border border-[#E3E0D5] bg-white rounded p-2">
             Drafting the World pack with Claude — this usually takes a minute or two, and up to two attempts if the first draft does not validate.{" "}
             <span className={mono}>{elapsed}s</span>
           </p>
         )}
-        {failure && !running && <p className="border border-[#c8321e] bg-[#fbeeea] rounded p-2 text-[#c8321e] font-semibold">{failure}</p>}
+        {failure && !running && <p className="border border-[#B23A22] bg-[#FBEAE7] rounded p-2 text-[#B23A22] font-semibold">{failure}</p>}
         {draft && !running && (
-          <p className="border border-[#cfcfcb] bg-white rounded p-2">
+          <p className="border border-[#E3E0D5] bg-white rounded p-2">
             Draft ready after {draft.attempts} {draft.attempts === 1 ? "attempt" : "attempts"}.{" "}
             {draft.errors.length === 0 ? (
               <span className="text-[#2f7d4f] font-semibold">It validates.</span>
             ) : (
-              <span className="text-[#c8321e] font-semibold">
+              <span className="text-[#B23A22] font-semibold">
                 {draft.errors.length} {draft.errors.length === 1 ? "error" : "errors"} left to fix below.
               </span>
             )}{" "}

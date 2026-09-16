@@ -33,10 +33,10 @@ import { PackTabs } from "./PackTabs";
 import { YamlEditor } from "./YamlEditor";
 
 const PRIMARY_BUTTON =
-  "h-8 rounded bg-[#1d1d1b] text-white font-semibold disabled:opacity-50 px-3 text-[12px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1d1d1b]";
+  "h-8 rounded bg-[#1B1A17] text-white font-semibold disabled:opacity-50 px-3 text-[12px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B1A17]";
 const SECONDARY_BUTTON =
-  "h-8 rounded border border-[#cfcfcb] bg-white text-[#1d1d1b] font-semibold px-3 text-[12px] hover:bg-[#f4f4f2] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1d1d1b]";
-const LINK_BUTTON = "text-[11px] text-[#c8321e] underline decoration-dotted hover:decoration-solid";
+  "h-8 rounded border border-[#E3E0D5] bg-white text-[#1B1A17] font-semibold px-3 text-[12px] hover:bg-[#F7F5EF] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B1A17]";
+const LINK_BUTTON = "text-[11px] text-[#B23A22] underline decoration-dotted hover:decoration-solid";
 
 function scenarioKeysOf(files: Record<string, string>): string[] {
   return Object.keys(files)
@@ -213,15 +213,15 @@ export function PackEditor({
   }
 
   function renderStatus() {
-    if (lastAction === null) return <p className="text-[#6b6b66]">Not yet validated.</p>;
+    if (lastAction === null) return <p className="text-[#6E6B60]">Not yet validated.</p>;
     if (errors.length === 0) {
       const done = draft ? "Created." : "Saved.";
       return <p className="text-[#2f7d4f] font-semibold">{lastAction === "save" ? done : "Valid — no errors."}</p>;
     }
     const fileCount = Object.keys(errorsByFile).length;
     return (
-      <div className="border border-[#c8321e] bg-[#fbeeea] rounded p-2 flex flex-col gap-1.5">
-        <p className="text-[#c8321e] font-semibold">
+      <div className="border border-[#B23A22] bg-[#FBEAE7] rounded p-2 flex flex-col gap-1.5">
+        <p className="text-[#B23A22] font-semibold">
           {lastAction === "save" ? (draft ? "Not created — " : "Save failed — ") : ""}
           {errors.length} {errors.length === 1 ? "error" : "errors"} across {fileCount} {fileCount === 1 ? "file" : "files"}.
         </p>
@@ -290,13 +290,13 @@ export function PackEditor({
           </div>
           {editing ? (
             scenarioKeys.length === 0 ? (
-              <p className="text-[12px] text-[#6b6b66]">No scenario files. Use “+ Add scenario” to create one.</p>
+              <p className="text-[12px] text-[#6E6B60]">No scenario files. Use “+ Add scenario” to create one.</p>
             ) : (
               <div className="flex flex-col gap-4">
                 {scenarioKeys.map((key) => (
-                  <div key={key} className="flex flex-col gap-1.5 border border-[#e6e6e2] rounded p-2">
+                  <div key={key} className="flex flex-col gap-1.5 border border-[#E3E0D5] rounded p-2">
                     <div className="flex items-center justify-between">
-                      <span className={`${mono} text-[11px] text-[#6b6b66]`}>{key}</span>
+                      <span className={`${mono} text-[11px] text-[#6E6B60]`}>{key}</span>
                       <button type="button" onClick={() => handleDeleteScenario(key)} className={LINK_BUTTON}>
                         Delete scenario
                       </button>
@@ -331,7 +331,7 @@ export function PackEditor({
         )}
         {editing ? (
           agentKeys.length === 0 ? (
-            <p className="text-[12px] text-[#6b6b66]">This World pack ships no Reference Agent prompts to edit.</p>
+            <p className="text-[12px] text-[#6E6B60]">This World pack ships no Reference Agent prompts to edit.</p>
           ) : (
             <div className="flex flex-col gap-4">
               {agentKeys.map((key) => (
@@ -349,19 +349,19 @@ export function PackEditor({
   return (
     <div className="flex flex-col gap-3">
       <PackTabs packId={worldId} current={tab} errorTabs={errorTabs} onSelect={draft ? setDraftTab : undefined} />
-      <div className="flex flex-wrap items-center gap-2 bg-white border border-[#cfcfcb] rounded p-2">
+      <div className="flex flex-wrap items-center gap-2 bg-white border border-[#E3E0D5] rounded p-2">
         <button type="button" onClick={handleValidate} disabled={pending} className={SECONDARY_BUTTON}>
           Validate
         </button>
         <button type="button" onClick={handleSave} disabled={pending || (draft ? !draft.canSubmit : false)} className={PRIMARY_BUTTON}>
           {draft ? draft.submitLabel : "Save"}
         </button>
-        <span className={`text-[12px] font-semibold ${dirty || draft ? "text-[#c8321e]" : "text-[#6b6b66]"}`}>
+        <span className={`text-[12px] font-semibold ${dirty || draft ? "text-[#B23A22]" : "text-[#6E6B60]"}`}>
           {draft ? "Draft — nothing is written until you create it" : dirty ? "Unsaved changes" : "No unsaved changes"}
         </span>
-        {pending && <span className="text-[12px] text-[#6b6b66]">Working…</span>}
+        {pending && <span className="text-[12px] text-[#6E6B60]">Working…</span>}
         {saveOk === false && !pending && (
-          <span className="text-[12px] text-[#c8321e]">{draft ? "Not created — see errors below." : "Save failed — see errors below."}</span>
+          <span className="text-[12px] text-[#B23A22]">{draft ? "Not created — see errors below." : "Save failed — see errors below."}</span>
         )}
       </div>
       <div role="status" aria-live="polite" className="text-[12px]">

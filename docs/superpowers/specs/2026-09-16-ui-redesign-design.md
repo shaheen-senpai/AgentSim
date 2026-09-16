@@ -69,10 +69,14 @@ that file's vocabulary; it does not introduce a second styling system alongside 
 | `success` | *(none — ad hoc greens in ScorePanel/ViolationCard today)* | fg `#1E7A43` / bg `#E7F4EA` | PASS, no-Violation states — newly formalized |
 | `warning` | *(none)* | fg `#8A5A12` / bg `#FDF3DF` | Partial/borderline states (a Dimension score that's neither clean nor capped) |
 
-`systemColor.ts`'s 8-hue rotation (`PALETTE` + its `tint()` mixer) is kept exactly as-is
-mechanically — only the 8 hex values themselves are warmed slightly so they sit comfortably on the
-new cream `bg` instead of the old grey one. The function signature, the tint math, and every call
-site are unchanged.
+`systemColor.ts`'s 8-hue rotation (`PALETTE` + its `tint()` mixer) is kept exactly as-is — mechanism
+and all 8 values. They already read as reasonably desaturated, and picking 8 new hex values without
+being able to render and look at them first is worse than leaving them alone: the implementation
+plan's Task 6 visual check is where a hue that actually reads wrong against the new cream background
+gets caught and fixed, not a round of upfront guessing. Only the neutral fallback (`GREY`, used for a
+system not in the pack's own list) moves — its `fg`/`stripe` hardcode the exact old `muted` value
+this whole spec replaces, so it has to change for consistency regardless. The function signature, the
+tint math, and every call site are unchanged.
 
 ### Type
 

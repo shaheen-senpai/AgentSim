@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import type { Agent, WizardPack } from "@/ui/types";
 import { StepStrip } from "./StepStrip";
 import { ConnectStep } from "./steps/ConnectStep";
@@ -23,22 +23,30 @@ export type WizardState = {
   attackId: string;
 };
 
-function initialState(packs: WizardPack[]): WizardState {
-  const pack = packs[0];
+// The `/runs/new?packId=…&scenarioId=…` deep link Scenario cards and the Worlds pages hand out
+// (`runHref` in `src/ui/worlds/packView.ts`) — same validate-against-the-real-lists-or-fall-back
+// convention as `Launcher.tsx`'s own `?packId=`/`?scenarioId=` handling. A `packId` that doesn't
+// match a real pack, or a `scenarioId` that doesn't belong to the resolved pack, is never trusted.
+function initialState(packs: WizardPack[], searchParams: URLSearchParams): WizardState {
+  const packIdParam = searchParams.get("packId");
+  const pack = (packIdParam ? packs.find((p) => p.id === packIdParam) : undefined) ?? packs[0];
+  const scenarioIdParam = searchParams.get("scenarioId");
+  const scenario = scenarioIdParam ? pack?.scenarios.find((s) => s.id === scenarioIdParam) : undefined;
   return {
     step: 0,
     connect: "reference",
     agentVersion: pack?.agentVersions[0] ?? "",
     existingAgentId: null,
     packId: pack?.id ?? "",
-    scenarioId: pack?.scenarios[0]?.id ?? "",
+    scenarioId: scenario?.id ?? pack?.scenarios[0]?.id ?? "",
     attackId: "off",
   };
 }
 
 export function NewRunWizard({ packs, agents: initialAgents }: { packs: WizardPack[]; agents: Agent[] }) {
   const router = useRouter();
-  const [state, setState] = useState<WizardState>(() => initialState(packs));
+  const searchParams = useSearchParams();
+  const [state, setState] = useState<WizardState>(() => initialState(packs, searchParams));
   const [agents, setAgents] = useState<Agent[]>(initialAgents);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);

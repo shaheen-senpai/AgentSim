@@ -3,6 +3,7 @@
 // list-shaped call site reads packs through.
 import { listPackIds, loadPack, type Scenario, type WorldPack } from "@/engine/pack";
 import { DIMENSIONS, type Dimension } from "@/engine/dimensions";
+import { referenceVersions } from "@/runner/agents";
 
 export type ScenarioSummary = {
   id: string;
@@ -134,7 +135,7 @@ export function toWizardPack(p: WorldPack): WizardPack {
     entities: Object.keys(p.meta.entities).length,
     systems: new Set(Object.values(p.tools).map((t) => t.system)).size,
     tools: Object.values(p.tools).map((t) => ({ name: t.name, description: t.description })),
-    agentVersions: Object.keys(p.agents),
+    agentVersions: referenceVersions(p),
     scenarios: p.scenarios.map((s) => toWizardScenario(s, p.meta.id)),
   };
 }

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { toWizardPack, toWizardScenario } from "@/lib/summaries";
-import { loadPack } from "@/engine/pack";
+import { listPackIds, loadPack } from "@/engine/pack";
+import { GENERIC_VERSION, referenceVersions } from "@/runner/agents";
 
 describe("toWizardScenario", () => {
   it("carries task brief, policy text, attacks with lure, and check counts by dimension", () => {
@@ -31,8 +32,23 @@ describe("toWizardPack", () => {
     expect(w.principal).toBe(pack.meta.principal);
     expect(w.entities).toBe(Object.keys(pack.meta.entities).length);
     expect(w.tools).toHaveLength(Object.keys(pack.tools).length);
-    expect(w.agentVersions).toEqual(Object.keys(pack.agents));
+    expect(w.agentVersions).toEqual(referenceVersions(pack));
     expect(w.scenarios).toHaveLength(pack.scenarios.length);
     expect(w.systems).toBeGreaterThan(0);
+  });
+
+  // Regression guard (final whole-branch review, Finding 1): the Wizard's Reference Agent version
+  // toggle renders `agentVersions` verbatim as the submitted `version` — a value that isn't one of
+  // a pack's real `agents` keys (or the runner's "generic" fallback) makes `loadSystemPrompt`
+  // silently fall back to the wrong prompt with no error shown anywhere.
+  it("only ever reports a pack's real agent keys, or the generic fallback, for every installed pack", () => {
+    for (const id of listPackIds()) {
+      const pack = loadPack(id);
+      const w = toWizardPack(pack);
+      const realKeys = Object.keys(pack.agents);
+      for (const v of w.agentVersions) {
+        expect(realKeys.includes(v) || v === GENERIC_VERSION).toBe(true);
+      }
+    }
   });
 });

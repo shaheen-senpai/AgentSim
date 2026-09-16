@@ -89,14 +89,14 @@ export function ConnectStep({
           <>
             <h2 className="text-[14px] font-semibold">Agent and tool definitions</h2>
             <div className="flex gap-2">
-              {["naïve", "fixed"].map((v) => (
+              {(pack?.agentVersions ?? []).map((v) => (
                 <button
                   key={v}
                   type="button"
                   onClick={() => onChange({ agentVersion: v })}
                   className={`h-8 px-3.5 rounded-full text-[12px] border ${focusRing} ${state.agentVersion === v ? "bg-[#1B1A17] text-white border-[#1B1A17]" : "border-[#E3E0D5]"}`}
                 >
-                  {v}
+                  {v === "naive" ? "naïve" : v}
                 </button>
               ))}
             </div>
@@ -107,6 +107,7 @@ export function ConnectStep({
             </p>
             {pack && (
               <div className="overflow-x-auto">
+                <p className={hint}>Tools for {pack.name} — pick a different World on the next step if needed.</p>
                 <table className="w-full text-[12px] border-collapse">
                   <thead>
                     <tr className="text-left text-[10px] uppercase tracking-wide text-[#6E6B60]">
@@ -199,6 +200,7 @@ export function ConnectStep({
                 )}
                 {pack && (
                   <div className="overflow-x-auto">
+                    <p className={hint}>Tool aliases for {pack.name} — pick a different World on the next step if needed.</p>
                     <table className="w-full text-[12px] border-collapse">
                       <thead>
                         <tr className="text-left text-[10px] uppercase tracking-wide text-[#6E6B60]">

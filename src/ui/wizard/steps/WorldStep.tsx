@@ -23,7 +23,7 @@ export function WorldStep({ packs, state, onChange }: { packs: WizardPack[]; sta
           <button
             key={p.id}
             type="button"
-            onClick={() => onChange({ packId: p.id, scenarioId: p.scenarios[0]?.id ?? "", attackId: "off" })}
+            onClick={() => onChange({ packId: p.id, scenarioId: p.scenarios[0]?.id ?? "", attackId: "off", agentVersion: p.agentVersions[0] ?? "" })}
             className={`${panel} p-4 text-left ${focusRing} ${selected ? "shadow-[0_0_0_1px_#1B1A17_inset] border-[#1B1A17]" : ""}`}
           >
             <h3 className="text-[15px] font-semibold mb-1">{p.name}</h3>

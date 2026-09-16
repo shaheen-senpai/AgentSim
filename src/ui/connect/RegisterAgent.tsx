@@ -20,6 +20,7 @@ const SHAPES: { value: AgentShape; label: string; blurb: string }[] = [
 
 type Props = {
   editing: Agent | null;
+  lockedShape?: AgentShape;
   /**
    * Resolves to an error message, or null when the agent was saved. Success is announced by the
    * parent, not here: saving an edit clears `editing`, which changes this form's `key` and
@@ -29,11 +30,11 @@ type Props = {
   onCancel: () => void;
 };
 
-export function RegisterAgent({ editing, onSubmit, onCancel }: Props) {
+export function RegisterAgent({ editing, lockedShape, onSubmit, onCancel }: Props) {
   const ids = useId();
   const [name, setName] = useState(editing?.name ?? "");
   const [version, setVersion] = useState(editing?.version ?? "");
-  const [shape, setShape] = useState<AgentShape>(editing?.shape ?? "mcp");
+  const [shape, setShape] = useState<AgentShape>(editing?.shape ?? lockedShape ?? "mcp");
   const [aliasText, setAliasText] = useState(formatAliases(editing?.toolAliases ?? {}));
   const [notes, setNotes] = useState(editing?.notes ?? "");
   const [errors, setErrors] = useState<string[]>([]);
@@ -99,25 +100,32 @@ export function RegisterAgent({ editing, onSubmit, onCancel }: Props) {
         </div>
       </div>
 
-      <fieldset className="flex flex-col gap-1 border-0 p-0 m-0">
-        <legend className={label}>Shape</legend>
-        <div className="flex gap-1">
-          {SHAPES.map((s) => (
-            <button
-              key={s.value}
-              type="button"
-              onClick={() => setShape(s.value)}
-              aria-pressed={shape === s.value}
-              className={`h-7 flex-1 rounded px-2 text-[12px] border focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1d1d1b] ${
-                shape === s.value ? "bg-[#1d1d1b] text-white border-[#1d1d1b] font-semibold" : "bg-white text-[#6b6b66] border-[#cfcfcb] hover:text-[#1d1d1b]"
-              }`}
-            >
-              {s.label}
-            </button>
-          ))}
-        </div>
-        <p className={hint}>{SHAPES.find((s) => s.value === shape)?.blurb}</p>
-      </fieldset>
+      {lockedShape === undefined ? (
+        <fieldset className="flex flex-col gap-1 border-0 p-0 m-0">
+          <legend className={label}>Shape</legend>
+          <div className="flex gap-1">
+            {SHAPES.map((s) => (
+              <button
+                key={s.value}
+                type="button"
+                onClick={() => setShape(s.value)}
+                aria-pressed={shape === s.value}
+                className={`h-7 flex-1 rounded px-2 text-[12px] border focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1d1d1b] ${
+                  shape === s.value ? "bg-[#1d1d1b] text-white border-[#1d1d1b] font-semibold" : "bg-white text-[#6b6b66] border-[#cfcfcb] hover:text-[#1d1d1b]"
+                }`}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
+          <p className={hint}>{SHAPES.find((s) => s.value === shape)?.blurb}</p>
+        </fieldset>
+      ) : (
+        <p className={hint}>
+          Shape: <span className="font-semibold text-[#1d1d1b]">{SHAPES.find((s) => s.value === lockedShape)?.label}</span> —{" "}
+          {SHAPES.find((s) => s.value === lockedShape)?.blurb}
+        </p>
+      )}
 
       <div className="flex flex-col gap-1">
         <label htmlFor={`${ids}-aliases`} className={label}>

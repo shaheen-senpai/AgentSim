@@ -35,9 +35,10 @@ function initialState(packs: WizardPack[]): WizardState {
   };
 }
 
-export function NewRunWizard({ packs, agents }: { packs: WizardPack[]; agents: Agent[] }) {
+export function NewRunWizard({ packs, agents: initialAgents }: { packs: WizardPack[]; agents: Agent[] }) {
   const router = useRouter();
   const [state, setState] = useState<WizardState>(() => initialState(packs));
+  const [agents, setAgents] = useState<Agent[]>(initialAgents);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -61,7 +62,9 @@ export function NewRunWizard({ packs, agents }: { packs: WizardPack[]; agents: A
 
       <StepStrip labels={STEP_LABELS} current={state.step} onSelect={(step) => step <= state.step && update({ step })} />
 
-      {state.step === 0 && <ConnectStep state={state} pack={pack} agents={agents} onChange={update} />}
+      {state.step === 0 && (
+        <ConnectStep state={state} pack={pack} agents={agents} onChange={update} onAgentRegistered={(a) => setAgents((prev) => [...prev, a])} />
+      )}
       {state.step === 1 && <WorldStep packs={packs} state={state} onChange={update} />}
       {state.step === 2 && pack && <ScenarioStep pack={pack} state={state} onChange={update} />}
       {state.step === 3 && scenario && <MandateStep scenario={scenario} />}

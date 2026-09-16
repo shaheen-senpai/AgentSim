@@ -26,11 +26,16 @@ export function ConnectStep({
   pack,
   agents,
   onChange,
+  onAgentRegistered,
 }: {
   state: WizardState;
   pack: WizardPack | undefined;
   agents: Agent[];
   onChange: (patch: Partial<WizardState>) => void;
+  /** Called with the newly-saved Agent right after registration, so the parent can add it to its
+   * list without a refetch — `agents` here is a snapshot, not live, so without this the agent just
+   * registered would not be found by `matchingAgents`/`selectedAgent` until the page reloads. */
+  onAgentRegistered: (agent: Agent) => void;
 }) {
   const [fwLang, setFwLang] = useState<"ts" | "py">("ts");
   const matching = matchingAgents(agents, state.connect);
@@ -47,7 +52,11 @@ export function ConnectStep({
     const res = await fetch("/api/agents", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(submission) });
     const data = (await res.json().catch(() => ({}))) as Partial<Agent> & { error?: string };
     if (!res.ok || !data.id) return data.error ?? `The agent was not saved (HTTP ${res.status}).`;
-    onChange({ existingAgentId: data.id });
+    // `POST /api/agents` responds with the full saved Agent (`saveAgent`'s return value) on success,
+    // not just an id — so `data` is a complete `Agent` here, safe to hand to `onAgentRegistered`.
+    const saved = data as Agent;
+    onChange({ existingAgentId: saved.id });
+    onAgentRegistered(saved);
     setRegistering(false);
     return null;
   }

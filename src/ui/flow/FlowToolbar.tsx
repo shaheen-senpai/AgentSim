@@ -68,9 +68,9 @@ export function FlowToolbar({ state, tools }: { state: FlowState; tools: Record<
             <button type="button" onClick={state.clearSystems} className="text-[10px] text-[#6E6B60] underline underline-offset-2">all systems</button>
           )}
           <span className="ml-auto flex items-center gap-2 text-[9px] uppercase tracking-[.04em] text-[#6E6B60]">
-            <span className="rounded-sm bg-[#FBEAE7] px-1 py-px font-semibold text-[#B23A22]">Violation</span>
-            <span className={`${dangerPill} px-1 py-px font-semibold`}>Lure taken</span>
-            <span className="rounded-sm border border-[#B23A22] bg-white px-1 py-px font-semibold text-[#B23A22]">reads injected content</span>
+            <span className={`${dangerPill} px-1 py-px font-semibold`}>Violation</span>
+            <span className={`${dangerPill} px-1 py-px font-semibold ring-1 ring-inset ring-[#B23A22]`}>Lure taken</span>
+            <span className="rounded-full border border-[#B23A22] bg-white px-1 py-px font-semibold text-[#B23A22]">reads injected content</span>
           </span>
         </div>
       )}

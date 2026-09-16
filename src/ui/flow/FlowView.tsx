@@ -96,7 +96,7 @@ function FlowCanvas({ run, visible, selectedSeq, onSelect, filters, follow, fitS
         proOptions={{ hideAttribution: true }}
       >
         <Background color="#E3E0D5" gap={24} />
-        <MiniMap<AppNode> pannable zoomable nodeColor={(n) => (n.data.violations.length > 0 || n.data.lure ? RED : "#E3E0D5")} maskColor="rgba(244,244,242,.7)" className="!bg-white !border !border-[#E3E0D5]" />
+        <MiniMap<AppNode> pannable zoomable nodeColor={(n) => (n.data.violations.length > 0 || n.data.lure ? RED : "#E3E0D5")} maskColor="rgba(247,245,239,.7)" className="!bg-white !border !border-[#E3E0D5]" />
         <Controls showInteractive={false} fitViewOptions={FIT} />
       </ReactFlow>
       <EventDrawer run={run} events={shown} selected={selectedSeq} onSelect={onSelect} onJump={jump} tools={tools} systems={systems} scoreReady={scoreReady} injectedLabel={injectedLabel} />

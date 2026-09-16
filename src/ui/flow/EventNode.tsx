@@ -34,14 +34,15 @@ export function Ports({ source = true, target = true }: { source?: boolean; targ
   );
 }
 
-const BADGE = "min-w-0 truncate rounded-sm px-1 py-px text-[9px] font-semibold uppercase tracking-[.04em] leading-3";
+const BADGE = "min-w-0 truncate px-1 py-px text-[9px] font-semibold uppercase tracking-[.04em] leading-3";
 
-/** The three flow badges of spec §6.1 — text, never colour alone. */
+/** The three flow badges of spec §6.1 — text, never colour alone. One pill family: `dangerPill`
+ * already carries `rounded-full` for lure/violation; `injected` states its own so all three match. */
 export function Badge({ kind, children }: { kind: "violation" | "lure" | "injected"; children: React.ReactNode }) {
   const style =
     kind === "lure" ? `${dangerPill} font-semibold ring-1 ring-inset ring-[#B23A22]`
     : kind === "violation" ? dangerPill
-    : "border border-[#B23A22] text-[#B23A22] bg-white";
+    : "rounded-full border border-[#B23A22] text-[#B23A22] bg-white";
   return <span className={`${BADGE} ${style}`}>{children}</span>;
 }
 

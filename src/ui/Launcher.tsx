@@ -2,7 +2,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import type { PackOption, RunRecord } from "./types";
-import { heading, panel } from "./styles";
+import { heading, panel, primaryButton } from "./styles";
 
 type Props = { packs: PackOption[]; run: RunRecord | null; onPromptDiff: () => void };
 
@@ -86,7 +86,7 @@ export function Launcher({ packs, run, onPromptDiff }: Props) {
       <button type="button" onClick={onPromptDiff} className="text-xs underline text-left">View prompt diff</button>
       <div className={heading}>Attack</div>
       <Seg value={attackId} options={[{ value: "off", label: "off" }, ...(scenario?.attacks ?? []).map((a) => ({ value: a.id, label: a.id }))]} onChange={setAttackId} />
-      <button type="button" onClick={start} disabled={busy || !scenarioId} className="mt-1 h-9 rounded bg-[#1B1A17] text-white font-semibold disabled:opacity-50">
+      <button type="button" onClick={start} disabled={busy || !scenarioId} className={`${primaryButton} mt-1 w-full`}>
         {busy ? "Starting…" : "▷ Run"}
       </button>
       {error && <div className="text-xs text-[#B23A22]">{error}</div>}

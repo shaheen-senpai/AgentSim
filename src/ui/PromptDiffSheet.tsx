@@ -3,7 +3,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { lineDiff } from "./lineDiff";
 import type { RunRecord } from "./types";
-import { mono } from "./styles";
+import { mono, primaryButton } from "./styles";
 
 export function PromptDiffSheet({ open, onClose, run }: { open: boolean; onClose: () => void; run: RunRecord | null }) {
   const router = useRouter();
@@ -55,7 +55,7 @@ export function PromptDiffSheet({ open, onClose, run }: { open: boolean; onClose
         <div className="flex items-center gap-3 px-4 py-3 border-t border-[#E3E0D5]">
           <span className="text-xs text-[#6E6B60]">Same model ({(run?.agent.kind === "reference" ? run.agent.model : null) ?? "claude-haiku-4-5"}), same tools, same Scenario{run?.attack ? ", same Attack" : ""}.</span>
           {error && <span className="text-xs text-[#B23A22]">{error}</span>}
-          <button type="button" onClick={rerunFixed} disabled={busy || !run || run.agent.kind === "reference" && run.agent.version === "fixed"} className="ml-auto h-8 px-4 rounded bg-[#1B1A17] text-white font-semibold text-sm disabled:opacity-50">
+          <button type="button" onClick={rerunFixed} disabled={busy || !run || run.agent.kind === "reference" && run.agent.version === "fixed"} className={`${primaryButton} ml-auto`}>
             {busy ? "Starting…" : "▷ Rerun with fixed"}
           </button>
         </div>

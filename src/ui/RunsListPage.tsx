@@ -27,7 +27,7 @@ function Num({ value }: { value: number | null }) {
  * not shown disabled — a card that looks clickable but isn't is exactly the defect already
  * fixed once in the mockup's own review.
  */
-function latestComparablePair(runs: RunSummary[]): { a: RunSummary; b: RunSummary } | null {
+export function latestComparablePair(runs: RunSummary[]): { a: RunSummary; b: RunSummary } | null {
   const byScenario = new Map<string, RunSummary[]>();
   for (const r of runs) {
     if (r.status !== "completed") continue;
@@ -128,6 +128,8 @@ export function RunsListPage({ runs, packs }: { runs: RunSummary[]; packs: PackO
                 <td className="px-3.5 py-3 border-b border-[#E3E0D5]">
                   {r.status === "running" ? (
                     <span className="text-[11px] text-[#6E6B60]">running…</span>
+                  ) : r.status === "failed" ? (
+                    <span className={`px-2 py-0.5 text-[11px] font-bold uppercase ${dangerPill}`}>Error</span>
                   ) : r.capped ? (
                     <span className={`px-2 py-0.5 text-[11px] font-bold uppercase ${dangerPill}`}>Capped</span>
                   ) : (

@@ -312,7 +312,7 @@ export function EventDrawer({ run, events, selected, onSelect, onJump, tools, sy
       role="complementary"
       aria-label={`Details for ${title}`}
       style={{ width: DRAWER_W }}
-      className="absolute right-0 top-0 bottom-0 z-10 flex max-w-full flex-col overflow-hidden border-l border-[#E3E0D5] bg-white shadow-[-4px_0_16px_rgba(29,29,27,.06)] outline-none"
+      className="absolute right-0 top-0 bottom-0 z-10 flex max-w-full flex-col overflow-hidden border-l border-[#E3E0D5] bg-white shadow-[-4px_0_16px_rgba(27,26,23,.06)] outline-none"
     >
       <header className="flex items-start gap-2 border-b border-[#E3E0D5] px-3 py-2.5">
         <div className="min-w-0 flex-1">

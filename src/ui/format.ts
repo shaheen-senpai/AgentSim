@@ -114,3 +114,11 @@ export function prettyJson(raw: string): string {
 export function clockTime(ms: number): string {
   return new Date(ms).toISOString().slice(11, 23);
 }
+
+/**
+ * `YYYY-MM-DD HH:MM` of an ISO timestamp, in UTC — deliberately not the viewer's locale or zone,
+ * for the same reason `clockTime` isn't: server and client must agree, or hydration mismatches.
+ */
+export function runDate(iso: string): string {
+  return new Date(iso).toISOString().slice(0, 16).replace("T", " ");
+}

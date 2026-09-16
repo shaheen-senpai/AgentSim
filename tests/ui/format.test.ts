@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ToolDef } from "@/engine/pack";
 import type { Event } from "@/engine/types";
-import { clockTime, fmtArgs, prettyJson, summarizeResult } from "@/ui/format";
+import { clockTime, fmtArgs, prettyJson, runDate, summarizeResult } from "@/ui/format";
 
 function tool(overrides: Partial<ToolDef> & Pick<ToolDef, "op" | "collection">): ToolDef {
   return {
@@ -114,5 +114,11 @@ describe("prettyJson", () => {
 describe("clockTime", () => {
   it("is HH:MM:SS.mmm in UTC, so a Run reads the same on every machine", () => {
     expect(clockTime(Date.UTC(2026, 8, 12, 20, 14, 3, 456))).toBe("20:14:03.456");
+  });
+});
+
+describe("runDate", () => {
+  it("is YYYY-MM-DD HH:MM in UTC, so server and client render the same string", () => {
+    expect(runDate("2026-09-12T20:14:03.456Z")).toBe("2026-09-12 20:14");
   });
 });

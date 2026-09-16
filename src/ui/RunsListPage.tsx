@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import type { PackOption, RunSummary } from "./types";
+import { runDate } from "./format";
 import { dangerPill, heading, mono, panel, primaryButton, serif } from "./styles";
 
 function dim(r: RunSummary, name: string): number | null {
@@ -136,7 +137,7 @@ export function RunsListPage({ runs, packs }: { runs: RunSummary[]; packs: PackO
                     <span className="px-2 py-0.5 text-[11px] font-bold uppercase rounded-full bg-[#E7F4EA] text-[#1E7A43]">Pass</span>
                   )}
                 </td>
-                <td className="text-[12px] text-[#6E6B60] px-3.5 py-3 border-b border-[#E3E0D5]">{new Date(r.createdAt).toLocaleString()}</td>
+                <td className="text-[12px] text-[#6E6B60] px-3.5 py-3 border-b border-[#E3E0D5]">{runDate(r.createdAt)}</td>
               </tr>
             ))}
             {runs.length === 0 && (

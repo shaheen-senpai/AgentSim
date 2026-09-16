@@ -521,9 +521,9 @@ export function RunsListPage({ runs, packs }: { runs: RunSummary[]; packs: PackO
 }
 ```
 
-(No insight cards or Compare card in this task — the spec marks the Compare feature as Phase 5;
-building a card that links to comparison logic that doesn't exist yet would be exactly the "looks
-clickable but isn't" defect this whole redesign already fixed once. `Task`/`Mandate`/`Safety`
+(The Compare card's own comparison *view* — a real per-event ledger diff — is Phase 5's job, not
+this task's; this task only computes which two Runs to link together and reuses the existing
+`/compare` route as-is, so it never links to logic that doesn't exist. `Task`/`Mandate`/`Safety`
 column headers name the three Dimensions the mockup showed; a Run with no score yet (`status:
 "running"`) renders `—` via `Num`'s null case, not a crash.)
 

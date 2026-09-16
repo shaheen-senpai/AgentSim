@@ -1,7 +1,7 @@
 "use client";
 // The client island for `/worlds/[id]` (Task 17): owns the whole pack `files` map, the tab strip
 // (so it can mark tabs with validation errors), Validate/Save, and the unsaved-changes guard. The
-// page (a Server Component) still renders every read-only tab body — `SeedTables`, `ToolCards`,
+// page (a Server Component) still renders every read-only tab body — `EntityBrowser`, `ToolCards`,
 // `ScenarioCards`, `AgentPrompts`, `EntityMap` via `Body` in `page.tsx` — and hands this component
 // only the current tab's rendered output as `children`; this component never imports or duplicates
 // any of them. When a tab is "in edit mode" it swaps that slot for `YamlEditor`(s) instead.

@@ -84,7 +84,7 @@ export function tabFileKey(tab: WorldTab): string | null {
   switch (tab) {
     case "overview":
       return "pack.yaml";
-    case "seed":
+    case "entities":
       return "seed.yaml";
     case "tools":
       return "tools.yaml";
@@ -96,7 +96,7 @@ export function tabFileKey(tab: WorldTab): string | null {
 /** The tab a pack-file key belongs to, or `null` for a key outside the pack layout. */
 export function fileTab(file: string): WorldTab | null {
   if (file === "pack.yaml") return "overview";
-  if (file === "seed.yaml") return "seed";
+  if (file === "seed.yaml") return "entities";
   if (file === "tools.yaml") return "tools";
   if (file.startsWith("scenarios/")) return "scenarios";
   if (file.startsWith("agents/")) return "agents";

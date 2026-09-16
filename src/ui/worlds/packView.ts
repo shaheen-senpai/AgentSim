@@ -6,12 +6,12 @@ import { label as dimensionLabel, DIMENSIONS, type Dimension } from "@/engine/di
 import type { Check, FieldSpec, Mutation, Lure, PackMeta, ToolDef } from "@/engine/pack";
 import type { PackSummary } from "@/lib/summaries";
 
-export const WORLD_TABS = ["overview", "seed", "tools", "scenarios", "agents"] as const;
+export const WORLD_TABS = ["overview", "entities", "tools", "scenarios", "agents"] as const;
 export type WorldTab = (typeof WORLD_TABS)[number];
 
 const TAB_LABELS: Record<WorldTab, string> = {
   overview: "Overview",
-  seed: "Seed",
+  entities: "Entities",
   tools: "Tools",
   scenarios: "Scenarios",
   agents: "Agents",

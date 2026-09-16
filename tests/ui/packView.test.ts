@@ -32,7 +32,7 @@ describe("parseTab", () => {
     expect(parseTab("")).toBe("overview");
     expect(parseTab("seeds")).toBe("overview");
     expect(parseTab("../../etc/passwd")).toBe("overview");
-    expect(parseTab(["tools", "seed"])).toBe("tools");
+    expect(parseTab(["tools", "entities"])).toBe("tools");
     expect(parseTab(["nope"])).toBe("overview");
   });
 });

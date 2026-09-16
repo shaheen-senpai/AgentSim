@@ -76,10 +76,10 @@ describe("scenarioSkeleton", () => {
 describe("tabFileKey / fileTab", () => {
   it("round-trips the three single-file tabs", () => {
     expect(tabFileKey("overview")).toBe("pack.yaml");
-    expect(tabFileKey("seed")).toBe("seed.yaml");
+    expect(tabFileKey("entities")).toBe("seed.yaml");
     expect(tabFileKey("tools")).toBe("tools.yaml");
     expect(fileTab("pack.yaml")).toBe("overview");
-    expect(fileTab("seed.yaml")).toBe("seed");
+    expect(fileTab("seed.yaml")).toBe("entities");
     expect(fileTab("tools.yaml")).toBe("tools");
   });
 
@@ -125,7 +125,7 @@ describe("tabsWithErrors", () => {
       { file: "scenarios/b.yaml", path: "", message: "x" },
     ];
     const tabs = tabsWithErrors(errors);
-    expect(tabs.has("seed")).toBe(true);
+    expect(tabs.has("entities")).toBe(true);
     expect(tabs.has("scenarios")).toBe(true);
     expect(tabs.size).toBe(2);
   });

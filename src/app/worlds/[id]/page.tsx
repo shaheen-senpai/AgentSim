@@ -4,15 +4,17 @@
 // client island that receives the current tab's read-only render as `children` — it takes over the
 // tab strip and the tab body to add Edit/Validate/Save, but never re-implements what `Body` renders.
 import { notFound } from "next/navigation";
+import { applyAttack } from "@/engine/attack";
 import { listPackIds, loadPack, PACK_ID_RE, type WorldPack } from "@/engine/pack";
+import { seedWorld } from "@/engine/world";
 import { Header } from "@/ui/Header";
 import { heading, mono } from "@/ui/styles";
 import { AgentPrompts } from "@/ui/worlds/AgentPrompts";
+import { attackOptions, EntityBrowser, type SeedMode } from "@/ui/worlds/EntityBrowser";
 import { EntityMap } from "@/ui/worlds/EntityMap";
 import { PackEditor } from "@/ui/worlds/PackEditor";
 import { PackTabs } from "@/ui/worlds/PackTabs";
 import { ScenarioCards } from "@/ui/worlds/ScenarioCards";
-import { SeedTables } from "@/ui/worlds/SeedTables";
 import { ToolCards } from "@/ui/worlds/ToolCards";
 import { countsLabel, parseTab, type WorldTab } from "@/ui/worlds/packView";
 import { toPackSummary } from "@/lib/summaries";
@@ -22,11 +24,27 @@ export const dynamic = "force-dynamic";
 type Params = Promise<{ id: string }>;
 type Search = Promise<{ tab?: string | string[] }>;
 
+/**
+ * Every seed-data view the Entities tab can show: "as seeded" first, then one entry per distinct
+ * Attack in the pack. `seedWorld`/`applyAttack` are the engine's real functions — this is the
+ * server-side computation `EntityBrowser.tsx` itself is deliberately forbidden from doing (see the
+ * "import purity" comment at the top of that file).
+ */
+function seedModes(pack: WorldPack): SeedMode[] {
+  const modes: SeedMode[] = [{ key: "seeded", label: "as seeded", rowsByEntity: pack.seed.rows }];
+  for (const opt of attackOptions(pack.scenarios)) {
+    const world = seedWorld(pack);
+    applyAttack(pack, world, opt.attack);
+    modes.push({ key: opt.key, label: opt.label, rowsByEntity: world.collections });
+  }
+  return modes;
+}
+
 function Body({ pack, tab }: { pack: WorldPack; tab: WorldTab }) {
   const rowCounts = Object.fromEntries(Object.entries(pack.seed.rows).map(([c, rows]) => [c, rows.length]));
   switch (tab) {
-    case "seed":
-      return <SeedTables meta={pack.meta} seed={pack.seed} />;
+    case "entities":
+      return <EntityBrowser meta={pack.meta} modes={seedModes(pack)} />;
     case "tools":
       return <ToolCards meta={pack.meta} tools={pack.tools} />;
     case "scenarios":

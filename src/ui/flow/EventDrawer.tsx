@@ -7,8 +7,7 @@ import { injectedText, locateInjection } from "./injected";
 import { ViolationCard } from "../ViolationCard";
 import { clockTime, prettyJson } from "../format";
 import { systemColor } from "../systemColor";
-import { dangerPill } from "../styles";
-import { heading, mono } from "../styles";
+import { dangerPill, heading, mono } from "../styles";
 
 export type EventDrawerProps = {
   run: RunRecord;

@@ -224,11 +224,11 @@ describe("tool labels", () => {
 
 describe("links", () => {
   it("preselects the pack and Scenario on the Launcher", () => {
-    expect(runHref("northwind", "duplicate-charge-refund")).toBe("/?packId=northwind&scenarioId=duplicate-charge-refund");
+    expect(runHref("northwind", "duplicate-charge-refund")).toBe("/runs/new?packId=northwind&scenarioId=duplicate-charge-refund");
   });
 
   it("escapes anything odd in an id", () => {
-    expect(runHref("a b", "c&d")).toBe("/?packId=a%20b&scenarioId=c%26d");
+    expect(runHref("a b", "c&d")).toBe("/runs/new?packId=a%20b&scenarioId=c%26d");
   });
 
   it("links Overview without a query and every other tab with one", () => {

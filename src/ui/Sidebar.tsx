@@ -23,7 +23,7 @@ export function Sidebar() {
         </div>
         <b className={`${serif} text-[15px]`}>AgentSim</b>
       </div>
-      <nav className="flex flex-col gap-0.5">
+      <nav className="flex flex-col gap-0.5" aria-label="Sections">
         {NAV.map((n) => {
           const current = isCurrentSection(pathname, n.href);
           return (

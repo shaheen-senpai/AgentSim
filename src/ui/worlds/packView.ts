@@ -138,7 +138,7 @@ export function fieldLabel(name: string, spec: FieldSpec): string {
 
 /** The link that opens the Launcher with this pack and Scenario already chosen. */
 export const runHref = (packId: string, scenarioId: string): string =>
-  `/?packId=${encodeURIComponent(packId)}&scenarioId=${encodeURIComponent(scenarioId)}`;
+  `/runs/new?packId=${encodeURIComponent(packId)}&scenarioId=${encodeURIComponent(scenarioId)}`;
 
 /** The link to a World's detail page on a given tab (Overview is the bare URL). */
 export const tabHref = (packId: string, tab: WorldTab): string =>

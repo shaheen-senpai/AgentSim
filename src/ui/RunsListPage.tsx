@@ -1,10 +1,12 @@
 "use client";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { PackOption, RunSummary } from "./types";
 import { runDate } from "./format";
 import { dangerPill, heading, mono, panel, primaryButton, serif } from "./styles";
+import type { Dimension } from "@/engine/dimensions";
 
-function dim(r: RunSummary, name: string): number | null {
+function dim(r: RunSummary, name: Dimension): number | null {
   return r.dimensions.find((d) => d.name === name)?.score ?? null;
 }
 
@@ -69,6 +71,7 @@ export function RunsListPage({ runs, packs }: { runs: RunSummary[]; packs: PackO
   const attacked = runs.filter((r) => r.attackId !== null);
   const attackSucceeded = attacked.filter((r) => r.capped).length;
   const pair = latestComparablePair(runs);
+  const router = useRouter();
 
   return (
     <div className="p-8 flex flex-col gap-5">
@@ -105,14 +108,14 @@ export function RunsListPage({ runs, packs }: { runs: RunSummary[]; packs: PackO
         <table className="w-full border-collapse min-w-[760px]">
           <thead>
             <tr>
-              {["Run", "Scenario", "Attack", "Agent", "Task", "Mandate", "Safety", "World", "Verdict", "When"].map((h) => (
-                <th key={h} className={`${heading} text-left px-3.5 py-3 border-b border-[#E3E0D5]`}>{h}</th>
+              {["Run", "Scenario", "Attack", "Agent", "Task", "Mandate", "Safety", "Data", "World", "Verdict", "When"].map((h) => (
+                <th key={h} scope="col" className={`${heading} text-left px-3.5 py-3 border-b border-[#E3E0D5]`}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {runs.map((r) => (
-              <tr key={r.id} className="hover:bg-black/[.02]">
+              <tr key={r.id} onClick={() => router.push(`/runs/${r.id}`)} className="hover:bg-black/[.02] cursor-pointer">
                 <td className="px-3.5 py-3 border-b border-[#E3E0D5]">
                   <Link href={`/runs/${r.id}`} className="block">
                     <div className="font-semibold text-[13px]">{scenarioTitle(packs, r.packId, r.scenarioId)}</div>
@@ -125,6 +128,7 @@ export function RunsListPage({ runs, packs }: { runs: RunSummary[]; packs: PackO
                 <td className="px-3.5 py-3 border-b border-[#E3E0D5]"><Num value={dim(r, "task_completion")} /></td>
                 <td className="px-3.5 py-3 border-b border-[#E3E0D5]"><Num value={dim(r, "policy_compliance")} /></td>
                 <td className="px-3.5 py-3 border-b border-[#E3E0D5]"><Num value={dim(r, "safety")} /></td>
+                <td className="px-3.5 py-3 border-b border-[#E3E0D5]"><Num value={dim(r, "data_access")} /></td>
                 <td className="text-[13px] px-3.5 py-3 border-b border-[#E3E0D5]">{packName(packs, r.packId)}</td>
                 <td className="px-3.5 py-3 border-b border-[#E3E0D5]">
                   {r.status === "running" ? (
@@ -141,7 +145,7 @@ export function RunsListPage({ runs, packs }: { runs: RunSummary[]; packs: PackO
               </tr>
             ))}
             {runs.length === 0 && (
-              <tr><td colSpan={10} className="px-3.5 py-8 text-center text-[13px] text-[#6E6B60]">No runs yet — start one to see it here.</td></tr>
+              <tr><td colSpan={11} className="px-3.5 py-8 text-center text-[13px] text-[#6E6B60]">No runs yet — start one to see it here.</td></tr>
             )}
           </tbody>
         </table>

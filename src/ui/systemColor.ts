@@ -4,7 +4,7 @@
 // Pure module: no React, no pack import (callers pass `Object.keys(pack.meta.systems)`).
 
 const PALETTE = ["#3b6ea8", "#2f7d4f", "#b3661a", "#7a4fa3", "#1f8a8a", "#a83b6e", "#6b6b66", "#8a7a1f"];
-const GREY = { bg: "#ececea", fg: "#6b6b66", stripe: "#6b6b66" };
+const GREY = { bg: "#EDEAE1", fg: "#6E6B60", stripe: "#6E6B60" };
 
 export type SystemColor = { bg: string; fg: string; stripe: string };
 

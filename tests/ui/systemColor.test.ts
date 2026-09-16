@@ -24,8 +24,8 @@ describe("systemColor", () => {
 
   it("gives an unknown system a neutral grey", () => {
     const c = systemColor(["email", "orders"], "nonexistent");
-    expect(c.fg).toBe("#6b6b66");
-    expect(c.stripe).toBe("#6b6b66");
+    expect(c.fg).toBe("#6E6B60");
+    expect(c.stripe).toBe("#6E6B60");
   });
 
   it("derives bg as a light tint of the hue, distinct from fg", () => {

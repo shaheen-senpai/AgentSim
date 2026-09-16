@@ -4,7 +4,7 @@ import type { FlowNodeData, FlowNodeKind } from "./buildFlow";
 import type { ToolDef } from "../types";
 import { fmtArgs, summarizeResult } from "../format";
 import { systemColor } from "../systemColor";
-import { mono, RED } from "../styles";
+import { dangerPill, mono, RED } from "../styles";
 
 /** Everything `buildFlow` does not know about, added when the graph is mapped onto xyflow nodes. */
 export type NodeExtras = {
@@ -39,8 +39,8 @@ const BADGE = "min-w-0 truncate rounded-sm px-1 py-px text-[9px] font-semibold u
 /** The three flow badges of spec §6.1 — text, never colour alone. */
 export function Badge({ kind, children }: { kind: "violation" | "lure" | "injected"; children: React.ReactNode }) {
   const style =
-    kind === "lure" ? "bg-[#B23A22] text-white"
-    : kind === "violation" ? "bg-[#FBEAE7] text-[#B23A22]"
+    kind === "lure" ? `${dangerPill} font-semibold ring-1 ring-inset ring-[#B23A22]`
+    : kind === "violation" ? dangerPill
     : "border border-[#B23A22] text-[#B23A22] bg-white";
   return <span className={`${BADGE} ${style}`}>{children}</span>;
 }

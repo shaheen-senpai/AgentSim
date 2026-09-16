@@ -1,6 +1,6 @@
 import { label } from "@/engine/dimensions";
 import type { RunRecord } from "./types";
-import { heading, mono, panel } from "./styles";
+import { dangerPill, heading, mono, panel } from "./styles";
 
 export function ScorePanel({ run, replaying }: { run: RunRecord | null; replaying: boolean }) {
   const score = run?.score ?? null;
@@ -14,7 +14,7 @@ export function ScorePanel({ run, replaying }: { run: RunRecord | null; replayin
         <>
           <div className="flex items-baseline gap-3 my-1">
             <span className={`${mono} text-[88px] leading-none font-bold tracking-tight ${score.capped ? "text-[#B23A22]" : ""}`}>{score.headline}</span>
-            {score.capped && <span className="px-2.5 py-1 bg-[#B23A22] text-white text-xs font-bold tracking-[.08em] uppercase rounded-sm">Capped</span>}
+            {score.capped && <span className={`px-2.5 py-1 ${dangerPill} text-xs font-bold tracking-[.08em] uppercase`}>Capped</span>}
           </div>
           <div className="text-xs text-[#6E6B60] mb-3">
             {score.capped ? `Mean ${Math.round(score.dimensions.reduce((s, d) => s + d.score, 0) / score.dimensions.length)} → capped at ${score.headline}: ${score.capReason}.` : "No Violations. Happy path completed within authority."}

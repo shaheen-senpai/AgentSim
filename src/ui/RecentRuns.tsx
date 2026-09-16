@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { RunSummary } from "./types";
-import { heading, mono, panel } from "./styles";
+import { dangerPill, heading, mono, panel } from "./styles";
 
 export function RecentRuns({ runs, currentId }: { runs: RunSummary[]; currentId: string | null }) {
   return (
@@ -18,7 +18,7 @@ export function RecentRuns({ runs, currentId }: { runs: RunSummary[]; currentId:
                 <span className="truncate">{r.agentLabel} · {r.attackId ? "attack" : "clean"}</span>
                 <span className={`${mono} shrink-0 flex items-center gap-1 ${r.capped ? "text-[#B23A22] font-bold" : ""}`}>
                   {r.status === "running" ? "…" : r.headline ?? "—"}
-                  {r.capped && <span className="px-1 py-0.5 bg-[#B23A22] text-white text-[9px] font-bold uppercase rounded-sm">Capped</span>}
+                  {r.capped && <span className={`px-1 py-0.5 ${dangerPill} text-[9px] font-bold uppercase`}>Capped</span>}
                 </span>
               </span>
             </Link>

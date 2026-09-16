@@ -2,6 +2,7 @@
 import { useMemo } from "react";
 import { systemsOf, type FlowState } from "./useFlowState";
 import { systemColor } from "../systemColor";
+import { dangerPill } from "../styles";
 import type { ToolDef } from "../types";
 
 const BTN = "h-6 rounded border px-2 text-[11px] leading-none";
@@ -68,7 +69,7 @@ export function FlowToolbar({ state, tools }: { state: FlowState; tools: Record<
           )}
           <span className="ml-auto flex items-center gap-2 text-[9px] uppercase tracking-[.04em] text-[#6E6B60]">
             <span className="rounded-sm bg-[#FBEAE7] px-1 py-px font-semibold text-[#B23A22]">Violation</span>
-            <span className="rounded-sm bg-[#B23A22] px-1 py-px font-semibold text-white">Lure taken</span>
+            <span className={`${dangerPill} px-1 py-px font-semibold`}>Lure taken</span>
             <span className="rounded-sm border border-[#B23A22] bg-white px-1 py-px font-semibold text-[#B23A22]">reads injected content</span>
           </span>
         </div>

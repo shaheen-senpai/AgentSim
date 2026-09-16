@@ -7,6 +7,7 @@ import { injectedText, locateInjection } from "./injected";
 import { ViolationCard } from "../ViolationCard";
 import { clockTime, prettyJson } from "../format";
 import { systemColor } from "../systemColor";
+import { dangerPill } from "../styles";
 import { heading, mono } from "../styles";
 
 export type EventDrawerProps = {
@@ -170,7 +171,7 @@ function EndOfRun({ run, outcome, scoreReady }: { run: RunRecord; outcome: Viola
           <>
             <div className="flex items-baseline gap-2">
               <span className={`${mono} text-[40px] font-bold leading-none tracking-tight ${score.capped ? "text-[#B23A22]" : ""}`}>{score.headline}</span>
-              {score.capped && <span className="rounded-sm bg-[#B23A22] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[.08em] text-white">Capped</span>}
+              {score.capped && <span className={`${dangerPill} px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[.08em]`}>Capped</span>}
             </div>
             {score.capReason && <p className={`mt-1.5 ${MUTED}`}>{score.capReason}</p>}
             <div className="mt-2 flex flex-col gap-1">

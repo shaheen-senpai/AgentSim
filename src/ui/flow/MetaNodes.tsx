@@ -1,7 +1,7 @@
 "use client";
 import type { NodeProps } from "@xyflow/react";
 import { Badge, NodeShell, Ports, type AppNode } from "./EventNode";
-import { heading, mono } from "../styles";
+import { dangerPill, heading, mono } from "../styles";
 
 /** Where the Run begins: the Task Brief the agent was given. */
 export function StartNode({ data, selected }: NodeProps<AppNode>) {
@@ -45,7 +45,7 @@ export function EndNode({ data, selected }: NodeProps<AppNode>) {
         {score ? (
           <div className="mt-0.5 flex items-baseline gap-2">
             <span className={`${mono} text-[32px] font-bold leading-none tracking-tight ${score.capped ? "text-[#B23A22]" : ""}`}>{score.headline}</span>
-            {score.capped && <span className="rounded-sm bg-[#B23A22] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[.08em] text-white">Capped</span>}
+            {score.capped && <span className={`${dangerPill} px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[.08em]`}>Capped</span>}
           </div>
         ) : (
           <div className="mt-1 text-[11px] text-[#6E6B60]">{data.status === "failed" ? "Run failed" : "evaluating…"}</div>

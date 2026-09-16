@@ -1,12 +1,15 @@
-import { loadPacks, toPackOption, type PackOption } from "@/lib/summaries";
-import { listRuns } from "@/runner/store";
-import { RunPage } from "@/ui/RunPage";
+import { loadPacks, toWizardPack } from "@/lib/summaries";
+import { listAgents } from "@/runner/agentRegistry";
+import { ConsoleShell } from "@/ui/ConsoleShell";
+import { NewRunWizard } from "@/ui/wizard/NewRunWizard";
 
 export const dynamic = "force-dynamic";
 
-/** `loadPacks` skips a pack that no longer loads, so one bad pack cannot 500 the front door. */
-const packs = (): PackOption[] => loadPacks().packs.map(toPackOption);
-
 export default function NewRun() {
-  return <RunPage id={null} initialRun={null} packs={packs()} tools={{}} principalLabel="" injectedLabel="" recent={listRuns()} />;
+  const packs = loadPacks().packs.map(toWizardPack);
+  return (
+    <ConsoleShell>
+      <NewRunWizard packs={packs} agents={listAgents()} />
+    </ConsoleShell>
+  );
 }

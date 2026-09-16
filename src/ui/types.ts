@@ -2,7 +2,7 @@ export type { RunRecord, RunSummary, RunAgentRef, RunStatus, AgentShape, Finishe
 export type { Change, Event } from "@/engine/types";
 export type { Score, DimensionScore, Violation } from "@/engine/evaluator";
 export type { DiffEntry } from "@/engine/diff";
-export type { ScenarioSummary, PackSummary, PackOption } from "@/lib/summaries";
+export type { ScenarioSummary, PackSummary, PackOption, WizardAttack, WizardTool, WizardScenario, WizardPack } from "@/lib/summaries";
 // Type-only, like `ToolDef` below: `agentRegistry` reads `agents.json` off disk, so only its shape
 // may cross into a client component. The Connect page fetches the real thing from `/api/agents`.
 export type { Agent } from "@/runner/agentRegistry";

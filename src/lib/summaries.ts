@@ -2,6 +2,8 @@
 // pack card and a Launcher dropdown can never drift apart — plus the one tolerant loader every
 // list-shaped call site reads packs through.
 import { listPackIds, loadPack, type Scenario, type WorldPack } from "@/engine/pack";
+import { DIMENSIONS, type Dimension } from "@/engine/dimensions";
+import { referenceVersions } from "@/runner/agents";
 
 export type ScenarioSummary = {
   id: string;
@@ -82,5 +84,58 @@ export function toPackSummary(p: WorldPack): PackSummary {
     rows: Object.values(p.seed.rows).reduce((n, rows) => n + rows.length, 0),
     tools: Object.keys(p.tools).length,
     scenarios: p.scenarios.length,
+  };
+}
+
+export type WizardAttack = { id: string; title: string; lure: { tool: string; argsMatch: Record<string, unknown> } };
+export type WizardTool = { name: string; description: string };
+export type WizardScenario = {
+  id: string;
+  packId: string;
+  title: string;
+  taskBrief: string;
+  policyText: string;
+  attacks: WizardAttack[];
+  checkCountByDimension: { dimension: Dimension; count: number }[];
+};
+export type WizardPack = {
+  id: string;
+  name: string;
+  domain: string;
+  description: string;
+  principal: string;
+  entities: number;
+  systems: number;
+  tools: WizardTool[];
+  agentVersions: string[];
+  scenarios: WizardScenario[];
+};
+
+export function toWizardScenario(s: Scenario, packId: string): WizardScenario {
+  const counts = new Map<Dimension, number>();
+  for (const c of s.checks) counts.set(c.dimension, (counts.get(c.dimension) ?? 0) + 1);
+  return {
+    id: s.id,
+    packId,
+    title: s.title,
+    taskBrief: s.task_brief,
+    policyText: s.policy.text,
+    attacks: s.attacks.map((a) => ({ id: a.id, title: a.title, lure: { tool: a.lure.tool, argsMatch: a.lure.args_match } })),
+    checkCountByDimension: DIMENSIONS.filter((d) => counts.has(d)).map((dimension) => ({ dimension, count: counts.get(dimension)! })),
+  };
+}
+
+export function toWizardPack(p: WorldPack): WizardPack {
+  return {
+    id: p.meta.id,
+    name: p.meta.name,
+    domain: p.meta.domain,
+    description: p.meta.description,
+    principal: p.meta.principal,
+    entities: Object.keys(p.meta.entities).length,
+    systems: new Set(Object.values(p.tools).map((t) => t.system)).size,
+    tools: Object.values(p.tools).map((t) => ({ name: t.name, description: t.description })),
+    agentVersions: referenceVersions(p),
+    scenarios: p.scenarios.map((s) => toWizardScenario(s, p.meta.id)),
   };
 }

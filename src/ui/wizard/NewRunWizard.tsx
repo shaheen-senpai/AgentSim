@@ -8,7 +8,8 @@ import { WorldStep } from "./steps/WorldStep";
 import { ScenarioStep } from "./steps/ScenarioStep";
 import { MandateStep } from "./steps/MandateStep";
 import { AttackStep } from "./steps/AttackStep";
-import { secondaryButton, primaryButton, serif, hint } from "@/ui/styles";
+import { ReviewStep } from "./steps/ReviewStep";
+import { secondaryButton, primaryButton, serif } from "@/ui/styles";
 
 export const STEP_LABELS = ["Connect agent", "World", "Scenario", "Mandate", "Attacks", "Review"];
 export type ConnectMode = "reference" | "mcp" | "forwarder" | "connector";
@@ -46,6 +47,34 @@ export function NewRunWizard({ packs, agents: initialAgents }: { packs: WizardPa
     setState((s) => ({ ...s, ...patch }));
   }
 
+  async function startRun() {
+    if (!pack || !scenario) return;
+    if (state.connect !== "reference" && !state.existingAgentId) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const agent =
+        state.connect === "reference"
+          ? { kind: "reference" as const, version: state.agentVersion }
+          : { kind: "byo" as const, agentId: state.existingAgentId as string };
+      const res = await fetch("/api/runs", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ packId: pack.id, scenarioId: scenario.id, agent, attackId: state.attackId === "off" ? null : state.attackId }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { id?: string; error?: string };
+      if (!res.ok || !data.id) {
+        setError(data.error ?? `The Run was not created (HTTP ${res.status}).`);
+        return;
+      }
+      router.push(`/runs/${data.id}`);
+    } catch {
+      setError("Network error — no Run was created.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const pack = packs.find((p) => p.id === state.packId);
   const scenario = pack?.scenarios.find((s) => s.id === state.scenarioId);
   const lastStep = STEP_LABELS.length - 1;
@@ -69,7 +98,9 @@ export function NewRunWizard({ packs, agents: initialAgents }: { packs: WizardPa
       {state.step === 2 && pack && <ScenarioStep pack={pack} state={state} onChange={update} />}
       {state.step === 3 && scenario && <MandateStep scenario={scenario} />}
       {state.step === 4 && scenario && <AttackStep scenario={scenario} state={state} onChange={update} />}
-      {state.step === 5 && <p className={hint}>Review step — added by Task 5.</p>}
+      {state.step === 5 && pack && scenario && (
+        <ReviewStep state={state} pack={pack} scenario={scenario} agents={agents} busy={busy} error={error} onStart={startRun} />
+      )}
 
       <div className="flex items-center gap-3 pt-2">
         <button
@@ -91,7 +122,6 @@ export function NewRunWizard({ packs, agents: initialAgents }: { packs: WizardPa
           )}
         </div>
       </div>
-      {busy || error ? null : null}
     </div>
   );
 }

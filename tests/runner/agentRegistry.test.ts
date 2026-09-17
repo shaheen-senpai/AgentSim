@@ -79,15 +79,16 @@ describe("agentRegistry", () => {
 });
 
 describe("a registry written before driven agents existed", () => {
-  it("reads back without url or authHeaderEnv, and saving fills them in", () => {
-    // `readAll` casts rather than validates, and `url` now feeds a security decision, so the
-    // absent-field case is worth pinning rather than assuming.
+  it("reads back with url and authHeaderEnv filled to empty, and saving keeps them", () => {
+    // `readAll` normalises every record to the current shape, and `url` feeds a security decision,
+    // so the absent-field case is worth pinning: it must read as "" (no URL), never as undefined.
     writeFileSync(
       path.join(dataDir(), "agents.json"),
       JSON.stringify([{ id: "agt_old", name: "Legacy", version: "1", shape: "forwarder", toolAliases: {}, notes: "", createdAt: "2026-01-01T00:00:00.000Z" }]),
     );
     const old = getAgent("agt_old")!;
-    expect(old.url).toBeUndefined();
+    expect(old.url).toBe("");
+    expect(old.authHeaderEnv).toBe("");
     expect(saveAgent({ ...old, name: "Legacy" })).toMatchObject({ id: "agt_old", url: "", authHeaderEnv: "" });
   });
 });

@@ -3,7 +3,10 @@ import { activeNav } from "@/ui/nav";
 
 describe("activeNav", () => {
   it("maps every route family onto its sidebar item", () => {
-    expect(activeNav("/")).toBe("runs");
+    expect(activeNav("/")).toBeNull(); // the marketing landing page belongs to no console section
+    expect(activeNav("/agents")).toBe("agents");
+    expect(activeNav("/agents/agt_x")).toBe("agents");
+    expect(activeNav("/runs")).toBe("runs");
     expect(activeNav("/runs/run_abc")).toBe("runs");
     expect(activeNav("/runs/new")).toBe("wizard");
     expect(activeNav("/compare")).toBe("compare");

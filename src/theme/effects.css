@@ -1,0 +1,162 @@
+/*
+  Derived effects for the marketing theme: keyframes, the grid/prism backgrounds and the
+  scroll-reveal states. Everything here reads colours and durations from tokens.css, so it needs
+  no edits when the theme changes. Reduced-motion users get the finished frame immediately.
+*/
+
+@keyframes reveal {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes radar-pulse {
+  0%, 100% { opacity: 0.35; transform: scale(0.96); }
+  50%      { opacity: 1;    transform: scale(1.04); }
+}
+@keyframes prism-packet {
+  0%, 12%   { opacity: 0; transform: translateX(-24px); }
+  28%, 72%  { opacity: 1; transform: translateX(0); }
+  88%, 100% { opacity: 0; transform: translateX(24px); }
+}
+@keyframes prism-scan {
+  0%       { opacity: 0; transform: translateY(-58px); }
+  20%, 80% { opacity: 1; }
+  100%     { opacity: 0; transform: translateY(58px); }
+}
+@keyframes prism-output {
+  0%, 20%   { opacity: 0.25; transform: translateX(-12px); }
+  45%, 100% { opacity: 1;    transform: translateX(0); }
+}
+@keyframes core-breathe {
+  0%, 100% { box-shadow: 0 0 60px color-mix(in oklab, var(--color-signal) 12%, transparent); }
+  50%      { box-shadow: 0 0 90px color-mix(in oklab, var(--color-signal) 24%, transparent); }
+}
+
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes pop-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: none; }
+}
+/* A ring that expands and fades: marks the card that just arrived. */
+@keyframes highlight {
+  0%   { box-shadow: 0 0 0 0 color-mix(in oklab, var(--color-primary) 55%, transparent); }
+  100% { box-shadow: 0 0 0 14px transparent; }
+}
+@keyframes line-in {
+  from { opacity: 0; transform: translateX(-6px); }
+  to   { opacity: 1; transform: none; }
+}
+/* Trust bars grow to their value (set --bar on the element). */
+@keyframes bar-fill { from { width: 0; } to { width: var(--bar, 0%); } }
+
+/* Faint blueprint grid behind the hero. */
+.grid-field {
+  background-image:
+    linear-gradient(color-mix(in oklab, var(--color-border) 35%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in oklab, var(--color-border) 35%, transparent) 1px, transparent 1px);
+  background-size: 44px 44px;
+}
+
+/* Ruled paper + one diagonal light beam inside the prism panel. */
+.prism-field {
+  background-image:
+    linear-gradient(120deg, transparent 0 44%, color-mix(in oklab, var(--color-primary) 9%, transparent) 44% 45%, transparent 45% 100%),
+    linear-gradient(color-mix(in oklab, var(--color-border) 28%, transparent) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 32px;
+}
+
+/* The diamond "MND-02" core. Its glow colour flips with the verdict via --core-glow. */
+.prism-core {
+  clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+  box-shadow: 0 0 70px color-mix(in oklab, var(--core-glow, var(--color-signal)) 14%, transparent);
+  transition: box-shadow var(--duration-score) var(--ease-soft), border-color var(--duration-score) var(--ease-soft);
+}
+
+/* Scroll-reveal: a section starts hidden and slides in when it enters the viewport.
+   `data-reveal` is set by <Reveal>; children with `data-reveal-child` stagger by their index. */
+[data-reveal] {
+  opacity: 0;
+  transform: translateY(22px);
+  transition:
+    opacity var(--duration-reveal) var(--ease-soft),
+    transform var(--duration-reveal) var(--ease-soft);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+[data-reveal="visible"] {
+  opacity: 1;
+  transform: none;
+}
+[data-reveal-child] {
+  opacity: 0;
+  transform: translateY(16px);
+  transition:
+    opacity var(--duration-reveal) var(--ease-soft),
+    transform var(--duration-reveal) var(--ease-soft);
+  transition-delay: calc(var(--reveal-index, 0) * 90ms + 120ms);
+}
+[data-reveal="visible"] [data-reveal-child] {
+  opacity: 1;
+  transform: none;
+}
+
+/* Active nav link: an underline that slides in as you move between sections. */
+.nav-link {
+  position: relative;
+}
+.nav-link::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -6px;
+  height: 1px;
+  background: var(--color-primary);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform var(--duration-fast) var(--ease-soft);
+}
+.nav-link[aria-current="true"]::after {
+  transform: scaleX(1);
+}
+
+/* Print (and any client without scrolling) gets the finished page. */
+@media print {
+  [data-reveal],
+  [data-reveal-child] {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-reveal],
+  [data-reveal-child] {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+  .animate-reveal,
+  .animate-radar-pulse,
+  .animate-prism-packet,
+  .animate-prism-scan,
+  .animate-prism-output,
+  .animate-core-breathe,
+  .animate-fade-in,
+  .animate-pop-in,
+  .animate-toast-in,
+  .animate-highlight,
+  .animate-line-in {
+    animation: none !important;
+  }
+  .animate-bar-fill {
+    animation: none !important;
+    width: var(--bar, 0%) !important;
+  }
+  .prism-core,
+  .nav-link::after {
+    transition: none !important;
+  }
+}

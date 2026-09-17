@@ -72,7 +72,7 @@ export function RunPage({ id, initialRun, tools, systems, principalLabel, inject
           polling: {error}
         </div>
       )}
-      <Link className="back-link" href="/">← All runs</Link>
+      <Link className="back-link" href="/runs">← All runs</Link>
       <div className="crumb">
         Runs / <b>{run.scenarioTitle}</b>
       </div>

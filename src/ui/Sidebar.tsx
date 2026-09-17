@@ -8,6 +8,12 @@ import { useEffect, useState } from "react";
 import { activeNav, NAV, type NavKey } from "./nav";
 
 const ICONS: Record<NavKey, React.ReactNode> = {
+  agents: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+      <path d="M3.5 8 12 3.5 20.5 8v8L12 20.5 3.5 16V8Z" />
+      <path d="M3.5 8 12 12.5 20.5 8M12 12.5v8" />
+    </svg>
+  ),
   runs: (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
       <circle cx="12" cy="12" r="9" />

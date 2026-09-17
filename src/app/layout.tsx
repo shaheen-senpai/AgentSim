@@ -7,8 +7,8 @@ const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"]
 const fraunces = Fraunces({ variable: "--font-fraunces", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "AgentSim Console",
-  description: "A flight simulator for AI agents.",
+  title: { default: "AgentSim", template: "%s" },
+  description: "The exam room for AI agents: run clean and poisoned shifts, grade the company ledger, approve with evidence.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

@@ -1,4 +1,7 @@
 @import "tailwindcss";
+/* Marketing + workspace theme tokens (a Tailwind @theme block) and the effects derived from them. */
+@import "../theme/tokens.css";
+@import "../theme/effects.css";
 
 /* The mock was authored against browser defaults; Tailwind's preflight (also @layer base) zeroes
    these. Restoring them here — same layer, later, so it wins over preflight but still yields to any
@@ -500,3 +503,7 @@
   .footer-actions .right{margin-left:auto; display:flex; gap:10px;}
 
   .visually-hidden{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap;}
+
+html {
+  scroll-behavior: smooth;
+}

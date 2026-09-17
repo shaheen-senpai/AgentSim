@@ -6,6 +6,7 @@ import { ConsoleShell } from "@/ui/ConsoleShell";
 import { CompareRunColumn } from "@/ui/CompareRunColumn";
 import { RunPicker } from "@/ui/compare/RunPicker";
 import { AttackPanel } from "@/ui/compare/AttackPanel";
+import { ActionLedger } from "@/ui/compare/ActionLedger";
 import { ChecksTable } from "@/ui/compare/ChecksTable";
 import { WorldDiffCompare } from "@/ui/compare/WorldDiffCompare";
 // Imported from its own plain module, not from `@/ui/RunsListPage` (a "use client" component that
@@ -91,7 +92,7 @@ export default async function Compare({ searchParams }: { searchParams: Promise<
           <CompareRunColumn run={rb} tools={vb.tools} packError={vb.error} injectedLabel={vb.injectedLabel} />
         </div>
         <AttackPanel runA={ra} runB={rb} />
-        {/* ActionLedger — added by Task 5 */}
+        <ActionLedger runA={ra} runB={rb} />
         {sharedChecks.length > 0 && <ChecksTable checks={sharedChecks} violationsA={ra.violations} violationsB={rb.violations} />}
         <WorldDiffCompare runA={ra} runB={rb} />
       </div>

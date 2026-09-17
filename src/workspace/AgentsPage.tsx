@@ -1,16 +1,15 @@
 "use client";
 // `/agents` — the signed-in landing: every onboarded agent, the two ways to add one (both go through
 // the create wizard), and the numbers that matter. Server page hands over agents and run summaries.
+// Nothing here is sample data: an empty workspace stays empty until a real agent is imported or composed.
 import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
-import { Button, LinkButton } from "@/marketing/Button";
+import { LinkButton } from "@/marketing/Button";
 import { Icon } from "@/marketing/icons";
 import type { Agent, RunSummary } from "@/ui/types";
 import { agentTrust, filterAgents, sortAgents, workspaceStats } from "./agentStats";
 import { AgentCard, AgentRow } from "./AgentCard";
-import { createAgent } from "./api";
 import { EmptyState } from "./EmptyState";
-import { SAMPLE_AGENTS } from "./samples";
 import { StatsStrip } from "./StatsStrip";
 import { Toast, type ToastMessage } from "./Toast";
 import { container, enter, eyebrow, iconButton, input } from "./ui";
@@ -18,29 +17,15 @@ import { container, enter, eyebrow, iconButton, input } from "./ui";
 type View = "grid" | "list";
 
 export function AgentsPage({ initialAgents, runs }: { initialAgents: Agent[]; runs: RunSummary[] }) {
-  const [agents, setAgents] = useState<Agent[]>(() => sortAgents(initialAgents));
+  const agents = useMemo(() => sortAgents(initialAgents), [initialAgents]);
   const [query, setQuery] = useState("");
   const [view, setView] = useState<View>("grid");
   const [toast, setToast] = useState<ToastMessage | null>(null);
-  const [loadingSamples, setLoadingSamples] = useState(false);
 
   const chooseView = (v: View) => setView(v);
 
   const stats = useMemo(() => workspaceStats(agents, runs), [agents, runs]);
   const visible = useMemo(() => filterAgents(agents, query), [agents, query]);
-
-  const loadSamples = async () => {
-    setLoadingSamples(true);
-    const created: Agent[] = [];
-    for (const sample of SAMPLE_AGENTS) {
-      const result = await createAgent(sample);
-      if (result.agent) created.push(result.agent);
-      else setToast({ title: "Sample agent not saved", body: result.error, tone: "danger" });
-    }
-    setAgents((current) => sortAgents([...created, ...current]));
-    setLoadingSamples(false);
-    if (created.length) setToast({ title: `${created.length} sample agents added`, body: created.map((a) => a.name).join(" · ") });
-  };
 
   const dismiss = useCallback(() => setToast(null), []);
 
@@ -74,10 +59,9 @@ export function AgentsPage({ initialAgents, runs }: { initialAgents: Agent[]; ru
 
       {agents.length === 0 ? (
         <div className="mt-8">
-          <EmptyState icon="box" title="No agents yet" body="Import one with the worldbuilder plugin, compose one by hand, or load two samples to see the workspace working.">
+          <EmptyState icon="box" title="No agents yet" body="Import one with the worldbuilder plugin from the agent's own repo, or compose one by hand from the tools it can reach.">
             <LinkButton href="/agents/new?how=plugin" variant="outline"><Icon name="plug" className="size-4" /> Import via MCP</LinkButton>
             <LinkButton href="/agents/new" variant="outline"><Icon name="plus" className="size-4" /> Create agent</LinkButton>
-            <Button onClick={loadSamples} disabled={loadingSamples}>{loadingSamples ? "Adding…" : "Load sample agents"}</Button>
           </EmptyState>
         </div>
       ) : (

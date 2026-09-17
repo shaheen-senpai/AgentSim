@@ -12,7 +12,7 @@ import { agentTrust } from "../agentStats";
 import { createAgent, updateAgent } from "../api";
 import type { HandshakeStep } from "../handshake";
 import { eyebrow, fieldLabel, hint, input, tag } from "../ui";
-import { buildWorldDraftScript, newWorldId, nextDraftWorld } from "../worlds";
+import { buildWorldDraftScript, newWorldId } from "../worlds";
 import {
   HOW_OPTIONS, stepLabels, buildAgentCreateScript, canContinue, composedEntities, composedTools, worldDraftFromComposition,
   type How, type PackPick, type ProviderInfo, type Source, type Target,
@@ -75,7 +75,6 @@ export function CreateWizard({ target, providers, packs, agent, initialHow = nul
 
   const tools = useMemo(() => composedTools(sources, providers), [sources, providers]);
   const entities = useMemo(() => composedEntities(sources), [sources]);
-  const draft = useMemo(() => (agent ? nextDraftWorld(agent) : null), [agent]);
   const composedWorld = useMemo(() => worldDraftFromComposition(name, description, sources, providers, packs, { entities, mandate }), [name, description, sources, providers, packs, entities, mandate]);
   const chosenPack = packs.find((p) => p.id === packId) ?? null;
   const ok = canContinue(step, how, { name, sources, packId, hasDraft: pluginDraft !== null });
@@ -85,15 +84,12 @@ export function CreateWizard({ target, providers, packs, agent, initialHow = nul
   const crumbs = target === "agent" ? [{ label: "Agents", href: "/agents" }, { label: "New agent" }] : [{ label: "Agents", href: "/agents" }, { label: agent?.name ?? "Agent", href: `/agents/${agent?.id}` }, { label: "New world" }];
 
   const next = () => {
-    if (step === 0) {
-      if (how === "draft") return setStep(2);
-      return setStep(1);
-    }
+    if (step === 0) return setStep(1);
     if (step === 1) return setStep(2);
   };
   const previous = () => {
     if (step === 2 && how === "plugin") setPluginDraft(null);
-    setStep((s) => (s === 2 && how === "draft" ? 0 : Math.max(0, s - 1)));
+    setStep((s) => Math.max(0, s - 1));
   };
 
   const play = (steps: HandshakeStep[], onDone: () => Promise<void>) => {
@@ -164,7 +160,7 @@ export function CreateWizard({ target, providers, packs, agent, initialHow = nul
         go(`/agents/${agent.id}?fresh=${chosenPack.id}`);
       });
     }
-    const world = { ...(how === "draft" && draft ? draft : composedWorld), id: newWorldId(), createdAt: new Date().toISOString() };
+    const world = { ...composedWorld, id: newWorldId(), createdAt: new Date().toISOString() };
     return play(buildWorldDraftScript(world.name, world.tools), async () => {
       const result = await updateAgent({ ...agent, worlds: [world, ...agent.worlds] });
       if (result.agent === null) return fail(result.error);
@@ -279,8 +275,6 @@ export function CreateWizard({ target, providers, packs, agent, initialHow = nul
                   <TagBlock label={`Entities · ${draftEntities(pluginDraft.files).length}`} items={draftEntities(pluginDraft.files).map((e) => e.name)} />
                 </div>
               </>
-            ) : how === "draft" && draft ? (
-              <Summary rows={[["Name", draft.name], ["Domain", draft.domain], ["Description", draft.description], ["Built from", `${agent?.tools.length ?? 0} of ${agent?.name}'s tools`], ["Shape", `${draft.scenarios} scenarios · ${draft.tools} tools · ${draft.rows} rows`]]} />
             ) : how === "attach" && chosenPack ? (
               <Summary rows={[["World", chosenPack.name], ["Domain", chosenPack.domain], ["Description", chosenPack.description], ["Shape", `${chosenPack.entities} entities · ${chosenPack.tools} tools`]]} />
             ) : (

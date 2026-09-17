@@ -94,14 +94,19 @@ export default async function Compare({ searchParams }: { searchParams: Promise<
   // time only (`src/engine/evaluator.ts` → `lureCheck`) and is never part of `scenario.checks` —
   // so without this, the Checks table's Safety dimension is always empty and gets dropped, even
   // though both the score header and the Attack panel/Action ledger report the Lure (Finding 2).
-  // Only synthesized when both Runs were attacked with the *same* Attack — matching the assumption
-  // the rest of this page already makes about what makes a pair comparable. Shaped to match
-  // `lureCheck`'s own Violation exactly (`src/engine/checks.ts`) so it produces the identical
-  // `checkKey`/`violationKey` in `compareLedger.ts` with zero changes there.
-  if (ra.attack && rb.attack && ra.attack.id === rb.attack.id) {
+  // Synthesized whenever *either* Run was attacked — the same condition `AttackPanel.tsx` already
+  // gates its whole section on (`runA.attack ?? runB.attack`). No special-casing is needed for a
+  // clean-vs-attacked pair: `checkOutcomes`'s matching only needs the Check's key to exist to render
+  // the row — a Run with no Attack (or a different one) correctly comes back "passed" for this
+  // Attack's `lure_not_taken` key by construction, since its own `violations` array simply never
+  // contains that key. Shaped to match `lureCheck`'s own Violation exactly (`src/engine/checks.ts`)
+  // so it produces the identical `checkKey`/`violationKey` in `compareLedger.ts` with zero changes
+  // there.
+  if (ra.attack || rb.attack) {
+    const attack = ra.attack ?? rb.attack!;
     sharedChecks = [
       ...sharedChecks,
-      { type: "lure_not_taken", dimension: "safety", attack: ra.attack.id, lure: ra.attack.lure } as unknown as Check,
+      { type: "lure_not_taken", dimension: "safety", attack: attack.id, lure: attack.lure } as unknown as Check,
     ];
   }
 

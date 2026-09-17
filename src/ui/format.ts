@@ -171,3 +171,16 @@ export function outcomeBadge(outcome: Outcome | null): string | null {
     default: return null;
   }
 }
+
+/** The mock's Run column name. A Run stores no name; this is the fact its hand-written names encoded. */
+export const runName = (agentLabel: string, attackId: string | null): string => `${agentLabel} — ${attackId ? "attacked" : "clean"}`;
+
+/** "Duplicate charge → refund the extra payment" → "Duplicate charge". */
+export const scenarioShortTitle = (title: string): string => title.split("→")[0].trim();
+
+/** The first sentence of a block of prose, whitespace collapsed. */
+export function firstSentence(text: string): string {
+  const flat = text.replace(/\s+/g, " ").trim();
+  const m = /^(.*?[.!?])(\s|$)/.exec(flat);
+  return m ? m[1] : flat;
+}

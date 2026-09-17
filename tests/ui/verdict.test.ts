@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { latestComparablePair, runVerdict } from "@/ui/RunsListPage";
+import { latestComparablePair } from "@/ui/compare/latestComparablePair";
+import { runVerdict, verdictBadgeClass } from "@/ui/verdict";
 import type { RunSummary } from "@/ui/types";
 
 function summary(over: Partial<RunSummary> & Pick<RunSummary, "id" | "createdAt" | "scenarioId" | "agentLabel">): RunSummary {
@@ -81,5 +82,14 @@ describe("runVerdict", () => {
     expect(runVerdict(r({ outcome: "violated", capped: true, passed: false }))).toEqual({ text: "Capped", tone: "danger" });
     expect(runVerdict(r({ status: "failed", outcome: "abandoned", passed: false }))).toEqual({ text: "Error", tone: "danger" });
     expect(runVerdict(r({ status: "running", outcome: null, passed: false }))).toEqual({ text: "running…", tone: "muted" });
+  });
+});
+
+describe("verdictBadgeClass", () => {
+  it("maps tones onto the mock's badge classes", () => {
+    expect(verdictBadgeClass("danger")).toBe("badge-danger");
+    expect(verdictBadgeClass("warning")).toBe("badge-warning");
+    expect(verdictBadgeClass("success")).toBe("badge-success");
+    expect(verdictBadgeClass("muted")).toBe("badge-neutral");
   });
 });

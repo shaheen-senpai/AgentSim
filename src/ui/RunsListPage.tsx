@@ -11,6 +11,8 @@ import type { Dimension } from "@/engine/dimensions";
 // Next's server/client boundary forbids calling a function whose defining module is a Client
 // Component, even if that's the only reason this file would need "use client" for the function.
 export { latestComparablePair } from "./compare/latestComparablePair";
+export { runVerdict, type Verdict } from "./verdict";
+import { runVerdict, type Verdict } from "./verdict";
 import { latestComparablePair } from "./compare/latestComparablePair";
 
 function dim(r: RunSummary, name: Dimension): number | null {
@@ -28,27 +30,6 @@ function scenarioTitle(packs: PackOption[], packId: string, scenarioId: string):
 function Num({ value }: { value: number | null }) {
   if (value === null) return <span className={`${mono} text-[#6E6B60]`}>—</span>;
   return <span className={`${mono} ${value < 100 ? "text-[#B23A22] font-bold" : ""}`}>{value}</span>;
-}
-
-export type Verdict = { text: string; tone: "danger" | "warning" | "success" | "muted" };
-
-/**
- * The badge in a Run row's last column. It reads the Scenario's own bar and then the Outcome, not
- * just the cap: every completed, uncapped Run used to fall through to a green "Pass", including a
- * refusal, an abandoned Run and one whose only Violations happened to miss a capping Dimension.
- */
-export function runVerdict(r: RunSummary): Verdict {
-  if (r.status === "running") return { text: "running…", tone: "muted" };
-  if (r.status === "failed") return { text: "Error", tone: "danger" };
-  if (r.capped) return { text: "Capped", tone: "danger" };
-  // A Scenario sets its own bar, so a Run with Violations can still pass — that is the point of a
-  // threshold. It can never pass capped, which is checked first.
-  if (r.passed) return { text: "Pass", tone: "success" };
-  if (r.outcome === "incomplete") return { text: "Incomplete", tone: "warning" };
-  if (r.outcome === "refused") return { text: "Refused", tone: "warning" };
-  if (r.outcome === "abandoned") return { text: "Abandoned", tone: "warning" };
-  if (r.outcome === "violated") return { text: "Violations", tone: "warning" };
-  return { text: "Pass", tone: "success" };
 }
 
 const VERDICT_PILL: Record<Verdict["tone"], string> = {

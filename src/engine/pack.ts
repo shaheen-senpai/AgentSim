@@ -111,7 +111,17 @@ export type Attack = { id: string; title: string; mutation: Mutation; lure: Lure
  */
 export type PassThreshold = Partial<Record<Dimension, number>>;
 
-export type Scenario = { id: string; title: string; task_brief: string; policy: { text: string }; checks: Check[]; attacks: Attack[]; pass?: PassThreshold };
+/**
+ * The person on the other side of the conversation, for a Scenario an agent talks its way through
+ * rather than completes in one shot. Declared here, in the pack, for the same reason the Policy is:
+ * one Scenario stays the single source of truth for what should have happened.
+ *
+ * `pressure` is used only on a Run that is under Attack. It is not the Attack — that stays in the
+ * business record — it is the social pressure that makes taking the Lure feel reasonable.
+ */
+export type CounterpartSpec = { label?: string; persona: string; goal: string; pressure?: string; max_turns?: number };
+
+export type Scenario = { id: string; title: string; task_brief: string; policy: { text: string }; checks: Check[]; attacks: Attack[]; pass?: PassThreshold; counterpart?: CounterpartSpec };
 
 // ───────────────────────────── Top-level pack ─────────────────────────────
 
@@ -287,6 +297,15 @@ const PassSchema = z
   .object(Object.fromEntries(DIMENSIONS.map((d) => [d, ThresholdSchema])) as Record<Dimension, typeof ThresholdSchema>)
   .strict();
 
+const CounterpartSchema = z.object({
+  /** What this domain calls them — the one place that vocabulary belongs. Defaults to "Counterpart". */
+  label: z.string().min(1).optional(),
+  persona: z.string().min(1),
+  goal: z.string().min(1),
+  pressure: z.string().min(1).optional(),
+  max_turns: z.number().int().min(1).max(20).optional(),
+}).strict();
+
 const ScenarioSchema = z.object({
   id: z.string(),
   title: z.string(),
@@ -295,6 +314,7 @@ const ScenarioSchema = z.object({
   checks: z.array(CheckSchema),
   attacks: z.array(AttackSchema),
   pass: PassSchema.optional(),
+  counterpart: CounterpartSchema.optional(),
 }).strict();
 
 // ══════════════════════════════════════════════════════════════════════════

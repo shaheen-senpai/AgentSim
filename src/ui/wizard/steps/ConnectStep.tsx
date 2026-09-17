@@ -14,9 +14,12 @@ const PLACEHOLDER_MCP_URL = "http://localhost:3000/mcp/runs/:id/:source";
 
 const PRE: CSSProperties = { background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 8, padding: 12, fontSize: 11.5, lineHeight: 1.6, overflowX: "auto", margin: "0 0 16px", whiteSpace: "pre" };
 
-/** The registered agents that connect over MCP — the only shape this step offers. */
+/**
+ * The registered agents this step can start a Run for: the ones that reach us over MCP, and the
+ * "driven" ones we reach ourselves. The older forwarder and connector shapes are not offered.
+ */
 export function mcpAgents(agents: Agent[]): Agent[] {
-  return agents.filter((a) => a.shape === "mcp");
+  return agents.filter((a) => a.shape === "mcp" || a.shape === "driven");
 }
 
 export function ConnectStep({
@@ -88,7 +91,14 @@ export function ConnectStep({
             <RegisterAgent editing={null} onSubmit={register} onCancel={() => setRegistering(false)} />
           </div>
         )}
-        {!registering && selectedAgent && (
+        {!registering && selectedAgent?.shape === "driven" && (
+          <p className="hint">
+            Nothing to paste: AgentSim calls this agent itself, at <span className="mono">{selectedAgent.url}</span>, and
+            records what it says. Tool calls are not routed through the World yet, so the Run will have no Events to
+            score.
+          </p>
+        )}
+        {!registering && selectedAgent && selectedAgent.shape !== "driven" && (
           <>
             <span className="field-label">Claude Code</span>
             <pre className="mono" style={PRE}>{mcpAddCommand(selectedAgent.name, PLACEHOLDER_MCP_URL)}</pre>

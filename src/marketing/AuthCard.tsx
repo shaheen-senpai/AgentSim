@@ -67,6 +67,11 @@ export function AuthCard({ mode }: { mode: "signin" | "signup" }) {
             {signup ? AUTH.signin.label : AUTH.signup.label}
           </Link>
         </p>
+        <p className="mt-3 text-center">
+          <Link href="/" className="inline-flex items-center gap-2 font-label text-label uppercase text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
+            <Icon name="arrow-left" className="size-3.5" /> Back to home
+          </Link>
+        </p>
       </div>
     </main>
   );

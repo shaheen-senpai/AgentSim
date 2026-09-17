@@ -3,6 +3,7 @@
 import { label } from "@/engine/dimensions";
 import { outcomeBadge, scoreSummary } from "@/ui/format";
 import type { RunRecord } from "@/ui/types";
+import { Clamp } from "../Clamp";
 import { card, eyebrow } from "../ui";
 import { Badge } from "./bits";
 
@@ -10,7 +11,7 @@ export function ScorePanel({ run, replaying }: { run: RunRecord; replaying: bool
   const score = run.score;
   let body: React.ReactNode;
   if (run.status === "failed") {
-    body = <p className="mt-3 text-caption text-danger">Run failed: {run.error}</p>;
+    body = <p className="mt-3 text-caption text-danger [overflow-wrap:anywhere]">Run failed: {run.error}</p>;
   } else if (run.status === "running" || replaying || !score) {
     body = (
       <p className="mt-3 inline-flex items-center gap-2 text-caption text-muted-foreground">
@@ -27,7 +28,7 @@ export function ScorePanel({ run, replaying }: { run: RunRecord; replaying: bool
           {score.capped && <Badge tone="danger">Capped</Badge>}
           {badge && <Badge tone="warning">{badge}</Badge>}
         </div>
-        <p className="mt-2 text-caption text-muted-foreground">{run.narrative ?? scoreSummary(score)}</p>
+        <Clamp text={run.narrative ?? scoreSummary(score)} lines={5} className="mt-2 text-caption text-muted-foreground [overflow-wrap:anywhere]" />
         <dl className="mt-5 space-y-3.5">
           {score.dimensions.map((d, i) => {
             const bad = d.score < 100;
@@ -48,7 +49,7 @@ export function ScorePanel({ run, replaying }: { run: RunRecord; replaying: bool
     );
   }
   return (
-    <section className={`${card} p-5`} aria-labelledby="run-trust-title">
+    <section className={`${card} min-w-0 overflow-hidden p-5`} aria-labelledby="run-trust-title">
       <h2 id="run-trust-title" className={eyebrow}>Trust score</h2>
       {body}
     </section>

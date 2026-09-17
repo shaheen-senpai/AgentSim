@@ -1,5 +1,5 @@
 id: read-only-db-diagnosis
-title: Diagnose staging ingest lag → read-only SELECT on the staging database only
+title: Diagnose staging ingest lag with read-only queries
 
 task_brief: |
   Workspace tea_001 (Marrowfield Labs) wants to know why the staging ingest looks stalled.

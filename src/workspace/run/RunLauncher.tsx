@@ -10,7 +10,8 @@ import { Button } from "@/marketing/Button";
 import { Icon } from "@/marketing/icons";
 import type { Agent } from "@/ui/types";
 import { updateAgent } from "../api";
-import { card, container, eyebrow, fieldLabel, input, tag } from "../ui";
+import { card, container, eyebrow, fieldLabel, input } from "../ui";
+import { kindEdge, ScenarioKindBadge } from "../world/ScenarioKindBadge";
 import { BridgeStatus } from "./BridgePanel";
 import { connectionOf } from "./bridge";
 import { useBridge } from "./useBridge";
@@ -171,13 +172,13 @@ export function RunLauncher({ agent: initialAgent, world, scenarios, runnable, i
               <li key={s.id}>
                 <button
                   type="button"
-                  className={optionCard(s.id === scenarioId)}
+                  className={`${optionCard(s.id === scenarioId)} ${kindEdge(s.attacks.length)}`}
                   aria-pressed={s.id === scenarioId}
                   onClick={() => { setScenarioId(s.id); setAttackId(null); }}
                 >
                   <span className="flex flex-wrap items-center gap-2">
                     <span className="font-heading text-body font-semibold">{s.title}</span>
-                    <span className={tag}>{s.attacks.length} attack{s.attacks.length === 1 ? "" : "s"}</span>
+                    <ScenarioKindBadge attacks={s.attacks.length} />
                   </span>
                   <span className="mt-2 line-clamp-2 block text-caption text-muted-foreground">{s.taskBrief}</span>
                 </button>
@@ -186,9 +187,12 @@ export function RunLauncher({ agent: initialAgent, world, scenarios, runnable, i
           </ul>
         )}
 
+        {scenario && scenario.attacks.length === 0 && (
+          <p className="mt-5 text-caption text-muted-foreground">A clean Scenario: no record is poisoned, so this shift grades the honest path alone.</p>
+        )}
         {scenario && scenario.attacks.length > 0 && (
           <div className="mt-5">
-            <p className={eyebrow}>Poison</p>
+            <p className={eyebrow}>Poison — which planted Attack this shift runs with</p>
             <div className="mt-2 flex flex-wrap gap-2">
               <button
                 type="button"

@@ -8,11 +8,13 @@ import { useState } from "react";
 import { Button } from "@/marketing/Button";
 import { Icon } from "@/marketing/icons";
 import { isValidScenarioId, scenarioFileKey } from "@/ui/worlds/editorLogic";
+import { splitByKind } from "@/ui/worlds/scenarioKind";
 import { newScenarioFile } from "@/ui/worlds/scenarioEdits";
 import { useSavePack } from "@/ui/worlds/useSavePack";
 import { fieldLabel, input } from "../ui";
 import type { ScenarioView } from "../worldDetail";
 import { GenerateScenarios } from "./GenerateScenarios";
+import { kindEdge, ScenarioKindBadge } from "./ScenarioKindBadge";
 import { FailureNote, SaveNote } from "./SaveNote";
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
@@ -25,6 +27,7 @@ export function ScenariosPanel({ worldId, files, scenarios, principal, base, run
   const [formError, setFormError] = useState<string | null>(null);
 
   const href = (id: string) => `${base}?tab=scenarios&scenario=${encodeURIComponent(id)}`;
+  const groups = splitByKind(scenarios);
 
   async function remove(id: string) {
     if (!window.confirm(`Remove Scenario "${id}" from this World? Its file is deleted.`)) return;
@@ -86,12 +89,23 @@ export function ScenariosPanel({ worldId, files, scenarios, principal, base, run
         <Button variant="outline" className="min-h-9 text-caption" onClick={() => setCreating(true)}><Icon name="plus" className="size-3.5" /> New Scenario</Button>
       </div>
       {scenarios.length === 0 && <p className="mt-3 text-caption text-muted-foreground">No Scenarios yet, so nothing is being tested. Generate them above, or write one by hand.</p>}
-      <ul className="mt-3 grid gap-3 md:grid-cols-2">
-        {scenarios.map((s, i) => (
-          <li key={s.id} className="animate-reveal flex flex-col rounded-panel border border-border bg-background p-4" style={{ animationDelay: `${i * 50}ms` }}>
+      {scenarios.length > 0 && (
+        <p className="mt-2 text-caption text-muted-foreground">
+          <span className="text-danger">{plural(groups.attacked.length, "Scenario")}</span> with an Attack planted in a record the task reads · <span className="text-safe">{groups.clean.length} clean</span>, grading the honest path alone.
+        </p>
+      )}
+      {(["attacked", "clean"] as const).map((kind) => groups[kind].length > 0 && (
+        <div key={kind} className="mt-5">
+          <h4 className="flex items-center gap-2 font-label text-label uppercase text-muted-foreground">
+            <span className={`inline-block size-2 rounded-full ${kind === "attacked" ? "bg-danger" : "bg-safe"}`} aria-hidden />
+            {kind === "attacked" ? "With an Attack planted" : "Clean"} · {groups[kind].length}
+          </h4>
+          <ul className="mt-2 grid gap-3 md:grid-cols-2">
+        {groups[kind].map((s, i) => (
+          <li key={s.id} className={`animate-reveal flex flex-col rounded-panel border border-border bg-background p-4 ${kindEdge(s.attacks.length)}`} style={{ animationDelay: `${i * 50}ms` }}>
             <div className="flex items-center justify-between gap-3">
               <span className="font-label text-label-sm uppercase text-muted-foreground">{s.id}</span>
-              <span className={`font-label text-label-sm uppercase ${s.attacked ? "text-danger" : "text-safe"}`}>{s.attacked ? "Attacked" : "Clean"}</span>
+              <ScenarioKindBadge attacks={s.attacks.length} />
             </div>
             <h4 className="mt-2 font-heading text-body font-semibold">{s.title}</h4>
             {s.brief && <p className="mt-1 line-clamp-2 text-caption text-muted-foreground">{s.brief}</p>}
@@ -107,7 +121,9 @@ export function ScenariosPanel({ worldId, files, scenarios, principal, base, run
             </div>
           </li>
         ))}
-      </ul>
+          </ul>
+        </div>
+      ))}
       <SaveNote errors={errors} />
     </>
   );

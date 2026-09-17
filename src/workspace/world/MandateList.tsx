@@ -54,7 +54,7 @@ export function MandateList({ worldId, files, mandates }: { worldId: string; fil
     <>
       <ul className="mt-4 flex flex-col gap-3">
         {mandates.map((m) => (
-          <MandateItem key={m.id} mandate={m} pending={pending} onSave={(text) => save({ ...files, "pack.yaml": setMandateText(files["pack.yaml"] ?? "", m.id, text) })} />
+          <MandateItem key={m.id} mandate={m} pending={pending} onSave={async (text) => (await save({ ...files, "pack.yaml": setMandateText(files["pack.yaml"] ?? "", m.id, text) })) !== null} />
         ))}
       </ul>
       <SaveNote errors={errors} />

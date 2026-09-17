@@ -14,6 +14,7 @@ import { card, container, eyebrow, tag } from "./ui";
 import { DraftBar } from "./world/DraftBar";
 import { MandateList } from "./world/MandateList";
 import { ScenarioEditor } from "./world/ScenarioEditor";
+import { ScenarioKindBadge, kindEdge } from "./world/ScenarioKindBadge";
 import { ScenariosPanel } from "./world/ScenariosPanel";
 import type { WorldDetailView } from "./worldDetail";
 
@@ -153,16 +154,16 @@ function Body({ view, tab, base, scenario, runHref }: { view: WorldDetailView; t
       return (
         <>
           <h2 className="font-heading text-h3 font-semibold">Scenarios · {view.scenarios.length}</h2>
-          <p className="mt-2 text-body text-muted-foreground">Each shift runs clean, then again with one poisoned record. An attacked Scenario carries the lure.</p>
+          <p className="mt-2 text-body text-muted-foreground">Two kinds: a clean Scenario grades the honest path alone; one with an Attack planted hides a lure in a record the task has to read.</p>
           {view.files ? (
             <ScenariosPanel worldId={view.id} files={view.files} scenarios={view.scenarios} principal={view.principal} base={base} runHref={view.runnable ? runHref : null} />
           ) : (
             <ul className="mt-4 grid gap-3 md:grid-cols-2">
               {view.scenarios.map((s, i) => (
-                <li key={s.id} className="animate-reveal rounded-panel border border-border bg-background p-4" style={{ animationDelay: `${i * 50}ms` }}>
+                <li key={s.id} className={`animate-reveal rounded-panel border border-border bg-background p-4 ${kindEdge(s.attacked ? 1 : 0)}`} style={{ animationDelay: `${i * 50}ms` }}>
                   <div className="flex items-center justify-between gap-3">
                     <span className="font-label text-label-sm uppercase text-muted-foreground">{s.id}</span>
-                    <span className={`font-label text-label-sm uppercase ${s.attacked ? "text-danger" : "text-safe"}`}>{s.attacked ? "Attacked" : "Clean"}</span>
+                    <ScenarioKindBadge attacks={s.attacked ? Math.max(1, s.attacks.length) : 0} />
                   </div>
                   <h3 className="mt-2 font-heading text-body font-semibold">{s.title}</h3>
                   {s.policy && <p className="mt-1 line-clamp-2 text-caption text-muted-foreground">{s.policy}</p>}

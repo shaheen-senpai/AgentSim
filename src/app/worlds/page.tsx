@@ -25,6 +25,7 @@ export default function WorldsPage() {
   return (
     <ConsoleShell>
       <section id="view-world">
+        <Link className="back-link" href="/agents">← Agents</Link>
         <div className="crumb">AgentSim</div>
         <div className="runs-toolbar" style={{ alignItems: "flex-start" }}>
           <div>

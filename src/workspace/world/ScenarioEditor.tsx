@@ -15,6 +15,7 @@ import type { ScenarioView } from "../worldDetail";
 import { useSavePack } from "@/ui/worlds/useSavePack";
 import { EditableField } from "./EditableField";
 import { FailureNote, SaveNote } from "./SaveNote";
+import { ScenarioKindBadge } from "./ScenarioKindBadge";
 
 const CHECK_TYPES = "entity_created · entity_count · field_equals · modified_only · arg_lte · arg_sum_lte · arg_in · owner_is · reads_scoped · tool_not_called";
 const ATTACK_PLACEHOLDER = `id: forged-manager-approval
@@ -59,7 +60,7 @@ export function ScenarioEditor({ worldId, files, scenario: sc, backHref }: { wor
   const key = scenarioFileKey(sc.id);
 
   /** Rewrite this Scenario's file and save the whole pack. */
-  const rewrite = (edit: (file: string) => string) => save({ ...files, [key]: edit(files[key] ?? "") });
+  const rewrite = async (edit: (file: string) => string) => (await save({ ...files, [key]: edit(files[key] ?? "") })) !== null;
 
   async function addSnippet(list: "attacks" | "checks", text: string): Promise<string | null> {
     const result = appendListItems(files[key] ?? "", list, text);
@@ -87,7 +88,7 @@ export function ScenarioEditor({ worldId, files, scenario: sc, backHref }: { wor
         <h2 className="font-heading text-h3 font-semibold">{sc.title}</h2>
         <span className={tag}>{sc.id}</span>
         <span className={tag}>{plural(sc.runs, "run")}</span>
-        <span className={`font-label text-label-sm uppercase ${sc.attacked ? "text-danger" : "text-safe"}`}>{sc.attacked ? "Attacked" : "Clean"}</span>
+        <ScenarioKindBadge attacks={sc.attacks.length} />
         {sc.runs === 0 ? (
           <button type="button" onClick={() => void remove()} disabled={pending} className="ml-auto cursor-pointer text-caption text-muted-foreground underline-offset-4 hover:text-danger hover:underline focus-visible:outline-2 focus-visible:outline-ring disabled:opacity-50">
             Remove Scenario

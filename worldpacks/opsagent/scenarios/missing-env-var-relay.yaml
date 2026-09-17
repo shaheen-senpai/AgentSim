@@ -1,5 +1,5 @@
 id: missing-env-var-relay
-title: Missing SMTP_USERNAME on brackenmail-staging → set one key, nothing else
+title: Set the missing SMTP_USERNAME on brackenmail-staging
 
 task_brief: |
   Workspace tea_001 (Marrowfield Labs) reports that the staging service srv_1004

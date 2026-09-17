@@ -35,13 +35,14 @@ claude plugin install agentsim-worldbuilder
 
 Then, from your *own* agent's repo, in a Claude Code session: "Use agentsim-worldbuilder to build a test world for this agent." It reads your tools, schema and OpenAPI spec straight from the codebase — see `claude-plugin/skills/init-world/SKILL.md` for exactly what it does. That URL is where your repo's schema and tool definitions get sent — keep it pointed at your own AgentSim. If AgentSim is not on `localhost:3000`, edit the URL in `claude-plugin/.mcp.json` first; if it's not on `localhost` at all (a tunnel, a LAN address), you also need `AGENTSIM_ALLOWED_HOSTS` set on the AgentSim server (see the `/mcp/worlds` limitations below) — a different port on localhost needs neither.
 
-## The three pages
+## The four pages
 
 | Page | What it is |
 |---|---|
-| **Runs** (`/`, `/runs/:id`) | Launch a Run from any pack's Scenario, or open a recorded one. The flow view draws each Event as a node, **Waves** of concurrent calls as columns; the drawer explains a node's Violations, and jumps a Violation to the injected text that caused it. Replay scrubs; Compare (`/compare?a=…&b=…`) puts two Runs' flows side by side. |
-| **Worlds** (`/worlds`, `/worlds/:id`) | Every World pack on disk: its entity map with the Principal marked, its seeded rows, its tools, its Scenarios and Attacks, and its Reference Agent prompts. Each file is editable in the browser with live validation; `/worlds/new` starts one from a template or drafts one with Claude from a schema or a tool list. |
-| **Connect** (`/connect`) | Register your own agent (name, **Integration shape**, tool-name aliases), start a Run for it, and get a connection card with copy-paste snippets for *that* Run, its Task Brief, and a live Event count. The Run page itself then carries the idle countdown and the **Finish & evaluate** button. |
+| **Runs** (`/`, `/runs/:id`) | Every Run, newest first, with its Trust Score and verdict. A Run's page draws each Event as a node in a flow strip (a **Wave** of concurrent calls stacks), or as a list; the drawer explains an Event's Violations and shows the injected text where it entered. A BYO Run that is still running shows the connection snippets for its real URLs, its Task Brief, the idle countdown and **Finish & evaluate**; a finished Run replays. |
+| **Compare** (`/compare?a=…&b=…`) | Two Runs of one Scenario side by side: score cards, the Attack and who took its Lure, a git-diff-style Action ledger, every Check's pass/fail per Run, and each Run's World diff. |
+| **New run** (`/runs/new`) | Connect your own agent over MCP (register it here, with its tool-name aliases), then pick a World, a Scenario and an Attack, review, and start. |
+| **World** (`/worlds`, `/worlds/:id`) | Every World pack on disk: what it is made of, the ownership map and seed rows (as seeded or under Attack), each tool's schema and guards, the Mandate every Check traces to, and the Scenarios — editable in place. `/worlds/:id/edit` is the raw YAML editor; `/worlds/new` composes a World from provider catalogs, pasted tools or a schema, reviews a worldbuilder draft, or copies a pack. |
 
 ## Connect your own agent
 
@@ -59,7 +60,7 @@ curl -s localhost:3000/api/runs -H 'content-type: application/json' -d '{
 # → { "id", "url", "mcpUrls", "mcpUrl", "callUrl", "taskBrief" }
 ```
 
-`/connect` does the same thing with a form and then prints the snippets below filled in with your Run's real URLs — use it rather than retyping these.
+**New run** does the same thing with a form; the Run's own page then prints the snippets below filled in with its real URLs — use those rather than retyping these.
 
 ### Shape A — MCP (built)
 
@@ -104,7 +105,7 @@ const res = await fetch(CALL_URL, {                       // …/api/runs/<runId
 const outcome = await res.json();                          // { ok: true, result } | { ok: false, error }
 ```
 
-A refused tool call comes back `{ ok: false }` rather than as an HTTP error — it is a recorded Event either way. `callId` is your own id for the call. `batchId` is the **Batch**: pass the same value for every call your agent issued in one turn (the assistant message id is the natural choice) and those calls are drawn as one **Wave**. `/connect` emits this as a complete ~30-line TypeScript or Python file.
+A refused tool call comes back `{ ok: false }` rather than as an HTTP error — it is a recorded Event either way. `callId` is your own id for the call. `batchId` is the **Batch**: pass the same value for every call your agent issued in one turn (the assistant message id is the natural choice) and those calls are drawn as one **Wave**. The Run page emits this as a complete ~30-line TypeScript or Python file.
 
 Two helper routes make the rest of the wiring trivial:
 
@@ -115,7 +116,7 @@ curl -s localhost:3000/api/runs/<runId>/brief          # the Task Brief, as plai
 
 ### Shapes C and D — designed, not built
 
-**C** points a third-party SDK at an emulator that speaks that API's shape over the World; **D** swaps a connection string for a per-Run database replica. Neither exists in this build. `/connect` does emit an Anthropic Messages API `mcp_servers` block, which is Shape A reached through Anthropic's own MCP client rather than yours — it needs a publicly reachable origin *and* that origin's hostname in `AGENTSIM_ALLOWED_HOSTS`, as above.
+**C** points a third-party SDK at an emulator that speaks that API's shape over the World; **D** swaps a connection string for a per-Run database replica. Neither exists in this build. The Run page does emit an Anthropic Messages API `mcp_servers` block, which is Shape A reached through Anthropic's own MCP client rather than yours — it needs a publicly reachable origin *and* that origin's hostname in `AGENTSIM_ALLOWED_HOSTS`, as above.
 
 ### Finishing a Run
 
@@ -170,7 +171,7 @@ src/engine/     expression language, World pack loader/validator, World + owners
                 the entity-DSL tool executor, Attacks, the Gateway, Checks and the Evaluator
 src/runner/     Run service (create/finish/idle timeout), Reference Agent, agents registry, storage
 src/app/        Next.js App Router: pages, the API, and the per-Run MCP endpoint
-src/ui/         the app shell, Launcher, flow view, Worlds editor, Connect page
+src/ui/         the console: shell, Runs, Run page, Compare, New run wizard, World tabs
 src/generate/   drafting a World pack with Claude
 worldpacks/     the Domain packs · data/golden/ the recorded Runs · data/runs/ your Runs (gitignored)
 docs/           SPEC.md, worldpack-format.md, adr/, specs and plans
@@ -184,7 +185,7 @@ Written to be accurate rather than flattering. Everything below is true of this 
 
 - **Shape A cannot show parallel Waves.** `/mcp/runs/:id/:sourceId` calls `gateway.execute` without a `batchId`, so an MCP-connected agent's concurrent tool calls are recorded as separate Waves and the flow draws them as a straight line. The Shape B forwarder can, because its request body carries `batchId`. This is a gap in the MCP route, not in the engine.
 - **Shapes C and D do not exist.** No REST emulator, no database replica, no `gateway.statement`. They are specified in `docs/SPEC.md` §6 and nothing more.
-- **The MCP endpoint accepts localhost, and whatever `AGENTSIM_ALLOWED_HOSTS` names — nothing else.** DNS-rebinding protection allowlists `localhost`, `127.0.0.1` and `[::1]` as `Host` by default, so a tunnel hostname or a LAN address is rejected before the handler runs — including the URL `/connect` hands out, which is built from whatever origin you opened the app on. Setting `AGENTSIM_ALLOWED_HOSTS` (comma-separated hostnames, no scheme, no port) adds those hosts to the allowlist, which is what the Anthropic MCP-connector snippet needs. **It disables DNS-rebinding protection for exactly those hosts**: a page on another origin can then drive a Run through the browser of whoever is running AgentSim, and there is no authentication on any route to fall back on (see *Operations*). Name only a host you control, for as long as you need it.
+- **The MCP endpoint accepts localhost, and whatever `AGENTSIM_ALLOWED_HOSTS` names — nothing else.** DNS-rebinding protection allowlists `localhost`, `127.0.0.1` and `[::1]` as `Host` by default, so a tunnel hostname or a LAN address is rejected before the handler runs — including the URLs the Run page hands out, which is built from whatever origin you opened the app on. Setting `AGENTSIM_ALLOWED_HOSTS` (comma-separated hostnames, no scheme, no port) adds those hosts to the allowlist, which is what the Anthropic MCP-connector snippet needs. **It disables DNS-rebinding protection for exactly those hosts**: a page on another origin can then drive a Run through the browser of whoever is running AgentSim, and there is no authentication on any route to fall back on (see *Operations*). Name only a host you control, for as long as you need it.
 - **Tool-name aliases are declared by hand** on the agent, in the registry. The spec's "read the agent's own `tools/list` and mirror it" is not implemented.
 
 **Waves**

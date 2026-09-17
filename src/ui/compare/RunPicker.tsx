@@ -1,16 +1,18 @@
 "use client";
-// Two Run selects + a swap button, driving query-param navigation — the same pattern every other
-// picker in this app uses (World tabs' `?tab=`, the wizard's steps): the Server Component re-renders
-// with the new pair, no client-side Run fetching.
+// Run A over every completed Run, Run B over A's same-pack same-Scenario peers, and a swap
+// (design/agentsim-console.html 598-602, `renderComparePickers` 1096-1104). Navigation by query
+// param, so the Server Component re-renders with the new pair.
 import { useRouter } from "next/navigation";
 import type { RunSummary } from "@/ui/types";
-import { field, focusRing, label as labelClass } from "@/ui/styles";
+import { runName, scenarioShortTitle } from "@/ui/format";
+import { relativeTime } from "@/ui/relativeTime";
 
-function runLabel(r: RunSummary): string {
-  return `${r.agentLabel} · ${r.id.slice(0, 12)}`;
+function runLabel(r: RunSummary, now: number): string {
+  return `${runName(r.agentLabel, r.attackId)} · ${scenarioShortTitle(r.scenarioTitle)} · ${relativeTime(r.createdAt, now)}`;
 }
 
-export function RunPicker({ runs, a, b }: { runs: RunSummary[]; a: string; b: string }) {
+/** `now` comes from the server so the option labels hydrate identically. */
+export function RunPicker({ runs, a, b, now }: { runs: RunSummary[]; a: string; b: string; now: number }) {
   const router = useRouter();
   const completed = runs.filter((r) => r.status === "completed");
   const peersOf = (id: string) => {
@@ -24,52 +26,33 @@ export function RunPicker({ runs, a, b }: { runs: RunSummary[]; a: string; b: st
   }
 
   if (completed.length < 2) {
-    return <p className="text-[13px] text-[#6E6B60]">At least two completed Runs are needed to compare — this app has {completed.length} so far.</p>;
+    return <p className="sub">At least two completed Runs are needed to compare — this app has {completed.length} so far.</p>;
   }
 
-  // `minmax(0,1fr)`, not a bare `1fr` (which is `minmax(auto,1fr)`): a bare `1fr` track won't shrink
-  // below its content's min-content width, and a <select>'s min-content width is set by its longest
-  // <option> text — on a narrow viewport that forced the whole grid, and the whole page, into
-  // horizontal scroll. `min-w-0` on each column lets the <select> itself shrink and truncate long
-  // option text instead of forcing its track wider.
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] gap-3 items-end max-w-[720px]">
-      <div className="flex flex-col gap-1 min-w-0">
-        <span className={labelClass}>Run A</span>
+    <div className="cmp-picker">
+      <div>
+        <span className="field-label">Run A</span>
         <select
           value={a}
+          aria-label="Run A"
           onChange={(e) => {
             const nextA = e.target.value;
-            const nextPeers = peersOf(nextA);
-            go(nextA, nextPeers[0]?.id ?? "");
+            go(nextA, peersOf(nextA)[0]?.id ?? "");
           }}
-          className={`${field} w-full min-w-0`}
         >
           {completed.map((r) => (
-            <option key={r.id} value={r.id}>
-              {runLabel(r)}
-            </option>
+            <option key={r.id} value={r.id}>{runLabel(r, now)}</option>
           ))}
         </select>
       </div>
-      <button
-        type="button"
-        onClick={() => go(b, a)}
-        disabled={!a || !b}
-        title="Swap"
-        aria-label="Swap Run A and Run B"
-        className={`h-9 w-9 rounded-lg border border-[#E3E0D5] bg-white text-[14px] disabled:opacity-40 ${focusRing}`}
-      >
-        ⇄
-      </button>
-      <div className="flex flex-col gap-1 min-w-0">
-        <span className={labelClass}>Run B</span>
-        <select value={b} onChange={(e) => go(a, e.target.value)} className={`${field} w-full min-w-0`} disabled={peers.length === 0}>
+      <button type="button" className="swap" onClick={() => go(b, a)} disabled={!a || !b} title="Swap" aria-label="Swap Run A and Run B">⇄</button>
+      <div>
+        <span className="field-label">Run B</span>
+        <select value={b} aria-label="Run B" onChange={(e) => go(a, e.target.value)} disabled={peers.length === 0}>
           {peers.length === 0 && <option value="">No other Run of this Scenario yet</option>}
           {peers.map((r) => (
-            <option key={r.id} value={r.id}>
-              {runLabel(r)}
-            </option>
+            <option key={r.id} value={r.id}>{runLabel(r, now)}</option>
           ))}
         </select>
       </div>

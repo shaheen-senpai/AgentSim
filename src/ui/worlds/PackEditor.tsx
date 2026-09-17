@@ -18,7 +18,6 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { ValidationError } from "@/engine/pack";
-import { mono } from "@/ui/styles";
 import {
   filesEqual,
   groupErrorsByFile,
@@ -28,15 +27,13 @@ import {
   tabFileKey,
   tabsWithErrors,
 } from "./editorLogic";
-import type { WorldTab } from "./packView";
+import type { EditorTab } from "./packView";
 import { PackTabs } from "./PackTabs";
 import { YamlEditor } from "./YamlEditor";
 
-const PRIMARY_BUTTON =
-  "h-8 rounded bg-[#1B1A17] text-white font-semibold disabled:opacity-50 px-3 text-[12px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B1A17]";
-const SECONDARY_BUTTON =
-  "h-8 rounded border border-[#E3E0D5] bg-white text-[#1B1A17] font-semibold px-3 text-[12px] hover:bg-[#F7F5EF] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B1A17]";
-const LINK_BUTTON = "text-[11px] text-[#B23A22] underline decoration-dotted hover:decoration-solid";
+const PRIMARY_BUTTON = "btn btn-primary";
+const SECONDARY_BUTTON = "btn btn-ghost";
+const LINK_BUTTON = "linkish";
 
 function scenarioKeysOf(files: Record<string, string>): string[] {
   return Object.keys(files)
@@ -73,7 +70,7 @@ export function PackEditor({
   worldId: string;
   /** `pack.meta.principal` — the only ingredient the "Add scenario" skeleton needs from the pack. */
   principal: string;
-  initialTab: WorldTab;
+  initialTab: EditorTab;
   files: Record<string, string>;
   draft?: DraftMode;
   children?: ReactNode;
@@ -82,12 +79,12 @@ export function PackEditor({
   // The page re-renders on every `?tab=` navigation and hands this already-mounted component a
   // fresh `initialTab` prop — no local echo needed, it is always the current tab. A draft has no
   // URL to carry the tab, so there the strip moves this local state instead.
-  const [draftTab, setDraftTab] = useState<WorldTab>(initialTab);
+  const [draftTab, setDraftTab] = useState<EditorTab>(initialTab);
   const tab = draft ? draftTab : initialTab;
 
   const [files, setFiles] = useState<Record<string, string>>(initialFiles);
   const [savedFiles, setSavedFiles] = useState<Record<string, string>>(initialFiles);
-  const [editingTabs, setEditingTabs] = useState<ReadonlySet<WorldTab>>(() => new Set());
+  const [editingTabs, setEditingTabs] = useState<ReadonlySet<EditorTab>>(() => new Set());
   const [errors, setErrors] = useState<ValidationError[]>(draft?.initialErrors ?? []);
   const [lastAction, setLastAction] = useState<"validate" | "save" | null>(draft?.initialErrors ? "validate" : null);
   const [saveOk, setSaveOk] = useState<boolean | null>(null);
@@ -122,7 +119,7 @@ export function PackEditor({
     setFiles((f) => ({ ...f, [key]: value }));
   }
 
-  function toggleEdit(t: WorldTab) {
+  function toggleEdit(t: EditorTab) {
     setEditingTabs((s) => {
       const next = new Set(s);
       if (next.has(t)) next.delete(t);
@@ -228,11 +225,11 @@ export function PackEditor({
         <ul className="flex flex-col gap-1">
           {Object.entries(errorsByFile).map(([file, fileErrors]) => (
             <li key={file}>
-              <span className={`${mono} text-[11px] font-semibold`}>{file}</span>
+              <span className={`mono text-[11px] font-semibold`}>{file}</span>
               <ul className="flex flex-col gap-0.5 pl-3">
                 {fileErrors.map((e, i) => (
                   <li key={`${file}-${i}`} className="text-[11px]">
-                    {e.path ? <span className={mono}>{e.path}</span> : null}
+                    {e.path ? <span className="mono">{e.path}</span> : null}
                     {e.path ? " — " : ""}
                     {e.message}
                   </li>
@@ -296,7 +293,7 @@ export function PackEditor({
                 {scenarioKeys.map((key) => (
                   <div key={key} className="flex flex-col gap-1.5 border border-[#E3E0D5] rounded p-2">
                     <div className="flex items-center justify-between">
-                      <span className={`${mono} text-[11px] text-[#6E6B60]`}>{key}</span>
+                      <span className={`mono text-[11px] text-[#6E6B60]`}>{key}</span>
                       <button type="button" onClick={() => handleDeleteScenario(key)} className={LINK_BUTTON}>
                         Delete scenario
                       </button>

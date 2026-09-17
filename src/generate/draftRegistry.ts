@@ -47,3 +47,9 @@ export function updateDraft(id: string, result: DraftResult): Draft | undefined 
   drafts.set(id, next);
   return next;
 }
+
+/** Every live draft, newest first; expired ones are dropped on the way past. */
+export function listDrafts(): Draft[] {
+  for (const [id, draft] of drafts) if (expired(draft)) drafts.delete(id);
+  return [...drafts.values()].sort((a, b) => b.createdAt - a.createdAt);
+}

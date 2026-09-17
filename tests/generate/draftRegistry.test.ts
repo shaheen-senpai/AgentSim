@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createDraft, getDraft, updateDraft } from "@/generate/draftRegistry";
+import { createDraft, getDraft, listDrafts, updateDraft } from "@/generate/draftRegistry";
 import type { GenerateInput } from "@/generate/worldpack";
 
 const INPUT: GenerateInput = { name: "Acme Helpdesk", domain: "helpdesk", description: "An IT helpdesk." };
@@ -54,5 +54,16 @@ describe("draftRegistry", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it("lists live drafts newest first and drops expired ones", () => {
+    const a = createDraft(INPUT, RESULT);
+    const b = createDraft({ ...INPUT, name: "B" }, RESULT);
+    (b as { createdAt: number }).createdAt = a.createdAt + 1;
+    const stale = createDraft({ ...INPUT, name: "S" }, RESULT);
+    (stale as { createdAt: number }).createdAt = Date.now() - 3 * 60 * 60 * 1000;
+    const ids = listDrafts().map((d) => d.id);
+    expect(ids.indexOf(b.id)).toBeLessThan(ids.indexOf(a.id));
+    expect(ids).not.toContain(stale.id);
   });
 });

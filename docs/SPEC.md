@@ -521,7 +521,7 @@ Observability tells you what your agent did in production last night; AgentSim t
 2. Task Brief delivery order: paste, SDK, MCP `instructions`, simulated trigger?
 3. First domains after support/commerce: IT helpdesk, HR ops, finance ops, sales/CRM?
 4. Hosting: single-tenant containers vs multi-tenant with per-Run isolation?
-5. What is a pass — 100 and no Violations, or a threshold per Dimension?
+5. ~~What is a pass — 100 and no Violations, or a threshold per Dimension?~~ Settled: a threshold per Dimension, declared by the Scenario, defaulting to 100 — see ADR 0008.
 6. Positioning: pre-production safety gate (engineer) vs red-team platform (security)?
 7. Open-source: engine and packs open; hosting, generation and attack library commercial?
 8. How much schema to import; which Shape D capture path first?

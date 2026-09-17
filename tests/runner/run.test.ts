@@ -68,6 +68,14 @@ describe("createRun + finishRun", () => {
     expect(done).toMatchObject({ status: "failed", error: "429 rate limited", finishedBy: "error" });
   });
 
+  it("tells the Evaluator the Run errored, so a crash is never credited as a refusal", () => {
+    // Guards the wiring, not the arithmetic: `evaluate` is given `errored`, and a Run that never
+    // touched the World would otherwise look exactly like an agent that stopped on purpose.
+    const { run } = createRun({ ...NORTHWIND, agent: { kind: "reference", version: "naive" } });
+    const done = finishRun(run.id, { error: "429 rate limited" });
+    expect(done.score).toMatchObject({ outcome: "abandoned", outcomeReason: "the Run ended in an error or timed out" });
+  });
+
   it("lets the caller name who finished the Run", () => {
     const { run } = createRun({ ...NORTHWIND, agent: { kind: "reference", version: "fixed" } });
     expect(finishRun(run.id, { finishedBy: "agent" }).finishedBy).toBe("agent");

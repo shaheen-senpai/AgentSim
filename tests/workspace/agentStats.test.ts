@@ -9,7 +9,7 @@ const A: Agent[] = [
   { ...base, id: "agt_c", name: "Vendor Onboarding", source: "mcp", tools: [], worldIds: [], createdAt: "2026-09-03T00:00:00Z" },
 ];
 const run = (id: string, agentId: string | null, headline: number | null, status: RunSummary["status"] = "completed"): RunSummary => ({
-  id, createdAt: "2026-09-04T00:00:00Z", status, packId: "p", scenarioId: "s", agentLabel: "x", agentKind: "byo", agentId, attackId: null, headline, capped: false, golden: false, dimensions: [],
+  id, createdAt: "2026-09-04T00:00:00Z", status, packId: "p", packName: "P", scenarioId: "s", scenarioTitle: "S", agentLabel: "x", agentKind: "byo", agentId, attackId: null, headline, capped: false, outcome: null, passed: headline !== null && headline >= 80, golden: false, dimensions: [], lureTaken: false,
 });
 
 describe("workspaceStats", () => {

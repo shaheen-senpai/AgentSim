@@ -6,15 +6,16 @@ import { label as dimensionLabel, DIMENSIONS, type Dimension } from "@/engine/di
 import type { Attack, Check, FieldSpec, Mutation, Lure, PackMeta, Scenario, ToolDef } from "@/engine/pack";
 import type { PackSummary } from "@/lib/summaries";
 
-export const WORLD_TABS = ["overview", "entities", "tools", "scenarios", "agents"] as const;
+/** The World detail's tabs, as the mock draws them. */
+export const WORLD_TABS = ["overview", "entities", "tools", "mandate", "scenarios"] as const;
 export type WorldTab = (typeof WORLD_TABS)[number];
 
 const TAB_LABELS: Record<WorldTab, string> = {
   overview: "Overview",
   entities: "Entities",
   tools: "Tools",
+  mandate: "Mandate",
   scenarios: "Scenarios",
-  agents: "Agents",
 };
 
 export const tabLabel = (t: WorldTab): string => TAB_LABELS[t];
@@ -23,6 +24,39 @@ export const tabLabel = (t: WorldTab): string => TAB_LABELS[t];
 export function parseTab(raw: string | string[] | undefined): WorldTab {
   const value = Array.isArray(raw) ? raw[0] : raw;
   return (WORLD_TABS as readonly string[]).includes(value ?? "") ? (value as WorldTab) : "overview";
+}
+
+/** The raw YAML editor's tabs (`/worlds/[id]/edit`): one per file kind, including the agent prompts. */
+export const EDITOR_TABS = ["overview", "entities", "tools", "scenarios", "agents"] as const;
+export type EditorTab = (typeof EDITOR_TABS)[number];
+
+const EDITOR_TAB_LABELS: Record<EditorTab, string> = {
+  overview: "pack.yaml",
+  entities: "seed.yaml",
+  tools: "tools.yaml",
+  scenarios: "scenarios/",
+  agents: "agents/",
+};
+
+export const editorTabLabel = (t: EditorTab): string => EDITOR_TAB_LABELS[t];
+
+export function parseEditorTab(raw: string | string[] | undefined): EditorTab {
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  return (EDITOR_TABS as readonly string[]).includes(value ?? "") ? (value as EditorTab) : "overview";
+}
+
+export const editorTabHref = (packId: string, tab: EditorTab): string =>
+  tab === "overview" ? `/worlds/${packId}/edit` : `/worlds/${packId}/edit?tab=${tab}`;
+
+/** The mock's source badge for a System: what kind of thing it mirrors. `pack` when the pack declares no kind. */
+export function sourceKindLabel(kind?: "mcp" | "db" | "s3" | "tools"): string {
+  return kind ? { mcp: "MCP", db: "database", s3: "object store", tools: "own tools" }[kind] : "pack";
+}
+
+/** One line on where a System's tools come from. */
+export function sourceDetail(sys: PackMeta["systems"][string]): string {
+  if (sys.mode === "shadowed" && sys.provider) return `${sys.provider} catalog, mirrored over MCP`;
+  return `declared in tools.yaml${sys.mode ? `, ${sys.mode}` : ""}`;
 }
 
 /** How many seed rows a table shows before it says "n of m". */

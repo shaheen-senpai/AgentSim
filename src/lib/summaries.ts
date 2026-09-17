@@ -3,7 +3,6 @@
 // list-shaped call site reads packs through.
 import { listPackIds, loadPack, type Scenario, type WorldPack } from "@/engine/pack";
 import { DIMENSIONS, type Dimension } from "@/engine/dimensions";
-import { referenceVersions } from "@/runner/agents";
 
 export type ScenarioSummary = {
   id: string;
@@ -22,6 +21,7 @@ export type PackSummary = {
   rows: number;
   tools: number;
   scenarios: number;
+  systems: number;
 };
 
 /** The Launcher's view of one pack: its Scenarios and the Reference Agent versions it ships. */
@@ -84,11 +84,12 @@ export function toPackSummary(p: WorldPack): PackSummary {
     rows: Object.values(p.seed.rows).reduce((n, rows) => n + rows.length, 0),
     tools: Object.keys(p.tools).length,
     scenarios: p.scenarios.length,
+    systems: Object.keys(p.meta.systems).length,
   };
 }
 
 export type WizardAttack = { id: string; title: string; lure: { tool: string; argsMatch: Record<string, unknown> } };
-export type WizardTool = { name: string; description: string };
+export type WizardTool = { name: string; description: string; op: string; collection: string };
 export type WizardScenario = {
   id: string;
   packId: string;
@@ -104,10 +105,11 @@ export type WizardPack = {
   domain: string;
   description: string;
   principal: string;
+  /** The principal entity's display label — "Customer", "Employee". */
+  principalLabel: string;
   entities: number;
   systems: number;
   tools: WizardTool[];
-  agentVersions: string[];
   scenarios: WizardScenario[];
 };
 
@@ -132,10 +134,10 @@ export function toWizardPack(p: WorldPack): WizardPack {
     domain: p.meta.domain,
     description: p.meta.description,
     principal: p.meta.principal,
+    principalLabel: p.meta.entities[p.meta.principal]?.label ?? p.meta.principal,
     entities: Object.keys(p.meta.entities).length,
     systems: new Set(Object.values(p.tools).map((t) => t.system)).size,
-    tools: Object.values(p.tools).map((t) => ({ name: t.name, description: t.description })),
-    agentVersions: referenceVersions(p),
+    tools: Object.values(p.tools).map((t) => ({ name: t.name, description: t.description, op: t.op, collection: t.collection })),
     scenarios: p.scenarios.map((s) => toWizardScenario(s, p.meta.id)),
   };
 }

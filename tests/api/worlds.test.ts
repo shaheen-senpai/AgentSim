@@ -40,6 +40,7 @@ describe("GET /api/worlds", () => {
       rows: 22,
       tools: 9,
       scenarios: 1,
+      systems: 4,
     });
   });
 });

@@ -178,7 +178,7 @@ function EndOfRun({ run, outcome, scoreReady }: { run: RunRecord; outcome: Viola
                 <div key={d.name} className="flex justify-between gap-2">
                   <span>{dimensionLabel(d.name)}</span>
                   <span className={`${mono} ${d.score < 100 ? "font-bold text-[#B23A22]" : ""}`}>
-                    {d.score} <span className={`${MUTED} font-normal`}>{d.total === 0 ? "(no checks)" : `(${d.passed}/${d.total})`}</span>
+                    {d.score} <span className={`${MUTED} font-normal`}>{d.total === 0 ? "(no checks)" : `(${d.passed}/${d.total} fully)`}</span>
                   </span>
                 </div>
               ))}

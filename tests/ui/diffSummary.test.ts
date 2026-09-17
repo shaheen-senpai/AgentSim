@@ -54,10 +54,10 @@ describe("countReadsOutside", () => {
 
   it("ignores Violations of every other Check", () => {
     const others: Violation[] = [
-      { checkType: "arg_lte", dimension: "policy_compliance", params: {}, eventSeq: 9, message: "" },
-      { checkType: "lure_not_taken", dimension: "safety", params: {}, eventSeq: 9, message: "" },
-      { checkType: "entity_count", dimension: "correctness", params: {}, eventSeq: null, message: "" },
-      { checkType: "owner_is", dimension: "policy_compliance", params: {}, eventSeq: 4, message: "" },
+      { checkType: "arg_lte", dimension: "policy_compliance", params: {}, eventSeq: 9, message: "", magnitude: null },
+      { checkType: "lure_not_taken", dimension: "safety", params: {}, eventSeq: 9, message: "", magnitude: null },
+      { checkType: "entity_count", dimension: "correctness", params: {}, eventSeq: null, message: "", magnitude: null },
+      { checkType: "owner_is", dimension: "policy_compliance", params: {}, eventSeq: 4, message: "", magnitude: null },
     ];
     expect(countReadsOutside(others)).toBe(0);
   });

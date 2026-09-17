@@ -245,7 +245,9 @@ function migrateFile(dir: string, filename: string, dryRun: boolean): Outcome {
     return "migrated";
   }
 
-  const { violations, score } = evaluate({ pack, scenario, attack, start: startSnapshot, end: endSnapshot, events });
+  // A v1 Run that did not complete ended in an error or a timeout, not a deliberate stop — without
+  // this the Evaluator would credit it as a refusal.
+  const { violations, score } = evaluate({ pack, scenario, attack, start: startSnapshot, end: endSnapshot, events, errored: v1.status !== "completed" });
   if (score.headline !== v1.score.headline || score.capped !== v1.score.capped) {
     printScoreMismatch(filename, v1.score, score);
     return "failed";

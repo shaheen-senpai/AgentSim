@@ -89,6 +89,7 @@ export type Check =
   | { type: "field_equals"; dimension: Dimension; collection: string; id: string; field: string; value: unknown }
   | { type: "modified_only"; dimension: Dimension; collection: string; ids: string[] }
   | { type: "arg_lte"; dimension: Dimension; tool: string; arg: string; max: number }
+  | { type: "arg_sum_lte"; dimension: Dimension; tools: string[]; arg: string; max: number }
   | { type: "arg_in"; dimension: Dimension; tool: string; arg: string; values: unknown[] }
   | { type: "owner_is"; dimension: Dimension; tool: string; principal: string }
   | { type: "reads_scoped"; dimension: Dimension; principal: string }
@@ -103,7 +104,14 @@ export type Mutation =
 
 export type Attack = { id: string; title: string; mutation: Mutation; lure: Lure };
 
-export type Scenario = { id: string; title: string; task_brief: string; policy: { text: string }; checks: Check[]; attacks: Attack[] };
+/**
+ * The bar this Scenario is graded against: the minimum score each Dimension must reach. A Dimension
+ * the Scenario does not name defaults to 100, which is the old implicit rule of "a pass is no
+ * Violations". The cap is not negotiable this way — see `evaluate`.
+ */
+export type PassThreshold = Partial<Record<Dimension, number>>;
+
+export type Scenario = { id: string; title: string; task_brief: string; policy: { text: string }; checks: Check[]; attacks: Attack[]; pass?: PassThreshold };
 
 // ───────────────────────────── Top-level pack ─────────────────────────────
 
@@ -254,6 +262,7 @@ const CheckSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("field_equals"), dimension: DimensionSchema, collection: z.string(), id: z.string(), field: z.string(), value: z.unknown() }).strict(),
   z.object({ type: z.literal("modified_only"), dimension: DimensionSchema, collection: z.string(), ids: z.array(z.string()) }).strict(),
   z.object({ type: z.literal("arg_lte"), dimension: DimensionSchema, tool: z.string(), arg: z.string(), max: z.number() }).strict(),
+  z.object({ type: z.literal("arg_sum_lte"), dimension: DimensionSchema, tools: z.array(z.string()).min(1), arg: z.string(), max: z.number() }).strict(),
   z.object({ type: z.literal("arg_in"), dimension: DimensionSchema, tool: z.string(), arg: z.string(), values: z.array(z.unknown()) }).strict(),
   z.object({ type: z.literal("owner_is"), dimension: DimensionSchema, tool: z.string(), principal: z.string() }).strict(),
   z.object({ type: z.literal("reads_scoped"), dimension: DimensionSchema, principal: z.string() }).strict(),
@@ -270,6 +279,14 @@ const MutationSchema = z.discriminatedUnion("type", [
 
 const AttackSchema = z.object({ id: z.string(), title: z.string(), mutation: MutationSchema, lure: LureSchema }).strict();
 
+// Built from DIMENSIONS so a Dimension added later is thresholdable at once; `.strict()` still
+// rejects an unknown key outright, because a threshold under a misspelled name would silently
+// never apply and the Scenario would quietly keep the default bar.
+const ThresholdSchema = z.number().int().min(0).max(100).optional();
+const PassSchema = z
+  .object(Object.fromEntries(DIMENSIONS.map((d) => [d, ThresholdSchema])) as Record<Dimension, typeof ThresholdSchema>)
+  .strict();
+
 const ScenarioSchema = z.object({
   id: z.string(),
   title: z.string(),
@@ -277,6 +294,7 @@ const ScenarioSchema = z.object({
   policy: z.object({ text: z.string() }).strict(),
   checks: z.array(CheckSchema),
   attacks: z.array(AttackSchema),
+  pass: PassSchema.optional(),
 }).strict();
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -514,6 +532,9 @@ function validateTools(meta: PackMeta, tools: Record<string, ToolDef>, errors: V
   }
 }
 
+/** Field types an `arg_lte`/`arg_sum_lte` may point at: anything else never compares or accumulates. */
+const NUMERIC_FIELD_TYPES = new Set<FieldType>(["int", "number"]);
+
 function validateScenario(file: string, s: Scenario, meta: PackMeta, seed: SeedFile, tools: Record<string, ToolDef>, errors: ValidationError[]): void {
   const entities = meta.entities;
 
@@ -531,6 +552,16 @@ function validateScenario(file: string, s: Scenario, meta: PackMeta, seed: SeedF
   };
   const argExists = (t: ToolDef | undefined, arg: string, p: string): void => {
     if (t && !(arg in t.input)) errors.push({ file, path: p, message: `arg '${arg}' is not an input field of tool '${t.name}'` });
+  };
+  /**
+   * `arg` must be numeric as well as present. A Check that points at a string field silently
+   * compares or accumulates nothing and passes on every Run — the same free pass the authored-
+   * `lure_not_taken` guard exists to prevent, arriving by a different route.
+   */
+  const argIsNumeric = (t: ToolDef | undefined, arg: string, p: string): void => {
+    const spec = t?.input[arg];
+    if (!t || !spec || NUMERIC_FIELD_TYPES.has(spec.type)) return;
+    errors.push({ file, path: p, message: `arg '${arg}' on tool '${t.name}' is '${spec.type}', not a number` });
   };
   const checkWhere = (collection: string, where: Record<string, unknown>, p: string): void =>
     checkWhereKeys(entities, collection, where, file, p, errors);
@@ -557,10 +588,26 @@ function validateScenario(file: string, s: Scenario, meta: PackMeta, seed: SeedF
         checkCollection(c.collection, `${p}.collection`);
         c.ids.forEach((id, j) => idExists(c.collection, id, `${p}.ids[${j}]`));
         break;
-      case "arg_lte":
-      case "arg_in": {
+      case "arg_lte": {
         const t = toolExists(c.tool, `${p}.tool`);
         argExists(t, c.arg, `${p}.arg`);
+        argIsNumeric(t, c.arg, `${p}.arg`);
+        break;
+      }
+      case "arg_in": {
+        // No numeric guard: `values` are compared by deep equality, so strings and enums are fine.
+        const t = toolExists(c.tool, `${p}.tool`);
+        argExists(t, c.arg, `${p}.arg`);
+        break;
+      }
+      case "arg_sum_lte": {
+        // Every named tool must exist and carry the arg as a number: a typo, or a string field,
+        // would contribute nothing to the sum, so the Check would pass for free.
+        c.tools.forEach((tool, j) => {
+          const t = toolExists(tool, `${p}.tools[${j}]`);
+          argExists(t, c.arg, `${p}.arg`);
+          argIsNumeric(t, c.arg, `${p}.arg`);
+        });
         break;
       }
       case "owner_is":

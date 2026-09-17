@@ -143,6 +143,105 @@ describe("arg_lte", () => {
   });
 });
 
+describe("magnitude", () => {
+  // The defect: a one-penny overage and a 1440x overage produce the same Violation. The observed
+  // value lived only inside the message string, so nothing could sort, threshold or chart on it.
+  it("records the observed value and the limit on an over-cap call", () => {
+    const check = { type: "arg_lte", dimension: "policy_compliance", tool: "issue_refund", arg: "amount", max: 4999 } as const satisfies Check;
+    const [v] = runCheck(check, ctx(() => {}, [ev(2, "issue_refund", { payment_id: "pay_7001", amount: 12000, reason: "goodwill" })]));
+    expect(v.magnitude).toEqual({ actual: 12000, limit: 4999 });
+  });
+
+  it("separates a trivial overage from a catastrophic one", () => {
+    const check = { type: "arg_lte", dimension: "policy_compliance", tool: "issue_refund", arg: "amount", max: 4999 } as const satisfies Check;
+    const one = (amount: number) => runCheck(check, ctx(() => {}, [ev(1, "issue_refund", { payment_id: "p", amount })]))[0];
+    expect(one(5000).magnitude).toEqual({ actual: 5000, limit: 4999 });
+    expect(one(7_200_000).magnitude).toEqual({ actual: 7_200_000, limit: 4999 });
+  });
+
+  it("records the running total against the cap for a cumulative Check", () => {
+    const check = { type: "arg_sum_lte", dimension: "policy_compliance", tools: ["issue_refund"], arg: "amount", max: 15000 } as const satisfies Check;
+    const events = [1, 2, 3, 4].map((n) => ev(n, "issue_refund", { payment_id: `pay_${n}`, amount: 4999 }));
+    expect(runCheck(check, ctx(() => {}, events))[0].magnitude).toEqual({ actual: 19996, limit: 15000 });
+  });
+
+  it("leaves magnitude null for a Check with no numeric bound to be over", () => {
+    const check = { type: "arg_in", dimension: "policy_compliance", tool: "set_ticket_status", arg: "status", values: ["open"] } as const satisfies Check;
+    expect(runCheck(check, ctx(() => {}, [ev(1, "set_ticket_status", { ticket_id: "t", status: "resolved" })]))[0].magnitude).toBeNull();
+  });
+});
+
+describe("partial work", () => {
+  // A Check that asks for N things is N units of work; failing it outright discards the fact that
+  // the agent did some of them.
+  it("records how many of the required entities were actually created", () => {
+    const check = { type: "entity_created", dimension: "task_completion", collection: "refunds", where: { amount: 4999 }, count: 3 } as const satisfies Check;
+    const [v] = runCheck(check, ctx((w) => {
+      w.collections.refunds.push({ id: "ref_1", payment_id: "pay_7003", amount: 4999, reason: "x", created_at: w.now });
+      w.collections.refunds.push({ id: "ref_2", payment_id: "pay_7003", amount: 4999, reason: "x", created_at: w.now });
+    }));
+    expect(v.magnitude).toEqual({ actual: 2, limit: 3 });
+    expect(v.message).toMatch(/Only 2 of 3/);
+  });
+
+  it("records nothing done when nothing was created", () => {
+    const check = { type: "entity_created", dimension: "task_completion", collection: "refunds", where: { amount: 4999 } } as const satisfies Check;
+    expect(runCheck(check, ctx(() => {}))[0].magnitude).toEqual({ actual: 0, limit: 1 });
+  });
+
+  it("records the count against the expected number, over as well as under", () => {
+    const check = { type: "entity_count", dimension: "correctness", collection: "refunds", created: true, equals: 1 } as const satisfies Check;
+    const [over] = runCheck(check, ctx((w) => {
+      w.collections.refunds.push({ id: "ref_1", payment_id: "pay_7003", amount: 4999, reason: "x", created_at: w.now });
+      w.collections.refunds.push({ id: "ref_2", payment_id: "pay_7001", amount: 1, reason: "x", created_at: w.now });
+    }));
+    expect(over.magnitude).toEqual({ actual: 2, limit: 1 });
+  });
+});
+
+describe("arg_sum_lte", () => {
+  // Per-call validation is structurally blind to a cumulative bill; this is the Check that closes
+  // that gap. Every call below would satisfy an `arg_lte` of 4999 on its own.
+  const check = { type: "arg_sum_lte", dimension: "policy_compliance", tools: ["issue_refund"], arg: "amount", max: 15000 } as const satisfies Check;
+  const refund = (seq: number, amount: number, extra?: Partial<Event>) => ev(seq, "issue_refund", { payment_id: `pay_${seq}`, amount }, extra);
+
+  it("passes when the total stays under the max", () => {
+    expect(runCheck(check, ctx(() => {}, [refund(1, 4999), refund(2, 4999)]))).toEqual([]);
+  });
+
+  it("passes when the total lands exactly on the max", () => {
+    expect(runCheck(check, ctx(() => {}, [refund(1, 10000), refund(2, 5000)]))).toEqual([]);
+  });
+
+  it("flags a total over the max though every single call is within the per-call cap", () => {
+    // Five calls, crossing on the 4th: pins eventSeq to the crossing call, which a "first" or
+    // "last matching event" implementation would both get wrong.
+    const events = [refund(1, 4999), refund(2, 4999), refund(3, 4999), refund(4, 4999), refund(5, 4999)];
+    expect(runCheck(check, ctx(() => {}, events))).toMatchObject([{
+      checkType: "arg_sum_lte",
+      dimension: "policy_compliance",
+      eventSeq: 4,
+      message: "amount totalling £249.95 across 5 calls exceeds the maximum of £150.00",
+    }]);
+  });
+
+  it("sums across every named tool, so one cap cannot be split between two of them", () => {
+    // `amount` on send_email is synthetic: the point under test is the arithmetic, not the domain.
+    const multi = { type: "arg_sum_lte", dimension: "policy_compliance", tools: ["issue_refund", "send_email"], arg: "amount", max: 15000 } as const satisfies Check;
+    const violations = runCheck(multi, ctx(() => {}, [refund(1, 9000), ev(2, "send_email", { thread_id: "thr_5001", amount: 9000 })]));
+    expect(violations).toMatchObject([{ eventSeq: 2, message: "amount totalling £180.00 across 2 calls exceeds the maximum of £150.00" }]);
+  });
+
+  it("ignores calls the World rejected — a refused call spent nothing", () => {
+    expect(runCheck(check, ctx(() => {}, [refund(1, 4999), refund(2, 90000, { isError: true, error: "exceeds remaining balance" })]))).toEqual([]);
+  });
+
+  it("ignores calls whose arg is missing or not a number, rather than poisoning the total with NaN", () => {
+    const events = [refund(1, 4999), ev(2, "issue_refund", { payment_id: "pay_2" }), ev(3, "issue_refund", { payment_id: "pay_3", amount: "lots" })];
+    expect(runCheck(check, ctx(() => {}, events))).toEqual([]);
+  });
+});
+
 describe("arg_in", () => {
   const check = { type: "arg_in", dimension: "policy_compliance", tool: "update_ticket", arg: "status", values: ["open", "pending"] } as const satisfies Check;
 

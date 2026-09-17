@@ -48,6 +48,8 @@ export type RunRecord = {
 export type RunSummary = Pick<RunRecord, "id" | "createdAt" | "status" | "packId" | "scenarioId"> & {
   agentLabel: string;
   agentKind: "reference" | "byo";
+  /** The registry id of a BYO agent, so the workspace can roll runs up per agent; null for Reference runs. */
+  agentId?: string | null;
   attackId: string | null;
   headline: number | null;
   capped: boolean;
@@ -117,6 +119,7 @@ export function toSummary(r: RunRecord, golden = false): RunSummary {
     scenarioId: r.scenarioId,
     agentLabel: agentLabel(r.agent),
     agentKind: agentKind(r.agent),
+    agentId: r.agent?.kind === "byo" ? (r.agent.agentId ?? null) : null,
     attackId: r.attack?.id ?? null,
     headline: r.score?.headline ?? null,
     capped: r.score?.capped ?? false,

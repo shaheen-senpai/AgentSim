@@ -120,7 +120,7 @@ export function NewRunWizard({ packs, agents: initialAgents }: { packs: WizardPa
           ← Back
         </button>
         <div className="flex gap-3 ml-auto">
-          <button type="button" onClick={() => router.push("/")} className={secondaryButton}>
+          <button type="button" onClick={() => router.push("/runs")} className={secondaryButton}>
             Cancel
           </button>
           {state.step < lastStep && (

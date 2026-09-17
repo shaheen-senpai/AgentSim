@@ -3,7 +3,7 @@
 // This mirrors the resilience test in `tests/api/worlds.test.ts` ("GET /api/worlds resilience"),
 // which covered only `GET /api/worlds`. `/`, `/runs/:id` and `GET /api/scenarios` each carried their
 // own copy of `listPackIds().map((id) => toPackOption(loadPack(id)))` with no `try`, so a broken
-// pack 500'd the home page and every Run page — the two routes on the demo's critical path, and the
+// pack 500'd the Runs list (then the home page, now `/runs`) and every Run page — the two routes on the demo's critical path, and the
 // two you need working to reach `/worlds/:id`, which exists precisely to *fix* a broken pack.
 //
 // Every route below now reads packs through `loadPacks` in `src/lib/summaries.ts`. Server
@@ -18,8 +18,8 @@ import { GET as scenariosRoute } from "@/app/api/scenarios/route";
 import { GET as listWorldsRoute } from "@/app/api/worlds/route";
 import ConnectRoute from "@/app/connect/page";
 import MandatesPage from "@/app/mandates/page";
-import Home from "@/app/page";
 import RunRoute from "@/app/runs/[id]/page";
+import RunsPage from "@/app/runs/page";
 import ScenarioDetailPage from "@/app/scenarios/[packId]/[scenarioId]/page";
 import ScenariosPage from "@/app/scenarios/page";
 import WorldsPage from "@/app/worlds/page";
@@ -80,7 +80,7 @@ describe("a World pack that no longer loads", () => {
   });
 
   it("does not 500 the home page", () => {
-    expect(() => Home()).not.toThrow();
+    expect(() => RunsPage()).not.toThrow();
   });
 
   it("does not 500 a Run page", async () => {

@@ -13,6 +13,12 @@ function agent(over: Partial<Agent> & Pick<Agent, "id" | "shape">): Agent {
     toolAliases: {},
     notes: "",
     createdAt: "2026-01-01T00:00:00Z",
+    source: "manual",
+    description: "",
+    mandate: "",
+    tools: [],
+    entities: [],
+    worldIds: [],
     ...over,
   };
 }

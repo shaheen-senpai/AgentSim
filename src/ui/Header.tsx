@@ -1,20 +1,17 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { isCurrentSection } from "./navigation";
 import { agentLabel } from "@/runner/agentRef";
 import type { RunRecord } from "./types";
 import { mono, serif } from "./styles";
 
 const NAV = [
-  { href: "/", label: "Runs" },
+  { href: "/runs", label: "Runs" },
   { href: "/worlds", label: "Worlds" },
   { href: "/connect", label: "Connect" },
 ];
 
-function isCurrentSection(pathname: string, href: string): boolean {
-  if (href === "/") return pathname === "/" || pathname.startsWith("/runs");
-  return pathname === href || pathname.startsWith(`${href}/`);
-}
 
 export function Header({ run }: { run: RunRecord | null }) {
   const pathname = usePathname();

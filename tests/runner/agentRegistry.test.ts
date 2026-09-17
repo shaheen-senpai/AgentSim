@@ -2,10 +2,10 @@ import { mkdtempSync, readdirSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { deleteAgent, getAgent, listAgents, saveAgent, type Agent } from "@/runner/agentRegistry";
+import { deleteAgent, getAgent, listAgents, saveAgent, type Agent, type AgentInput } from "@/runner/agentRegistry";
 import { dataDir } from "@/runner/store";
 
-function agent(over: Partial<Agent> = {}): Omit<Agent, "id" | "createdAt"> & Partial<Pick<Agent, "id" | "createdAt">> {
+function agent(over: Partial<Agent> = {}): AgentInput {
   return { name: "Codex", version: "1.0", shape: "forwarder", toolAliases: { fetch_ticket: "get_ticket" }, notes: "", ...over };
 }
 

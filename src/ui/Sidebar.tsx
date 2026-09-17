@@ -1,20 +1,18 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { isCurrentSection } from "./navigation";
 import { focusRing, heading, serif } from "./styles";
 
 const NAV = [
-  { href: "/", label: "Runs" },
+  { href: "/agents", label: "Agents" },
+  { href: "/runs", label: "Runs" },
   { href: "/compare", label: "Compare" },
   { href: "/mandates", label: "Mandates" },
   { href: "/scenarios", label: "Scenarios" },
   { href: "/worlds", label: "World" },
 ];
 
-function isCurrentSection(pathname: string, href: string): boolean {
-  if (href === "/") return pathname === "/" || pathname.startsWith("/runs");
-  return pathname === href || pathname.startsWith(`${href}/`);
-}
 
 export function Sidebar() {
   const pathname = usePathname();

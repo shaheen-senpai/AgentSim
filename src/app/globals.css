@@ -1,6 +1,13 @@
 @import "tailwindcss";
+/* Marketing theme tokens (a Tailwind @theme block) and the effects derived from them. */
+@import "../theme/tokens.css";
+@import "../theme/effects.css";
 /* xyflow ships its own stylesheet; without it the flow's nodes render unpositioned (spec §6.1). */
 @import "@xyflow/react/dist/style.css";
+
+html {
+  scroll-behavior: smooth;
+}
 
 body {
   background: #f7f5ef;

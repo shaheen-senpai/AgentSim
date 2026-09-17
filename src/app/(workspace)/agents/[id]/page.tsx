@@ -16,13 +16,14 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   return { title: agent ? `${agent.name} · AgentSim` : "Agent · AgentSim" };
 }
 
-export default async function AgentRoute({ params }: { params: Promise<{ id: string }> }) {
+export default async function AgentRoute({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ fresh?: string | string[] }> }) {
   const { id } = await params;
+  const { fresh } = await searchParams;
   const agent = getAgent(id);
   if (!agent) notFound();
   const runs = listRuns();
   const { trust, runs: runCount } = agentTrust(agent.id, runs);
   // A pack hand-edited into an invalid state is skipped here; `/worlds` reports it.
   const packs = loadPacks().packs.map(toPackSummary);
-  return <AgentDetail agent={agent} packs={packs} trust={trust} runs={runCount} />;
+  return <AgentDetail agent={agent} packs={packs} trust={trust} runs={runCount} freshId={Array.isArray(fresh) ? fresh[0] : fresh ?? null} />;
 }

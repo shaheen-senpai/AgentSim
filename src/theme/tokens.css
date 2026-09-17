@@ -20,8 +20,8 @@
   --color-card: oklch(20.5% 0.035 158);
   --color-card-foreground: oklch(98% 0.025 160);
 
-  --color-primary: oklch(84% 0.16 158);             /* the green: CTAs, accents, "safe" */
-  --color-primary-foreground: oklch(16% 0.04 158);
+  --color-primary: oklch(72% 0.2 149);              /* standard green (≈ #22c55e): CTAs, accents, "safe" */
+  --color-primary-foreground: oklch(14% 0.04 149);
   --color-secondary: oklch(27% 0.05 158);
   --color-secondary-foreground: oklch(98% 0.025 160);
 
@@ -30,12 +30,12 @@
 
   --color-border: oklch(42% 0.065 158 / 0.5);
   --color-input: oklch(27% 0.05 158);
-  --color-ring: oklch(84% 0.16 158);
+  --color-ring: oklch(72% 0.2 149);
 
-  --color-safe: oklch(84% 0.16 158);                /* verdict: pass */
+  --color-safe: oklch(72% 0.2 149);                 /* verdict: pass */
   --color-danger: oklch(70% 0.2 28);                /* verdict: violation */
   --color-warning: oklch(82% 0.15 85);              /* verdict: needs a look */
-  --color-signal: oklch(84% 0.16 158);              /* glows */
+  --color-signal: oklch(72% 0.2 149);               /* glows */
 
   /* ---- Typography. Roles, not families: swap the family in fonts.ts. ---- */
   --font-heading: var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif;
@@ -116,9 +116,9 @@
   --color-muted-foreground: oklch(68% 0.012 250);
   --color-border: oklch(33% 0.012 250 / 0.6);
   --color-input: oklch(19% 0.01 250);
-  --color-primary: oklch(78% 0.14 158);
-  --color-primary-foreground: oklch(14% 0.03 158);
-  --color-safe: oklch(78% 0.14 158);
+  --color-primary: oklch(68% 0.19 149);
+  --color-primary-foreground: oklch(14% 0.04 149);
+  --color-safe: oklch(68% 0.19 149);
   --color-signal: transparent;               /* every glow reads this: none in the app */
   --text-display: 2.25rem;                   /* page titles are titles, not billboards */
   --text-display--line-height: 1.15;

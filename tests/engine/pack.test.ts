@@ -48,6 +48,22 @@ describe("loadPack", () => {
 describe("parsePackFiles validation", () => {
   const withSeed = (edit: (s: string) => string) => parsePackFiles({ ...files(), "seed.yaml": edit(files()["seed.yaml"]) });
   it("accepts the real pack", () => { expect(parsePackFiles(files()).errors).toEqual([]); });
+  it("parses a systems entry with kind/mode/provider", () => {
+    const f = files();
+    const packYaml = f["pack.yaml"].replace(
+      "  payments: { label: Payments }\nentities:",
+      "  payments: { label: Payments }\n  stripe:   { label: Stripe, kind: mcp, mode: shadowed, provider: stripe }\nentities:",
+    );
+    expect(packYaml).not.toBe(f["pack.yaml"]);
+    const { pack, errors } = parsePackFiles({ ...f, "pack.yaml": packYaml });
+    expect(errors).toEqual([]);
+    expect(pack!.meta.systems.stripe).toEqual({ label: "Stripe", kind: "mcp", mode: "shadowed", provider: "stripe" });
+  });
+  it("still parses a systems entry with only a label (backward compatible)", () => {
+    const { pack, errors } = parsePackFiles(files());
+    expect(errors).toEqual([]);
+    expect(pack!.meta.systems.orders).toEqual({ label: "Orders" });
+  });
   it("rejects a broken ref", () => {
     const r = withSeed((s) => s.replace("order_id: ord_1042, amount: 4999,  card_last4: \"4242\", status: succeeded, created_at: 2026-09-11T09:31:07Z", "order_id: ord_9999, amount: 4999,  card_last4: \"4242\", status: succeeded, created_at: 2026-09-11T09:31:07Z"));
     expect(r.errors.some((e) => e.file === "seed.yaml" && /ord_9999/.test(e.message))).toBe(true);

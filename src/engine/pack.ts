@@ -46,7 +46,7 @@ export type PackMeta = {
   domain: string;
   description: string;
   principal: string;
-  systems: Record<string, { label: string }>;
+  systems: Record<string, { label: string; kind?: "mcp" | "db" | "s3" | "tools"; mode?: "shadowed" | "mocked" | "pasted" | "localstack"; provider?: string }>;
   entities: Record<string, EntitySpec>;
 };
 
@@ -154,7 +154,12 @@ const PackMetaSchema = z.object({
   domain: z.string(),
   description: z.string(),
   principal: z.string(),
-  systems: z.record(z.string(), z.object({ label: z.string() }).strict()),
+  systems: z.record(z.string(), z.object({
+    label: z.string(),
+    kind: z.enum(["mcp", "db", "s3", "tools"]).optional(),
+    mode: z.enum(["shadowed", "mocked", "pasted", "localstack"]).optional(),
+    provider: z.string().optional(),
+  }).strict()),
   entities: z.record(z.string(), EntitySpecSchema),
 }).strict();
 

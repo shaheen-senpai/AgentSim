@@ -2,7 +2,8 @@
 // `store.ts` — this is what lets a client component (`src/ui`) show a Run's agent without pulling
 // the filesystem into the browser bundle. `store.ts` re-exports the labels for server-side importers.
 
-export type AgentShape = "mcp" | "forwarder" | "connector";
+/** How an agent and AgentSim reach each other. "driven" is the only outbound one: we call it. */
+export type AgentShape = "mcp" | "forwarder" | "connector" | "driven";
 
 /** Who ran the Scenario: one of the pack's Reference Agent prompts, or someone's own agent. */
 export type RunAgentRef =

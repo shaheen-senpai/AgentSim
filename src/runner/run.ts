@@ -6,8 +6,12 @@ import { buildTaskBrief, loadPack, type Scenario, type WorldPack } from "@/engin
 import type { Event } from "@/engine/types";
 import { seedWorld, snapshot } from "@/engine/world";
 import { REFERENCE_AGENT_MODEL } from "./agents";
+import { getAgent } from "./agentRegistry";
 import { armIdle, getLive, registerLive, touchIdle, unregisterLive } from "./registry";
 import { driveReferenceAgent } from "./referenceAgent";
+import { converse } from "./conversation";
+import { nextCounterpartTurn, DEFAULT_MAX_TURNS, type ConversationTurn, type CounterpartClient } from "./counterpart";
+import { driveRemoteAgent } from "./remoteAgent";
 import { loadRun, newRunId, saveRun, type AgentShape, type FinishedBy, type RunAgentRef, type RunRecord } from "./store";
 
 /** A BYO Run with no explicit timeout finishes itself two minutes after its last Event. */
@@ -21,6 +25,11 @@ export type CreateRunOptions = {
     | { kind: "reference"; version: string }
     | { kind: "byo"; agentId?: string | null; name?: string; shape?: AgentShape; toolAliases?: Record<string, string> };
   idleTimeoutMs?: number | null;
+  /**
+   * A stand-in for the counterpart model, for tests. Built from a Zod body in the API routes, which
+   * does not carry this, so it can never arrive over the network.
+   */
+  deps?: { counterpartClient?: CounterpartClient };
 };
 
 export type FinishPatch = Partial<Pick<RunRecord, "usage" | "transcript" | "cappedOut" | "truncated" | "error">>;
@@ -35,6 +44,9 @@ function agentRef(agent: CreateRunOptions["agent"]): RunAgentRef {
     toolAliases: agent.toolAliases ?? {},
   };
 }
+
+/** A Run AgentSim drives outbound, rather than one that waits to be called. */
+const isDriven = (a: RunAgentRef): boolean => a.kind === "byo" && a.shape === "driven";
 
 function scenarioOf(pack: WorldPack, scenarioId: string): Scenario {
   const scenario = pack.scenarios.find((s) => s.id === scenarioId);
@@ -78,8 +90,11 @@ export function createRun(opts: CreateRunOptions, onEvent?: (e: Event) => void):
     transcript: [],
     error: null,
     narrative: null,
-    // A Reference Run is driven to completion in-process, so it never idles out.
-    idleTimeoutMs: agent.kind === "reference" ? null : opts.idleTimeoutMs === undefined ? BYO_DEFAULT_IDLE_MS : opts.idleTimeoutMs,
+    // A Reference Run, and a "driven" BYO Run, are both driven to completion in-process, so neither
+    // idles out. Leaving the idle timer armed for a driven Run would race its own HTTP timeout: an
+    // agent that answers correctly but slowly would be finished as an idle timeout first, and the
+    // real reply would then be dropped because the Run is no longer live.
+    idleTimeoutMs: agent.kind === "reference" || isDriven(agent) ? null : opts.idleTimeoutMs === undefined ? BYO_DEFAULT_IDLE_MS : opts.idleTimeoutMs,
     finishedBy: null,
   };
 
@@ -147,10 +162,70 @@ export function finishRun(id: string, patch: FinishPatch & { finishedBy?: Finish
   }
 }
 
-/** Create the Run and return its id at once; the Reference Agent runs in the background of this Node process. */
+/**
+ * Where to call a "driven" agent, or null for every other shape. Resolved from the registry rather
+ * than copied onto the Run: a URL and a secret are deployment detail, not part of what was scored.
+ *
+ * Throws before the Run exists when it cannot be resolved. A driven Run that silently fell back to
+ * waiting would sit on the idle timer for minutes and then be recorded as abandoned, which reads as
+ * a finding about the agent rather than a misconfiguration on this side.
+ */
+function drivenTarget(agent: CreateRunOptions["agent"]): { url: string; authHeader?: string } | null {
+  if (agent.kind !== "byo" || agent.shape !== "driven") return null;
+
+  const registered = agent.agentId ? getAgent(agent.agentId) : null;
+  const url = registered?.url ?? "";
+  if (!url) throw new Error("A driven agent needs a registered URL for AgentSim to call.");
+
+  const envName = registered?.authHeaderEnv ?? "";
+  if (!envName) return { url };
+  const authHeader = process.env[envName];
+  if (!authHeader) throw new Error(`The agent's auth header is read from ${envName}, which is not set on this server.`);
+  return { url, authHeader };
+}
+
+/**
+ * Create the Run and return its id at once. A Reference Agent, or a "driven" BYO agent, then runs
+ * in the background of this Node process; every other shape waits for the agent to call in.
+ */
 export function startRun(opts: CreateRunOptions): string {
+  // Resolved first, so a misconfigured driven agent fails before a Run record exists.
+  const target = drivenTarget(opts.agent);
   const { run, gateway } = createRun(opts);
-  if (run.agent.kind === "byo") return run.id; // finished from the UI via POST /api/runs/:id/finish, or by the idle timer
+
+  if (run.agent.kind === "byo") {
+    // Every other shape is inbound: the agent calls us, and the Run is finished from the UI via
+    // POST /api/runs/:id/finish, or by the idle timer.
+    if (!target) return run.id;
+    const said: ConversationTurn[] = [];
+    void (async () => {
+      try {
+        // The idle control on the Run form becomes the outbound deadline: there are no Events to
+        // idle between, so "how long to wait" is the only thing it can usefully mean here.
+        const timeoutMs = opts.idleTimeoutMs ?? undefined;
+        const ask = (messages: readonly ConversationTurn[]) =>
+          driveRemoteAgent(target.url, { runId: run.id, taskBrief: run.taskBrief, messages, authHeader: target.authHeader, timeoutMs }).then((r) => r.reply);
+
+        const counterpart = scenarioOf(getLive(run.id)!.pack, run.scenarioId).counterpart;
+        const transcript: ConversationTurn[] = counterpart
+          ? await converse({
+              onTurn: (t) => said.push(t),
+              maxTurns: counterpart.max_turns ?? DEFAULT_MAX_TURNS,
+              label: counterpart.label,
+              // The counterpart is told the Run is under Attack so it can apply the Scenario's
+              // pressure. It is never told what the Attack is, nor anything about the Checks.
+              ask: (conversation) => nextCounterpartTurn(counterpart, conversation, { underAttack: run.attack !== null, client: opts.deps?.counterpartClient }),
+              reply: ask,
+            })
+          : [{ role: "agent", content: await ask([]) }];
+
+        finishRun(run.id, { transcript, finishedBy: "agent" });
+      } catch (e) {
+        failRun(run.id, e instanceof Error ? e.message : String(e), said);
+      }
+    })();
+    return run.id;
+  }
 
   const pack = getLive(run.id)!.pack;
   const version = run.agent.version;
@@ -169,13 +244,13 @@ export function startRun(opts: CreateRunOptions): string {
 }
 
 /** Mark a Run failed even when it is no longer live (e.g. the registry was dropped on a dev-server reload). */
-export function failRun(id: string, message: string): void {
+export function failRun(id: string, message: string, transcript?: unknown[]): void {
   try {
-    finishRun(id, { error: message });
+    finishRun(id, { error: message, ...(transcript?.length ? { transcript } : {}) });
   } catch {
     const stale = loadRun(id);
     if (stale && stale.status === "running") {
-      saveRun({ ...stale, status: "failed", error: message, finishedBy: "error", durationMs: Date.now() - Date.parse(stale.createdAt) });
+      saveRun({ ...stale, status: "failed", error: message, ...(transcript?.length ? { transcript } : {}), finishedBy: "error", durationMs: Date.now() - Date.parse(stale.createdAt) });
     }
   }
 }

@@ -1,0 +1,28 @@
+get_thread:
+  system: email
+  kind: read
+  description: >-
+    Get a Gmail thread and its messages, oldest first.
+    https://developers.google.com/workspace/gmail/api/reference/rest/v1/users.threads/get
+  input: { thread_id: string }
+  op: get
+  collection: threads
+  id: "${input.thread_id}"
+  subject: { collection: threads, id: "${input.thread_id}" }
+  include:
+    messages: { collection: emails, where: { thread_id: "${entity.id}" }, order_by: sent_at }
+
+send_email:
+  system: email
+  kind: write
+  description: "Send an email from support, replying within an existing Gmail thread."
+  input: { thread_id: string, body: text }
+  subject: { collection: threads, id: "${input.thread_id}" }
+  lookup:
+    thread: { collection: threads, id: "${input.thread_id}" }
+    customer: { collection: customers, id: "${thread.customer_id}" }
+  op: create
+  collection: emails
+  new_id: { prefix: eml_, start: 9100 }
+  set: { thread_id: "${thread.id}", from: support@northwind.example, to: "${customer.email}", sent_at: "${now}", body: "${input.body}" }
+  returns: { ok: true, id: "${entity.id}" }

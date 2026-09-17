@@ -25,7 +25,7 @@ export type HowOption = { id: How; title: string; body: string; badge?: string }
 
 export const HOW_OPTIONS: Record<Target, HowOption[]> = {
   agent: [
-    { id: "plugin", title: "Connect through the MCP plugin", body: "Install the plugin next to your agent. It brings the tools, entities and mandate across by itself.", badge: "Recommended" },
+    { id: "plugin", title: "Import with the worldbuilder plugin", body: "Run the plugin from the agent's own repo. It reads the tools, schema and policies there and drafts the agent and its first World here for review.", badge: "Recommended" },
     { id: "compose", title: "Compose it yourself", body: "Pick the third-party MCPs and tools the agent can reach, and write its mandate." },
   ],
   world: [

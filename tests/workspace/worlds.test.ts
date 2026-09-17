@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import type { Agent, PackSummary } from "@/ui/types";
-import { buildHandshake, IMPORT_POOL } from "@/workspace/handshake";
 import { buildWorldDraftScript, nextDraftWorld, worldViews } from "@/workspace/worlds";
 
 const agent = (over: Partial<Agent>): Agent => ({
@@ -47,10 +46,3 @@ describe("buildWorldDraftScript", () => {
   });
 });
 
-describe("handshake drafts worlds", () => {
-  it("every import candidate brings at least one world and the script says so", () => {
-    for (const c of IMPORT_POOL) expect(c.worlds.length).toBeGreaterThan(0);
-    const steps = buildHandshake(IMPORT_POOL[0]);
-    expect(steps.some((s) => /drafting worlds/.test(s.text) && s.text.includes(IMPORT_POOL[0].worlds[0].name))).toBe(true);
-  });
-});

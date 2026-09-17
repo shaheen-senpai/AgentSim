@@ -1,6 +1,6 @@
 "use client";
-// `/agents` — the signed-in landing: every onboarded agent, the two ways to add one, and the
-// numbers that matter. Server page hands over agents and run summaries; everything after is API.
+// `/agents` — the signed-in landing: every onboarded agent, the two ways to add one (both go through
+// the create wizard), and the numbers that matter. Server page hands over agents and run summaries.
 import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
 import { Button, LinkButton } from "@/marketing/Button";
@@ -10,7 +10,6 @@ import { agentTrust, filterAgents, sortAgents, workspaceStats } from "./agentSta
 import { AgentCard, AgentRow } from "./AgentCard";
 import { createAgent } from "./api";
 import { EmptyState } from "./EmptyState";
-import { ImportMcpModal } from "./ImportMcpModal";
 import { SAMPLE_AGENTS } from "./samples";
 import { StatsStrip } from "./StatsStrip";
 import { Toast, type ToastMessage } from "./Toast";
@@ -22,8 +21,6 @@ export function AgentsPage({ initialAgents, runs }: { initialAgents: Agent[]; ru
   const [agents, setAgents] = useState<Agent[]>(() => sortAgents(initialAgents));
   const [query, setQuery] = useState("");
   const [view, setView] = useState<View>("grid");
-  const [importOpen, setImportOpen] = useState(false);
-  const [freshId, setFreshId] = useState<string | null>(null);
   const [toast, setToast] = useState<ToastMessage | null>(null);
   const [loadingSamples, setLoadingSamples] = useState(false);
 
@@ -31,15 +28,6 @@ export function AgentsPage({ initialAgents, runs }: { initialAgents: Agent[]; ru
 
   const stats = useMemo(() => workspaceStats(agents, runs), [agents, runs]);
   const visible = useMemo(() => filterAgents(agents, query), [agents, query]);
-  const names = useMemo(() => agents.map((a) => a.name), [agents]);
-
-  const onImported = useCallback((agent: Agent) => {
-    setImportOpen(false);
-    setAgents((current) => sortAgents([agent, ...current.filter((a) => a.id !== agent.id)]));
-    setFreshId(agent.id);
-    setToast({ title: `${agent.name} connected via MCP`, body: `${agent.tools.length} tools, ${agent.entities.length} entities and ${agent.worlds.length} drafted world${agent.worlds.length === 1 ? "" : "s"} imported.` });
-    window.setTimeout(() => setFreshId(null), 3000);
-  }, []);
 
   const loadSamples = async () => {
     setLoadingSamples(true);
@@ -67,9 +55,9 @@ export function AgentsPage({ initialAgents, runs }: { initialAgents: Agent[]; ru
           </p>
         </div>
         <div className="animate-reveal flex flex-wrap gap-2 [animation-delay:120ms]">
-          <Button variant="outline" onClick={() => setImportOpen(true)}>
+          <LinkButton href="/agents/new?how=plugin" variant="outline">
             <Icon name="plug" className="size-4" /> Import via MCP
-          </Button>
+          </LinkButton>
           <LinkButton href="/agents/new">
             <Icon name="plus" className="size-4" /> Create agent
           </LinkButton>
@@ -82,8 +70,8 @@ export function AgentsPage({ initialAgents, runs }: { initialAgents: Agent[]; ru
 
       {agents.length === 0 ? (
         <div className="mt-8">
-          <EmptyState icon="box" title="No agents yet" body="Connect one through the MCP plugin, describe one by hand, or load two samples to see the workspace working.">
-            <Button variant="outline" onClick={() => setImportOpen(true)}><Icon name="plug" className="size-4" /> Import via MCP</Button>
+          <EmptyState icon="box" title="No agents yet" body="Import one with the worldbuilder plugin, compose one by hand, or load two samples to see the workspace working.">
+            <LinkButton href="/agents/new?how=plugin" variant="outline"><Icon name="plug" className="size-4" /> Import via MCP</LinkButton>
             <LinkButton href="/agents/new" variant="outline"><Icon name="plus" className="size-4" /> Create agent</LinkButton>
             <Button onClick={loadSamples} disabled={loadingSamples}>{loadingSamples ? "Adding…" : "Load sample agents"}</Button>
           </EmptyState>
@@ -108,7 +96,7 @@ export function AgentsPage({ initialAgents, runs }: { initialAgents: Agent[]; ru
             <ul key="grid" className="animate-fade-in mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               {visible.map((a, i) => (
                 <li key={a.id}>
-                  <AgentCard agent={a} activity={agentTrust(a.id, runs)} href={`/agents/${a.id}`} fresh={a.id === freshId} style={enter(i)} />
+                  <AgentCard agent={a} activity={agentTrust(a.id, runs)} href={`/agents/${a.id}`} style={enter(i)} />
                 </li>
               ))}
             </ul>
@@ -116,7 +104,7 @@ export function AgentsPage({ initialAgents, runs }: { initialAgents: Agent[]; ru
             <ul key="list" className="animate-fade-in mt-4 flex flex-col gap-2">
               {visible.map((a, i) => (
                 <li key={a.id}>
-                  <AgentRow agent={a} activity={agentTrust(a.id, runs)} href={`/agents/${a.id}`} fresh={a.id === freshId} style={enter(i)} />
+                  <AgentRow agent={a} activity={agentTrust(a.id, runs)} href={`/agents/${a.id}`} style={enter(i)} />
                 </li>
               ))}
             </ul>
@@ -127,7 +115,6 @@ export function AgentsPage({ initialAgents, runs }: { initialAgents: Agent[]; ru
         </>
       )}
 
-      <ImportMcpModal open={importOpen} onClose={() => setImportOpen(false)} existingNames={names} onImported={onImported} />
       <Toast toast={toast} onDismiss={dismiss} />
     </main>
   );

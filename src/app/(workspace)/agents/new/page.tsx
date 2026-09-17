@@ -10,6 +10,8 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = { title: "New agent · AgentSim" };
 
-export default function NewAgentRoute() {
-  return <CreateWizard target="agent" providers={listProviders()} packs={toPackPicks(loadPacks().packs)} />;
+export default async function NewAgentRoute({ searchParams }: { searchParams: Promise<{ how?: string | string[] }> }) {
+  const { how } = await searchParams;
+  const initialHow = (Array.isArray(how) ? how[0] : how) === "plugin" ? "plugin" : null;
+  return <CreateWizard target="agent" providers={listProviders()} packs={toPackPicks(loadPacks().packs)} initialHow={initialHow} />;
 }

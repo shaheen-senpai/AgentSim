@@ -73,7 +73,7 @@ export function ScenariosTab({ worldId, files, scenarios, principal, runsByScena
   /** Rewrite one Scenario's file and save the whole pack. */
   async function rewrite(id: string, edit: (file: string) => string): Promise<boolean> {
     const key = scenarioFileKey(id);
-    return save({ ...files, [key]: edit(files[key] ?? "") });
+    return (await save({ ...files, [key]: edit(files[key] ?? "") })) !== null;
   }
 
   async function addSnippet(id: string, list: "attacks" | "checks", text: string): Promise<string | null> {

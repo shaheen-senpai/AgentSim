@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { deletePack, listPackIds, loadPack, PACK_ID_RE, packWriteErrors, parsePackFiles, savePack } from "@/engine/pack";
+import { rotateToken } from "@/generate/buildTokens";
 import { toPackSummary } from "@/lib/summaries";
 import { listRuns } from "@/runner/store";
 
@@ -34,7 +35,15 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   if (!pack) return Response.json({ errors }, { status: 400 });
 
   savePack(id, files);
-  return Response.json(toPackSummary(pack));
+
+  // Publishing ends the life of the build token that made this World: the plugin may keep writing
+  // over a draft for as long as the review takes, and not one byte after it goes live. Rotating
+  // here rather than expiring silently means the operator leaves with the successor in hand.
+  // Idempotent — re-saving a World that is already `ready` mints nothing.
+  const built = pack.meta.status !== "draft" ? pack.meta.built_by?.token : undefined;
+  const rotated = built ? rotateToken(built) : null;
+
+  return Response.json({ ...toPackSummary(pack), ...(rotated ? { rotatedToken: rotated.token, rotatedTokenExpiresAt: rotated.expiresAt } : {}) });
 }
 
 /**

@@ -14,14 +14,16 @@
 // human reviews it on the platform and publishes it.
 import { CLIENT_INFO_META_KEY, createMcpHandler, McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
+import { PUT as updateWorldRoute } from "@/app/api/worlds/[id]/route";
 import { POST as createWorldRoute } from "@/app/api/worlds/route";
-import { SPEND_MESSAGE, spendToken } from "@/generate/buildTokens";
+import { bindToken, boundWorldId, CLAIM_MESSAGE, claimToken, releaseToken, tokenStatus } from "@/generate/buildTokens";
 import { createDraft, getDraft, updateDraft, type Draft } from "@/generate/draftRegistry";
 import { generateStructure, toolsToText, type StructureInput } from "@/generate/structure";
-import { listPackIds, type BuildInfo } from "@/engine/pack";
+import { listPackIds, loadPack, type BuildInfo } from "@/engine/pack";
 import { guardMcpRequest } from "@/lib/mcpAccess";
 import { loadPacks } from "@/lib/summaries";
-import { isValidWorldId, withPackId } from "@/ui/worlds/editorLogic";
+import { freeWorldId, isValidWorldId, withPackId } from "@/ui/worlds/editorLogic";
+import { withBuiltBy, withPackStatus } from "@/ui/worlds/packEdits";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -106,6 +108,19 @@ export function renderRepo(repo: z.infer<typeof RepoSchema> | undefined): string
   return commit ? `${host}@${commit.slice(0, 7)}` : host;
 }
 
+/**
+ * Whether a World has been published — the end of its build token's life. A World that is missing
+ * (discarded) or unloadable is not published: the token still owns that id and may write it again.
+ */
+export function isPublishedWorld(worldId: string): boolean {
+  if (!listPackIds().includes(worldId)) return false;
+  try {
+    return loadPack(worldId).meta.status !== "draft";
+  } catch {
+    return false;
+  }
+}
+
 /** The Worlds already built from this repo — so a second run refines rather than duplicating. */
 function worldsBuiltFrom(repo: string | undefined): { id: string; status: string; repo: string }[] {
   if (!repo) return [];
@@ -114,23 +129,22 @@ function worldsBuiltFrom(repo: string | undefined): { id: string; status: string
     .map((p) => ({ id: p.meta.id, status: p.meta.status, repo }));
 }
 
-/** The requested id, or the first free `<id>-2`, `<id>-3`… when it is taken. */
-export function freeWorldId(worldId: string, taken: string[]): string {
-  if (!taken.includes(worldId)) return worldId;
-  for (let n = 2; n < 100; n++) {
-    const candidate = `${worldId}-${n}`;
-    if (!taken.includes(candidate)) return candidate;
-  }
-  return `${worldId}-${Date.now()}`;
-}
+// `freeWorldId` moved to `@/ui/worlds/editorLogic` so the workspace wizard — a client component,
+// which cannot reach this server route — dedupes through the same function. Re-exported because
+// it is this route's contract that is being tested.
+export { freeWorldId } from "@/ui/worlds/editorLogic";
 
 // ───────────────────────────── replies ─────────────────────────────
 
 function draftSummary(draft: Draft, existingWorlds: { id: string; status: string }[]): string {
+  const owned = boundWorldId(draft.meta.token);
   return JSON.stringify({
     draftId: draft.id,
     valid: draft.errors.length === 0,
     errorCount: draft.errors.length,
+    ...(owned
+      ? { updatesWorld: owned, note: `This token already built World '${owned}', so create_world writes this draft over it rather than creating another.` }
+      : {}),
     ...(existingWorlds.length > 0
       ? {
           existingWorlds,
@@ -171,6 +185,8 @@ const handler = createMcpHandler(
           "third-party MCP servers its client config points at, and the rules its own system prompt or policy docs state. The one thing to ask the " +
           "user for is a build token, from /worlds/new on the AgentSim console. Then call register_agent with all of it — this drafts the World's " +
           "structure with Claude. Then get_world_draft to read it, refine_world with a plain-language change, and create_world once it looks right. " +
+          "One token covers one World's review cycle: an attempt that drafts nothing does not spend it, the first create_world binds the token to " +
+          "the World it makes so every later one updates that same World in place, and publishing that World rotates the token. " +
           "The World is created as a draft: do not write Scenarios, seed rows or Attacks yourself, and tell the user to review it and generate those " +
           "on the World's page, which is where they are written.",
       },
@@ -183,9 +199,12 @@ const handler = createMcpHandler(
         inputSchema: RegisterInput,
       },
       async (args, ctx) => {
-        const spent = spendToken(args.token);
-        if (spent !== "ok") return text(SPEND_MESSAGE[spent], true);
-        if (!process.env.ANTHROPIC_API_KEY) return text(NO_KEY, true);
+        const claim = claimToken(args.token, isPublishedWorld);
+        if (claim !== "ok") return text(CLAIM_MESSAGE[claim], true);
+        if (!process.env.ANTHROPIC_API_KEY) {
+          releaseToken(args.token);
+          return text(NO_KEY, true);
+        }
 
         const input: StructureInput = {
           name: args.name,
@@ -198,7 +217,16 @@ const handler = createMcpHandler(
           mandates: args.mandates,
         };
         const repo = renderRepo(args.repo);
-        const result = await generateStructure(input);
+        // A drafting attempt that produces nothing hands the token back: the operator got no draft,
+        // so making them fetch a fresh token punishes them for our fault. Only `create_world`
+        // spends one for good.
+        let result;
+        try {
+          result = await generateStructure(input);
+        } catch (e) {
+          releaseToken(args.token);
+          return text(`${e instanceof Error ? e.message : String(e)}\n\nYour build token was not spent — call register_agent again with the same one.`, true);
+        }
         const draft = createDraft(input, { token: args.token, client: clientLabel(ctx, server), repo }, result);
         return text(draftSummary(draft, worldsBuiltFrom(repo)));
       },
@@ -238,10 +266,26 @@ const handler = createMcpHandler(
       async (args) => {
         const draft = getDraft(args.draftId);
         if (!draft) return text(`Unknown draft ${args.draftId}`, true);
-        if (!isValidWorldId(args.worldId)) return text("worldId must be 2-41 characters: lowercase letters, digits and hyphens, starting with a letter or digit.", true);
 
-        const id = freeWorldId(args.worldId, listPackIds());
-        const files = { ...draft.files, "pack.yaml": withPackId(draft.files["pack.yaml"] ?? "", id) };
+        // A token owns one World. The first create takes an id — deduped, so a name already in use
+        // does not strand the caller — and binds the token to it; every create after that writes
+        // over that same World, for as long as it is still a draft under review.
+        const owned = boundWorldId(draft.meta.token);
+        const status = tokenStatus(draft.meta.token, isPublishedWorld);
+        if (status === "published") {
+          return text(
+            `World '${owned}' — the one this token built — has been published, so the plugin cannot write to it again. Publishing rotated the token; its replacement is on /worlds/${owned}. Use a fresh token from /worlds/new to build a different World.`,
+            true,
+          );
+        }
+        // A rotated token is finished: it must not fall through and quietly create a second World.
+        if (status === "rotated") return text(CLAIM_MESSAGE.rotated, true);
+        if (!owned && !isValidWorldId(args.worldId)) {
+          return text("worldId must be 2-41 characters: lowercase letters, digits and hyphens, starting with a letter or digit.", true);
+        }
+
+        const taken = listPackIds();
+        const id = owned ?? freeWorldId(args.worldId, taken);
         const builtBy: BuildInfo = {
           source: "plugin",
           run: draft.id,
@@ -250,18 +294,39 @@ const handler = createMcpHandler(
           ...(draft.meta.repo ? { repo: draft.meta.repo } : {}),
           at: new Date().toISOString(),
         };
-        const res = await createWorldRoute(
-          new Request("http://internal/api/worlds", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ id, files, builtBy }) }),
-        );
+        const packYaml = withPackId(draft.files["pack.yaml"] ?? "", id);
+        const files = { ...draft.files, "pack.yaml": packYaml };
+
+        // An update, when the token already owns a World that is still there. `PUT` writes the
+        // files as given, so the draft status and the build record are stamped here — the same two
+        // marks `POST /api/worlds` applies on the way in.
+        const updating = owned !== undefined && taken.includes(id);
+        const res = updating
+          ? await updateWorldRoute(
+              new Request(`http://internal/api/worlds/${id}`, {
+                method: "PUT",
+                headers: { "content-type": "application/json" },
+                body: JSON.stringify({ files: { ...files, "pack.yaml": withBuiltBy(withPackStatus(packYaml, "draft"), builtBy) } }),
+              }),
+              { params: Promise.resolve({ id }) },
+            )
+          : await createWorldRoute(
+              new Request("http://internal/api/worlds", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ id, files, builtBy }) }),
+            );
         const data = (await res.json()) as { error?: string; errors?: unknown[] };
         if (!res.ok) return text(JSON.stringify(data), true);
+        bindToken(draft.meta.token, id);
         return text(
           JSON.stringify({
             worldId: id,
             url: `/worlds/${id}`,
             status: "draft",
-            ...(id === args.worldId ? {} : { note: `'${args.worldId}' was taken, so the World was created as '${id}'.` }),
-            next: `Review the World at /worlds/${id} — check the ownership chain, then generate its Scenarios and seed data on its Scenarios tab and publish it. Nothing can run against it until it is published.`,
+            ...(updating
+              ? { updated: true, note: `This token owns World '${id}', so the draft was written over it${args.worldId === id ? "" : ` and '${args.worldId}' was ignored`}.` }
+              : id === args.worldId
+                ? {}
+                : { note: `'${args.worldId}' was taken, so the World was created as '${id}'.` }),
+            next: `Review the World at /worlds/${id} — check the ownership chain, then generate its Scenarios and seed data on its Scenarios tab and publish it. Nothing can run against it until it is published, and publishing it rotates this build token.`,
           }),
         );
       },

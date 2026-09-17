@@ -20,11 +20,17 @@ import { PackTiles, SourceComposer } from "./SourceComposer";
 import { PluginGenerate, type PluginDraft } from "./PluginGenerate";
 import { agentFromDraft } from "./draftAgent";
 import { draftEntities, draftTools } from "@/ui/worlds/newWorld/draftView";
-import { isValidWorldId, withPackId } from "@/ui/worlds/editorLogic";
+import { freeWorldId, isValidWorldId, withPackId } from "@/ui/worlds/editorLogic";
 import { slugify } from "@/ui/worlds/newWorld/sources";
 import { WizardShell } from "./WizardShell";
 
-type Props = { target: Target; providers: ProviderInfo[]; packs: PackPick[]; agent?: Agent; initialHow?: How | null };
+/**
+ * `takenWorldIds` is every id `POST /api/worlds` would refuse — `listPackIds()`, the directory
+ * names. Deliberately not derived from `packs`: `loadPacks()` drops a pack that fails to load, so
+ * a broken World's id is absent there and present on disk, and deduping against `packs` alone
+ * would hand back an id the server still 409s.
+ */
+type Props = { target: Target; providers: ProviderInfo[]; packs: PackPick[]; takenWorldIds: string[]; agent?: Agent; initialHow?: How | null };
 
 const COPY: Record<Target, { title: string; lead: string; noun: "Agent" | "World" }> = {
   agent: {
@@ -39,7 +45,7 @@ const COPY: Record<Target, { title: string; lead: string; noun: "Agent" | "World
   },
 };
 
-export function CreateWizard({ target, providers, packs, agent, initialHow = null }: Props) {
+export function CreateWizard({ target, providers, packs, takenWorldIds, agent, initialHow = null }: Props) {
   const router = useRouter();
   const id = useId();
   const copy = COPY[target];
@@ -102,7 +108,11 @@ export function CreateWizard({ target, providers, packs, agent, initialHow = nul
 
   /** The draft becomes a World on disk (built by the plugin), and for an agent import, the agent too. */
   const createFromPluginDraft = (d: PluginDraft) => {
-    const worldId = slugify(d.input.name) || `world-${Date.now().toString(36)}`;
+    // Deduped, not just slugified: two agents may share a name, and an agent may be imported
+    // alongside a World already built from it. A taken id 409s on POST /api/worlds, and since the
+    // agent is only registered after that POST succeeds, a collision used to strand the whole
+    // import on this screen with no field to edit and nothing to retry.
+    const worldId = freeWorldId(slugify(d.input.name) || `world-${Date.now().toString(36)}`, takenWorldIds);
     if (!isValidWorldId(worldId)) return fail("The draft's name does not make a valid World id.");
     const files = { ...d.files, "pack.yaml": withPackId(d.files["pack.yaml"] ?? "", worldId) };
     const builtBy = { source: "plugin" as const, ...(d.token ? { token: d.token } : {}), ...(d.client ? { client: d.client } : {}), ...(d.repo ? { repo: d.repo } : {}) };

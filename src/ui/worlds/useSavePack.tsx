@@ -5,6 +5,9 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { ValidationError } from "@/engine/pack";
 
+/** What `PUT /api/worlds/<id>` answers with: the World summary, plus a rotated token on publication. */
+export type SaveResult = Record<string, unknown> & { rotatedToken?: string };
+
 const JSON_HEADERS = { "content-type": "application/json" };
 
 export function useSavePack(worldId: string) {
@@ -12,8 +15,12 @@ export function useSavePack(worldId: string) {
   const [pending, setPending] = useState(false);
   const [errors, setErrors] = useState<ValidationError[]>([]);
 
-  /** Resolves `true` when the files were saved; otherwise `errors` says why. */
-  async function save(files: Record<string, string>): Promise<boolean> {
+  /**
+   * Resolves the saved World (truthy) when the files were written, `null` when they were not — in
+   * which case `errors` says why. The body is handed back rather than swallowed because publishing
+   * returns the rotated build token, and the only moment that token can be shown is right here.
+   */
+  async function save(files: Record<string, string>): Promise<SaveResult | null> {
     setPending(true);
     setErrors([]);
     try {
@@ -21,19 +28,20 @@ export function useSavePack(worldId: string) {
       const v = (await validated.json()) as { ok: boolean; errors: ValidationError[] };
       if (!v.ok) {
         setErrors(v.errors);
-        return false;
+        return null;
       }
       const res = await fetch(`/api/worlds/${worldId}`, { method: "PUT", headers: JSON_HEADERS, body: JSON.stringify({ files }) });
       if (!res.ok) {
         const d = (await res.json().catch(() => ({}))) as { error?: string; errors?: ValidationError[] };
         setErrors(d.errors ?? [{ file: "", path: "", message: d.error ?? `Save failed (HTTP ${res.status}).` }]);
-        return false;
+        return null;
       }
+      const saved = (await res.json().catch(() => ({}))) as SaveResult;
       router.refresh();
-      return true;
+      return saved;
     } catch {
       setErrors([{ file: "", path: "", message: "Network error — nothing was saved." }]);
-      return false;
+      return null;
     } finally {
       setPending(false);
     }

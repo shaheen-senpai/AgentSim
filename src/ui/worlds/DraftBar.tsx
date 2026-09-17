@@ -12,9 +12,13 @@ export function DraftBar({ worldId, files, scenarioCount }: { worldId: string; f
   const { save, pending, errors } = useSavePack(worldId);
   const [discarding, setDiscarding] = useState(false);
   const [discardError, setDiscardError] = useState<string | null>(null);
+  const [rotated, setRotated] = useState<string | null>(null);
 
   async function publish() {
-    await save({ ...files, "pack.yaml": withPackStatus(files["pack.yaml"] ?? "", "ready") });
+    const saved = await save({ ...files, "pack.yaml": withPackStatus(files["pack.yaml"] ?? "", "ready") });
+    // Publishing retires the build token that made this World. The successor comes back with the
+    // save, and this is the only moment it can be shown to the person holding the old one.
+    if (typeof saved?.rotatedToken === "string") setRotated(saved.rotatedToken);
   }
 
   async function discard() {
@@ -62,6 +66,15 @@ export function DraftBar({ worldId, files, scenarioCount }: { worldId: string; f
         </span>
       </div>
       <ValidationNote errors={errors} />
+      {rotated && (
+        <div className="nw-note" style={{ marginTop: 12 }} role="status">
+          <b>Published — this World&apos;s build token was rotated.</b>
+          <div style={{ marginTop: 4 }}>
+            The plugin can no longer write to this World. Its replacement token, for the next World you build:{" "}
+            <span className="mono">{rotated}</span>
+          </div>
+        </div>
+      )}
       {discardError && (
         <div className="nw-note" style={{ borderLeftColor: "var(--danger-fg)", color: "var(--danger-fg)" }} role="alert">
           {discardError}

@@ -3,6 +3,7 @@ import type { Agent } from "@/ui/types";
 import { Icon } from "@/marketing/icons";
 import { trustBand } from "./agentStats";
 import { card, tag, trustText } from "./ui";
+import { firstSentence } from "@/ui/format";
 
 export type AgentActivity = { runs: number; trust: number | null };
 
@@ -36,7 +37,7 @@ export function AgentCard({ agent, activity, href, fresh = false, style }: { age
         {fresh && <span className="font-label text-label-sm uppercase text-primary">Just connected</span>}
       </div>
       <h3 className="mt-5 font-heading text-h3 font-semibold">{agent.name || "Untitled agent"}</h3>
-      <p className="mt-2 line-clamp-2 min-h-[2.6em] text-caption text-muted-foreground">{agent.description || "No description yet."}</p>
+      <p className="mt-2 line-clamp-2 min-h-[2.6em] text-caption text-muted-foreground" title={agent.description || undefined}>{agent.description ? firstSentence(agent.description) : "No description yet."}</p>
       <ul className="mt-4 flex flex-wrap gap-1.5" aria-label="Tools">
         {agent.tools.slice(0, MAX_TOOLS).map((t) => (
           <li key={t} className={tag}>{t}</li>
@@ -76,7 +77,7 @@ export function AgentRow({ agent, activity, href, fresh = false, style }: { agen
         <SourceTag source={agent.source} />
         <span className="truncate font-heading text-body font-semibold">{agent.name}</span>
       </div>
-      <p className="hidden truncate text-caption text-muted-foreground md:block">{agent.description}</p>
+      <p className="hidden truncate text-caption text-muted-foreground md:block" title={agent.description || undefined}>{firstSentence(agent.description)}</p>
       <dl className="flex items-center gap-6 font-label text-[11px] uppercase text-muted-foreground">
         <div className="flex items-baseline gap-1.5"><dt>Tools</dt><dd className="text-foreground">{agent.tools.length}</dd></div>
         <div className="flex items-baseline gap-1.5"><dt>Worlds</dt><dd className="text-foreground">{agent.worldIds.length + agent.worlds.length}</dd></div>

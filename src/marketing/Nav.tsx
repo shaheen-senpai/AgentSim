@@ -38,12 +38,25 @@ function scrollHomeIfHere(e: React.MouseEvent<HTMLAnchorElement>) {
   window.history.replaceState(null, "", "/");
 }
 
+/**
+ * The mark: a World drawn as a rounded frame with one edge left open, the agent as the node inside
+ * it, and a probe coming in through the gap. Frame and node take the primary colour; the probe is
+ * the text colour, so it reads against the green at 16px as well as at 32px.
+ */
+export function LogoMark({ className = "size-8" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={`${className} shrink-0 drop-shadow-[0_0_10px_color-mix(in_oklab,var(--color-signal)_35%,transparent)]`} fill="none" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6 3h9M3 6v12M6 21h12a3 3 0 0 0 3-3V9M3 6a3 3 0 0 1 3-3M3 18a3 3 0 0 0 3 3" className="stroke-primary" strokeWidth="1.8" />
+      <circle cx="12" cy="12" r="3.2" className="fill-primary" />
+      <path d="M18.5 5.5 21 3" className="stroke-foreground" strokeWidth="1.8" />
+    </svg>
+  );
+}
+
 export function Logo({ href = `/#${SECTION_IDS.top}` }: { href?: string }) {
   return (
     <Link href={href} onClick={scrollHomeIfHere} className="flex items-center gap-3 rounded-control focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring" aria-label="AgentSim home">
-      <span className="relative grid size-8 place-items-center rounded-full border border-primary/60 bg-primary/10 shadow-[0_0_20px_color-mix(in_oklab,var(--color-signal)_25%,transparent)]">
-        <span className="size-2 rotate-45 border border-primary" />
-      </span>
+      <LogoMark className="size-8" />
       <span className="font-heading text-xl font-semibold tracking-tight">
         Agent<span className="text-primary">Sim</span>
       </span>

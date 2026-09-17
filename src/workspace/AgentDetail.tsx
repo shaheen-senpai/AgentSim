@@ -6,22 +6,20 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { Button, LinkButton } from "@/marketing/Button";
 import { Icon } from "@/marketing/icons";
 import type { Agent, PackSummary } from "@/ui/types";
-import type { TrustDimension } from "./agentStats";
 import { SourceTag } from "./AgentCard";
 import { updateAgent } from "./api";
 import { EmptyState } from "./EmptyState";
 import type { HandshakeStep } from "./handshake";
 import { Modal } from "./Modal";
 import { Toast, type ToastMessage } from "./Toast";
-import { TrustPanel } from "./TrustPanel";
 import { container, enter, eyebrow } from "./ui";
 import { WorldCard } from "./WorldCard";
 import { buildWorldDraftScript, newWorldId, nextDraftWorld, worldViews } from "./worlds";
 
-type Props = { agent: Agent; packs: PackSummary[]; trust: number | null; runs: number; dimensions: TrustDimension[] };
+type Props = { agent: Agent; packs: PackSummary[]; trust: number | null; runs: number };
 type Mode = "draft" | "attach";
 
-export function AgentDetail({ agent: initial, packs, trust, runs, dimensions }: Props) {
+export function AgentDetail({ agent: initial, packs, trust, runs }: Props) {
   const [agent, setAgent] = useState(initial);
   const [adding, setAdding] = useState(false);
   const [mode, setMode] = useState<Mode>("draft");
@@ -109,23 +107,21 @@ export function AgentDetail({ agent: initial, packs, trust, runs, dimensions }: 
         <Icon name="arrow-left" className="size-3.5" /> All agents
       </Link>
 
-      <div className="mt-6 grid gap-8 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] lg:items-start">
+      <div className="mt-6">
         <header className="animate-reveal">
           <div className="flex flex-wrap items-center gap-3">
             <SourceTag source={agent.source} />
             <span className={eyebrow}>
-              {agent.source === "mcp" ? "Connected via MCP" : "Created by hand"} · {agent.tools.length} tools · {agent.entities.length} entities
+              {agent.source === "mcp" ? "Connected via MCP" : "Created by hand"} · {agent.tools.length} tools · {agent.entities.length} entities ·{" "}
+              {trust === null ? "no shifts yet" : `trust ${trust} over ${runs} run${runs === 1 ? "" : "s"}`}
             </span>
           </div>
           <h1 className="mt-3 font-heading text-display font-semibold">{agent.name}</h1>
           {agent.description && <p className="mt-2 max-w-2xl text-lead text-muted-foreground">{agent.description}</p>}
         </header>
-        <div className="animate-reveal [animation-delay:150ms]">
-          <TrustPanel trust={trust} runs={runs} dimensions={dimensions} />
-        </div>
       </div>
 
-      <section className="mt-10" aria-labelledby="worlds-title">
+      <section className="mt-8" aria-labelledby="worlds-title">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <p className={eyebrow}>Worlds · {views.length}</p>

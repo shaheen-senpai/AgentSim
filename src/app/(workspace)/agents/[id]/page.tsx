@@ -6,7 +6,7 @@ import { loadPacks, toPackSummary } from "@/lib/summaries";
 import { getAgent } from "@/runner/agentRegistry";
 import { listRuns } from "@/runner/store";
 import { AgentDetail } from "@/workspace/AgentDetail";
-import { agentTrust, trustDimensions } from "@/workspace/agentStats";
+import { agentTrust } from "@/workspace/agentStats";
 
 export const dynamic = "force-dynamic";
 
@@ -24,5 +24,5 @@ export default async function AgentRoute({ params }: { params: Promise<{ id: str
   const { trust, runs: runCount } = agentTrust(agent.id, runs);
   // A pack hand-edited into an invalid state is skipped here; `/worlds` reports it.
   const packs = loadPacks().packs.map(toPackSummary);
-  return <AgentDetail agent={agent} packs={packs} trust={trust} runs={runCount} dimensions={trustDimensions(agent.id, runs)} />;
+  return <AgentDetail agent={agent} packs={packs} trust={trust} runs={runCount} />;
 }

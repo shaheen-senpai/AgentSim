@@ -45,7 +45,7 @@
   .brand .mark span{width:8px; height:8px; border-radius:2px; background:var(--bg);}
   .brand b{font-size:15px; font-weight:700; letter-spacing:-.01em;}
 
-  nav{display:flex; flex-direction:column; gap:2px;}
+  .sidebar nav{display:flex; flex-direction:column; gap:2px;} /* scoped: the mock's only <nav> is the sidebar's; the tab strips here are <nav>s too */
   .navitem{display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:8px; color:var(--muted); font-size:13px; font-weight:500; border:none; background:none; text-align:left; width:100%;}
   .navitem svg{width:16px; height:16px; flex:none; opacity:.85;}
   .navitem:hover{color:var(--ink); background:rgba(27,26,23,.04);}

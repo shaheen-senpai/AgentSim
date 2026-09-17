@@ -3,11 +3,11 @@
 // `entityLayout.ts` / `packView.ts` are (`tests/ui/editorLogic.test.ts`).
 //
 // Deliberately imports only `import type { ValidationError } from "@/engine/pack"` (erased at
-// compile time — see the import-purity test below) and `import type { WorldTab } from "./packView"`
+// compile time — see the import-purity test below) and `import type { EditorTab } from "./packView"`
 // (packView itself is browser-safe). Nothing here value-imports `@/engine/pack`, which reaches
 // `node:fs`/`node:path` — this module is loaded straight into the client bundle by `PackEditor.tsx`.
 import type { ValidationError } from "@/engine/pack";
-import type { WorldTab } from "./packView";
+import type { EditorTab } from "./packView";
 
 // ───────────────────────────── new-scenario id ─────────────────────────────
 
@@ -80,7 +80,7 @@ export function withPackId(packYaml: string, id: string): string {
 // ───────────────────────────── tabs ↔ files ─────────────────────────────
 
 /** The single-file tabs' file key — `null` for `scenarios`/`agents`, which hold many files. */
-export function tabFileKey(tab: WorldTab): string | null {
+export function tabFileKey(tab: EditorTab): string | null {
   switch (tab) {
     case "overview":
       return "pack.yaml";
@@ -94,7 +94,7 @@ export function tabFileKey(tab: WorldTab): string | null {
 }
 
 /** The tab a pack-file key belongs to, or `null` for a key outside the pack layout. */
-export function fileTab(file: string): WorldTab | null {
+export function fileTab(file: string): EditorTab | null {
   if (file === "pack.yaml") return "overview";
   if (file === "seed.yaml") return "entities";
   if (file === "tools.yaml") return "tools";
@@ -115,8 +115,8 @@ export function groupErrorsByFile(errors: ValidationError[]): Record<string, Val
 }
 
 /** Every tab that owns at least one erroring file. */
-export function tabsWithErrors(errors: ValidationError[]): Set<WorldTab> {
-  const tabs = new Set<WorldTab>();
+export function tabsWithErrors(errors: ValidationError[]): Set<EditorTab> {
+  const tabs = new Set<EditorTab>();
   for (const e of errors) {
     const t = fileTab(e.file);
     if (t) tabs.add(t);

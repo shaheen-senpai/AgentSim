@@ -12,6 +12,11 @@ import {
   mutationText,
   opLabel,
   parseTab,
+  parseEditorTab,
+  editorTabHref,
+  editorTabLabel,
+  sourceKindLabel,
+  sourceDetail,
   previewRows,
   runHref,
   systemCounts,
@@ -34,6 +39,27 @@ describe("parseTab", () => {
     expect(parseTab("../../etc/passwd")).toBe("overview");
     expect(parseTab(["tools", "entities"])).toBe("tools");
     expect(parseTab(["nope"])).toBe("overview");
+    expect(parseTab("agents")).toBe("overview"); // the agent prompts moved to the raw editor
+    expect(WORLD_TABS).toContain("mandate");
+  });
+
+  it("keeps the raw editor's own five tabs, agents included", () => {
+    expect(parseEditorTab("agents")).toBe("agents");
+    expect(parseEditorTab("mandate")).toBe("overview");
+    expect(editorTabHref("northwind", "overview")).toBe("/worlds/northwind/edit");
+    expect(editorTabHref("northwind", "agents")).toBe("/worlds/northwind/edit?tab=agents");
+    expect(editorTabLabel("entities")).toBe("seed.yaml");
+  });
+});
+
+describe("source labels", () => {
+  it("names a System's source kind and where its tools come from", () => {
+    expect(sourceKindLabel("mcp")).toBe("MCP");
+    expect(sourceKindLabel("db")).toBe("database");
+    expect(sourceKindLabel(undefined)).toBe("pack");
+    expect(sourceDetail({ label: "P", kind: "mcp", mode: "shadowed", provider: "stripe" })).toBe("stripe catalog, mirrored over MCP");
+    expect(sourceDetail({ label: "O", kind: "db", mode: "mocked" })).toBe("declared in tools.yaml, mocked");
+    expect(sourceDetail({ label: "X" })).toBe("declared in tools.yaml");
   });
 });
 

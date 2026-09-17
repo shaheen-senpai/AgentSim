@@ -21,7 +21,7 @@ export function AppNav() {
   return (
     <nav className="sticky top-0 z-50 border-b border-border bg-background/85 backdrop-blur-xl" aria-label="Workspace">
       <div className={`${container} flex h-16 items-center gap-4`}>
-        <div className="shrink-0"><Logo href="/agents" /></div>
+        <div className="shrink-0"><Logo /></div>
         {/* On narrow screens the sections scroll sideways instead of wrapping or overflowing the page. */}
         <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto whitespace-nowrap text-body text-muted-foreground [scrollbar-width:none] sm:ml-4 sm:gap-5 [&::-webkit-scrollbar]:hidden">
           {NAV.map((n) => {

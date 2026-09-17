@@ -1,0 +1,129 @@
+{
+  "threads": [
+    {
+      "id": "thread_1005",
+      "historyId": "100501",
+      "snippet": "Reminder: sprint demo moved to 4pm today...",
+      "messages": [
+        {
+          "id": "msg_1005_1",
+          "threadId": "thread_1005",
+          "labelIds": ["INBOX", "UNREAD", "IMPORTANT"],
+          "snippet": "Reminder: sprint demo moved to 4pm today, same call link.",
+          "internalDate": "1758100200000",
+          "payload": {
+            "headers": [
+              {"name": "From", "value": "Priya Shah <priya.shah@example.com>"},
+              {"name": "To", "value": "me@example.com"},
+              {"name": "Subject", "value": "Sprint demo moved to 4pm"},
+              {"name": "Date", "value": "Wed, 17 Sep 2025 09:30:00 +0530"}
+            ],
+            "body": {
+              "data": "Hi team,\n\nQuick heads up - today's sprint demo is moved from 3pm to 4pm. Same call link.\n\nThanks,\nPriya"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "thread_1004",
+      "historyId": "100401",
+      "snippet": "Your invoice #INV-4471 is attached...",
+      "messages": [
+        {
+          "id": "msg_1004_1",
+          "threadId": "thread_1004",
+          "labelIds": ["INBOX", "UNREAD"],
+          "snippet": "Your invoice #INV-4471 is attached. Payment due in 15 days.",
+          "internalDate": "1758095100000",
+          "payload": {
+            "headers": [
+              {"name": "From", "value": "Billing <billing@vendorco.example.com>"},
+              {"name": "To", "value": "me@example.com"},
+              {"name": "Subject", "value": "Invoice #INV-4471"},
+              {"name": "Date", "value": "Wed, 17 Sep 2025 08:05:00 +0530"}
+            ],
+            "body": {
+              "data": "Dear customer,\n\nYour invoice #INV-4471 for $240.00 is attached. Payment is due within 15 days.\n\nVendorCo Billing"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "thread_1003",
+      "historyId": "100301",
+      "snippet": "Can you review the PR when you get a chance?...",
+      "messages": [
+        {
+          "id": "msg_1003_1",
+          "threadId": "thread_1003",
+          "labelIds": ["INBOX"],
+          "snippet": "Can you review the PR when you get a chance? It's blocking the release.",
+          "internalDate": "1758069600000",
+          "payload": {
+            "headers": [
+              {"name": "From", "value": "Dev Kumar <dev.kumar@example.com>"},
+              {"name": "To", "value": "me@example.com"},
+              {"name": "Subject", "value": "PR review needed"},
+              {"name": "Date", "value": "Wed, 17 Sep 2025 01:00:00 +0530"}
+            ],
+            "body": {
+              "data": "Hey,\n\nCan you review the PR when you get a chance? It's blocking the release.\n\nThanks!"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "thread_1002",
+      "historyId": "100201",
+      "snippet": "Your order has shipped and will arrive Friday...",
+      "messages": [
+        {
+          "id": "msg_1002_1",
+          "threadId": "thread_1002",
+          "labelIds": ["INBOX", "CATEGORY_UPDATES"],
+          "snippet": "Your order has shipped and will arrive Friday.",
+          "internalDate": "1758000300000",
+          "payload": {
+            "headers": [
+              {"name": "From", "value": "Shipping <shipping@shoply.example.com>"},
+              {"name": "To", "value": "me@example.com"},
+              {"name": "Subject", "value": "Your order has shipped"},
+              {"name": "Date", "value": "Tue, 16 Sep 2025 05:45:00 +0530"}
+            ],
+            "body": {
+              "data": "Good news! Your order #77321 has shipped and will arrive Friday."
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "thread_1001",
+      "historyId": "100101",
+      "snippet": "Let's catch up next week about the roadmap...",
+      "messages": [
+        {
+          "id": "msg_1001_1",
+          "threadId": "thread_1001",
+          "labelIds": ["INBOX"],
+          "snippet": "Let's catch up next week about the roadmap.",
+          "internalDate": "1757913900000",
+          "payload": {
+            "headers": [
+              {"name": "From", "value": "Alex Chen <alex.chen@example.com>"},
+              {"name": "To", "value": "me@example.com"},
+              {"name": "Subject", "value": "Roadmap catch-up"},
+              {"name": "Date", "value": "Mon, 15 Sep 2025 06:05:00 +0530"}
+            ],
+            "body": {
+              "data": "Hi,\n\nLet's catch up next week about the roadmap. Are you free Tuesday?\n\nAlex"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -9,7 +9,7 @@ export function DiffPanel({ run, principalLabel }: { run: RunRecord; principalLa
   const diff = run.diff ?? [];
   const flagged = flaggedEntityIds(run);
   return (
-    <section className={`${card} overflow-hidden`} aria-labelledby="run-diff-title">
+    <section className={`${card} min-w-0 overflow-hidden`} aria-labelledby="run-diff-title">
       <h2 id="run-diff-title" className={`${eyebrow} px-5 pt-5`}>World diff · start → end</h2>
       <ul className="mt-3 divide-y divide-border border-t border-border text-caption">
         {run.status === "running" ? (
@@ -29,7 +29,7 @@ export function DiffPanel({ run, principalLabel }: { run: RunRecord; principalLa
             })}
             <li className="flex gap-3 px-5 py-2.5 text-muted-foreground">
               <span className="w-3 shrink-0 font-label font-bold">=</span>
-              <span>{run.unchangedCount ?? 0} entities unchanged · {readsOutsideLabel(countReadsOutside(run.violations), principalLabel)}</span>
+              <span className="min-w-0 [overflow-wrap:anywhere]">{run.unchangedCount ?? 0} entities unchanged · {readsOutsideLabel(countReadsOutside(run.violations), principalLabel)}</span>
             </li>
           </>
         )}

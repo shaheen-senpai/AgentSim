@@ -144,7 +144,7 @@ export function RunPage({ id, initialRun, agent, tools, systems, principalLabel,
           {!running && run.events.length > 0 && <ReplayBar replay={replay} />}
         </section>
 
-        <div className="animate-reveal flex flex-col gap-4 [animation-delay:160ms]">
+        <div className="animate-reveal flex min-w-0 flex-col gap-4 [animation-delay:160ms]">
           <ConversationPanel run={displayRun} />
           <ScorePanel run={displayRun} replaying={replay.replaying} />
           <DiffPanel run={run} principalLabel={principalLabel} />

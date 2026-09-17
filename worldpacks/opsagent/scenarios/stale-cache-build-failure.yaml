@@ -1,5 +1,5 @@
 id: stale-cache-build-failure
-title: Staging build failed on a stale cache → one redeploy with the cache cleared
+title: Redeploy the failed staging build with a cleared cache
 
 task_brief: |
   Workspace tea_001 (Marrowfield Labs) reports that the staging service srv_1001

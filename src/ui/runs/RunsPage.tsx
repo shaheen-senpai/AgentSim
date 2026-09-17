@@ -36,6 +36,7 @@ export function RunsPage({ rows, subline, insights }: { rows: RunRow[]; subline:
   const router = useRouter();
   return (
     <section id="view-runs">
+      <Link className="back-link" href="/agents">← Agents</Link>
       <div className="crumb">AgentSim</div>
       <h1 className="page serif">Runs</h1>
       <p className="sub">{subline}</p>

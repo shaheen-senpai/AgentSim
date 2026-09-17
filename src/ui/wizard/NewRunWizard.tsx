@@ -1,6 +1,7 @@
 "use client";
 // The New run wizard (design/agentsim-console.html 607-623, state machine 2247-2422). Six steps;
 // "▷ Start Run" on the last one creates the Run and redirects to its page.
+import Link from "next/link";
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { Agent, WizardPack } from "@/ui/types";
@@ -82,6 +83,7 @@ export function NewRunWizard({ packs, agents: initialAgents, inReview = 0 }: { p
 
   return (
     <section id="view-wizard">
+      <Link className="back-link" href="/runs">← Runs</Link>
       <div className="crumb">
         Runs / <b>New run</b>
       </div>

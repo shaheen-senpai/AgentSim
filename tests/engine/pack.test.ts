@@ -2,13 +2,13 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
 import { inputJsonSchema, inputZod, listPackIds, loadPack, loadProviderTools, packWriteErrors, parsePackFiles, savePack, type PackFiles } from "@/engine/pack";
-import { usePacksDir } from "../helpers/packs";
+import { FIXTURE_PACKS, copyFixturePacks } from "../helpers/packs";
 
 let dir: string;
-beforeAll(() => { dir = usePacksDir("northwind"); });
+beforeAll(() => { dir = copyFixturePacks("northwind"); });
 
 const files = (): PackFiles => {
-  const root = path.join(process.cwd(), "worldpacks", "northwind");
+  const root = path.join(FIXTURE_PACKS, "northwind");
   return {
     "pack.yaml": readFileSync(path.join(root, "pack.yaml"), "utf8"),
     "seed.yaml": readFileSync(path.join(root, "seed.yaml"), "utf8"),

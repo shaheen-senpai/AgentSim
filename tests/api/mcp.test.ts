@@ -8,7 +8,7 @@ import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { POST as mcpRoute } from "@/app/mcp/runs/[runId]/[sourceId]/route";
 import { createRun, finishRun } from "@/runner/run";
 import { loadRun } from "@/runner/store";
-import { usePacksDir } from "../helpers/packs";
+import { copyFixturePacks } from "../helpers/packs";
 
 const NORTHWIND = { packId: "northwind", scenarioId: "duplicate-charge-refund" } as const;
 const AGENT = { kind: "byo", agentId: "agt_1", name: "Claude Code", shape: "mcp", toolAliases: { fetch_ticket: "get_ticket" } } as const;
@@ -30,7 +30,7 @@ const initialize = (runId: string, sourceId: string) =>
   rpc(runId, sourceId, { jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "test", version: "1" } } });
 
 beforeAll(() => {
-  usePacksDir();
+  copyFixturePacks();
   process.env.AGENTSIM_DATA_DIR = mkdtempSync(path.join(os.tmpdir(), "agentsim-mcp-"));
 });
 

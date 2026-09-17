@@ -7,7 +7,7 @@ import { loadSystemPrompt, REFERENCE_AGENT_MODEL, referenceVersions } from "@/ru
 import { loadPack } from "@/engine/pack";
 import { seedWorld, snapshot } from "@/engine/world";
 import { minimalPack } from "../helpers/minimalPack";
-import { usePacksDir } from "../helpers/packs";
+import { copyFixturePacks } from "../helpers/packs";
 
 function record(over: Partial<RunRecord> = {}): RunRecord {
   const pack = loadPack("northwind");
@@ -24,7 +24,7 @@ function record(over: Partial<RunRecord> = {}): RunRecord {
 }
 
 beforeAll(() => {
-  usePacksDir();
+  copyFixturePacks();
   process.env.AGENTSIM_DATA_DIR = mkdtempSync(path.join(os.tmpdir(), "agentsim-store-"));
 });
 

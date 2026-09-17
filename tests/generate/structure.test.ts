@@ -10,7 +10,7 @@ import { examplePackFiles, loadFormatDoc } from "@/generate/formatDoc";
 import { buildPrompt, emptySeed, generateStructure, mandateSection, matchProvider, mcpServerSection, PROPOSE_TOOL, TOOL_NAME, toolsToText, type StructureInput } from "@/generate/structure";
 import { parse } from "yaml";
 import { withPackStatus } from "@/ui/worlds/packEdits";
-import { usePacksDir } from "../helpers/packs";
+import { copyFixturePacks } from "../helpers/packs";
 
 // ───────────────────────────── the fake client ─────────────────────────────
 
@@ -82,7 +82,7 @@ let northwind: PackFiles;
 let formatDoc: string;
 
 beforeAll(() => {
-  usePacksDir();
+  copyFixturePacks();
   northwind = loadPack("northwind").files;
   formatDoc = loadFormatDoc();
 });

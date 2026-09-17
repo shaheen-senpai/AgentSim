@@ -5,12 +5,12 @@ import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { BYO_DEFAULT_IDLE_MS, createRun, failRun, finishRun } from "@/runner/run";
 import { loadRun } from "@/runner/store";
 import { getLive, unregisterLive } from "@/runner/registry";
-import { usePacksDir } from "../helpers/packs";
+import { copyFixturePacks } from "../helpers/packs";
 
 const NORTHWIND = { packId: "northwind", scenarioId: "duplicate-charge-refund" } as const;
 
 beforeAll(() => {
-  usePacksDir();
+  copyFixturePacks();
   process.env.AGENTSIM_DATA_DIR = mkdtempSync(path.join(os.tmpdir(), "agentsim-run-"));
 });
 afterEach(() => { vi.useRealTimers(); });

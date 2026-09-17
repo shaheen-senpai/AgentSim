@@ -4,10 +4,10 @@ import type { Attack, Scenario, WorldPack } from "@/engine/pack";
 import { seedWorld, snapshot } from "@/engine/world";
 import type { Event, World } from "@/engine/types";
 import { evaluate, label } from "@/engine/evaluator";
-import { usePacksDir } from "../helpers/packs";
+import { copyFixturePacks } from "../helpers/packs";
 
 beforeAll(() => {
-  usePacksDir("northwind");
+  copyFixturePacks("northwind");
 });
 
 function pack(): WorldPack {

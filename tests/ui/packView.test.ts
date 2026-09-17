@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { loadPack, type Check, type ToolDef } from "@/engine/pack";
 import { toPackSummary } from "@/lib/summaries";
+import { copyFixturePacks } from "../helpers/packs";
+
+// Reads a pack through `loadPack`, so it needs `AGENTSIM_PACKS_DIR` pointed at the fixtures
+// before the first call — which happens at module scope here, not in `beforeAll`, because
+// some of these assertions are built while the file is being collected.
+copyFixturePacks();
+
 import {
   cellText,
   checkParams,

@@ -10,10 +10,10 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { loadPack } from "@/engine/pack";
 import { entityLabel } from "@/engine/world";
 import { injectionSourceLabel } from "@/ui/injectionSource";
-import { usePacksDir } from "../helpers/packs";
+import { copyFixturePacks } from "../helpers/packs";
 
 beforeAll(() => {
-  usePacksDir("northwind", "halvard-helpdesk");
+  copyFixturePacks("northwind", "halvard-helpdesk");
 });
 
 /** The label a Run of `packId`'s first Attack would thread down, exactly as the server page does. */

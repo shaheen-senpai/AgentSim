@@ -4,7 +4,7 @@ import { createGateway } from "@/engine/gateway";
 import { loadPack } from "@/engine/pack";
 import { seedWorld } from "@/engine/world";
 import { driveReferenceAgent } from "@/runner/referenceAgent";
-import { usePacksDir } from "../helpers/packs";
+import { copyFixturePacks } from "../helpers/packs";
 
 type FakeBetaMessage = { id: string; usage: { input_tokens: number; output_tokens: number }; stop_reason: string; content: unknown[] };
 type FakeRunnableTool = { name: string; run: (args: unknown, context?: { toolUse: { id: string; name: string; input: unknown } }) => Promise<string> };
@@ -51,7 +51,7 @@ function fakeClientWithConcurrentTools(msg1: FakeBetaMessage, msg2: FakeBetaMess
 }
 
 beforeAll(() => {
-  usePacksDir();
+  copyFixturePacks();
 });
 
 describe("driveReferenceAgent", () => {

@@ -7,7 +7,7 @@ import { GET as getWorldRoute, PUT as putWorldRoute } from "@/app/api/worlds/[id
 import { POST as validateRoute } from "@/app/api/worlds/validate/route";
 import { listPackIds, loadPack, type PackFiles, type ValidationError, type WorldPack } from "@/engine/pack";
 import type { PackSummary } from "@/lib/summaries";
-import { usePacksDir } from "../helpers/packs";
+import { copyFixturePacks } from "../helpers/packs";
 
 const post = (url: string, body: unknown) => new Request(url, { method: "POST", body: JSON.stringify(body), headers: { "content-type": "application/json" } });
 const put = (url: string, body: unknown) => new Request(url, { method: "PUT", body: JSON.stringify(body), headers: { "content-type": "application/json" } });
@@ -22,7 +22,7 @@ function filesAs(id: string): PackFiles {
 
 let packsDir: string;
 beforeAll(() => {
-  packsDir = usePacksDir();
+  packsDir = copyFixturePacks();
 });
 
 describe("GET /api/worlds", () => {

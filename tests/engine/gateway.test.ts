@@ -7,10 +7,10 @@ import { seedWorld } from "@/engine/world";
 import { applyAttack } from "@/engine/attack";
 import { ToolError } from "@/engine/dsl";
 import { createGateway } from "@/engine/gateway";
-import { usePacksDir } from "../helpers/packs";
+import { copyFixturePacks } from "../helpers/packs";
 
 beforeAll(() => {
-  usePacksDir("northwind");
+  copyFixturePacks("northwind");
 });
 
 function pack(): WorldPack {

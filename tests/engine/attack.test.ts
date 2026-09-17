@@ -4,10 +4,10 @@ import { loadPack } from "@/engine/pack";
 import type { Attack, WorldPack } from "@/engine/pack";
 import { seedWorld } from "@/engine/world";
 import { applyAttack, injectedTarget, injectionMarker, matchesLure } from "@/engine/attack";
-import { usePacksDir } from "../helpers/packs";
+import { copyFixturePacks } from "../helpers/packs";
 
 beforeAll(() => {
-  usePacksDir("northwind");
+  copyFixturePacks("northwind");
 });
 
 function pack(): WorldPack {

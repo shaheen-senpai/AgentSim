@@ -5,12 +5,12 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
 import { deletePack, loadPack, packsDir, parsePackFiles, savePack, type PackFiles } from "@/engine/pack";
-import { usePacksDir } from "../helpers/packs";
+import { copyFixturePacks } from "../helpers/packs";
 
 let northwind: PackFiles;
 
 beforeAll(() => {
-  usePacksDir();
+  copyFixturePacks();
   northwind = loadPack("northwind").files;
 });
 

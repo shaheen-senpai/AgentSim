@@ -13,10 +13,10 @@ import { loadPack, type Check } from "@/engine/pack";
 import type { Event } from "@/engine/types";
 import { seedWorld, snapshot } from "@/engine/world";
 import { countReadsOutside, readsOutsideLabel, READS_SCOPED_CHECK } from "@/ui/diffSummary";
-import { usePacksDir } from "../helpers/packs";
+import { copyFixturePacks } from "../helpers/packs";
 
 beforeAll(() => {
-  usePacksDir("northwind");
+  copyFixturePacks("northwind");
 });
 
 function ev(seq: number, tool: string, input: Record<string, unknown>): Event {

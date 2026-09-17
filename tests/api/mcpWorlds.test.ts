@@ -14,7 +14,7 @@ import { issueToken } from "@/generate/buildTokens";
 import { bindToken, issueToken as issueBuildToken } from "@/generate/buildTokens";
 import { createDraft } from "@/generate/draftRegistry";
 import { withPackStatus } from "@/ui/worlds/packEdits";
-import { usePacksDir } from "../helpers/packs";
+import { copyFixturePacks } from "../helpers/packs";
 
 type Rpc = { status: number; sessionId: string | null; result: Record<string, unknown> };
 
@@ -39,7 +39,7 @@ function textOf(result: Record<string, unknown>): string {
 let northwindFiles: PackFiles;
 
 beforeAll(() => {
-  usePacksDir();
+  copyFixturePacks();
   northwindFiles = loadPack("northwind").files; // real, valid files — seeding create_world needs no model call
 });
 

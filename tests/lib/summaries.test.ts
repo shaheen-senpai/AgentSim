@@ -2,6 +2,13 @@ import { describe, expect, it } from "vitest";
 import { toWizardPack, toWizardScenario } from "@/lib/summaries";
 import { listPackIds, loadPack } from "@/engine/pack";
 import { GENERIC_VERSION, referenceVersions } from "@/runner/agents";
+import { copyFixturePacks } from "../helpers/packs";
+
+// Reads a pack through `loadPack`, so it needs `AGENTSIM_PACKS_DIR` pointed at the fixtures
+// before the first call — which happens at module scope here, not in `beforeAll`, because
+// some of these assertions are built while the file is being collected.
+copyFixturePacks();
+
 
 describe("toWizardScenario", () => {
   it("carries task brief, policy text, attacks with lure, and check counts by dimension", () => {

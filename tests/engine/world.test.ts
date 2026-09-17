@@ -3,10 +3,10 @@ import { loadPack } from "@/engine/pack";
 import { entityLabel, findRow, matchWhere, resolveWhereKey, rowsOf, seedWorld, snapshot } from "@/engine/world";
 import { collectionOfId, ownerOf } from "@/engine/ownership";
 import type { Row } from "@/engine/types";
-import { usePacksDir } from "../helpers/packs";
+import { copyFixturePacks } from "../helpers/packs";
 
 beforeAll(() => {
-  usePacksDir("northwind");
+  copyFixturePacks("northwind");
 });
 
 describe("seedWorld", () => {

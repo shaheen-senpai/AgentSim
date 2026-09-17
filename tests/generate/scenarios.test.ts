@@ -7,7 +7,7 @@ import { POST as scenariosRoute } from "@/app/api/worlds/[id]/scenarios/route";
 import { loadPack, type PackFiles } from "@/engine/pack";
 import { loadFormatDoc } from "@/generate/formatDoc";
 import { buildPrompt, existingScenarioIds, generateScenarios, PROPOSE_TOOL, TOOL_NAME } from "@/generate/scenarios";
-import { usePacksDir } from "../helpers/packs";
+import { copyFixturePacks } from "../helpers/packs";
 
 type StreamParams = { system: string; messages: { role: string; content: string }[]; tools: { name: string }[]; tool_choice: { type: string; name?: string } };
 type FakeMessage = { stop_reason: string; content: { type: string; name?: string; input?: unknown }[] };
@@ -33,7 +33,7 @@ let northwind: PackFiles;
 let formatDoc: string;
 
 beforeAll(() => {
-  usePacksDir();
+  copyFixturePacks();
   northwind = loadPack("northwind").files;
   formatDoc = loadFormatDoc();
 });

@@ -2,10 +2,10 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { loadPack } from "@/engine/pack";
 import { seedWorld, snapshot } from "@/engine/world";
 import { diffWorld, unchangedCount } from "@/engine/diff";
-import { usePacksDir } from "../helpers/packs";
+import { copyFixturePacks } from "../helpers/packs";
 
 beforeAll(() => {
-  usePacksDir("northwind");
+  copyFixturePacks("northwind");
 });
 
 function totalRows(w: ReturnType<typeof seedWorld>): number {

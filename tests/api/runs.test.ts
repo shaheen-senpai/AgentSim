@@ -14,7 +14,7 @@ import { PUT as putAgentRoute, DELETE as deleteAgentRoute } from "@/app/api/agen
 import { POST as mcpRoute } from "@/app/mcp/runs/[runId]/[sourceId]/route";
 import { loadPack } from "@/engine/pack";
 import { loadRun } from "@/runner/store";
-import { usePacksDir } from "../helpers/packs";
+import { copyFixturePacks } from "../helpers/packs";
 
 const NORTHWIND = { packId: "northwind", scenarioId: "duplicate-charge-refund" };
 
@@ -49,7 +49,7 @@ const call = async (id: string, body: unknown) => {
 };
 
 beforeAll(() => {
-  usePacksDir();
+  copyFixturePacks();
   process.env.AGENTSIM_DATA_DIR = mkdtempSync(path.join(os.tmpdir(), "agentsim-api-runs-"));
 });
 

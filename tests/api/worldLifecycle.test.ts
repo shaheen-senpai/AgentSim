@@ -6,7 +6,7 @@ import { DELETE as deleteWorldRoute, PUT as putWorldRoute } from "@/app/api/worl
 import { POST as createRunRoute } from "@/app/api/runs/route";
 import { listPackIds, loadPack, type PackFiles } from "@/engine/pack";
 import { withPackStatus } from "@/ui/worlds/packEdits";
-import { usePacksDir } from "../helpers/packs";
+import { copyFixturePacks } from "../helpers/packs";
 
 const post = (url: string, body: unknown) => new Request(url, { method: "POST", body: JSON.stringify(body), headers: { "content-type": "application/json" } });
 const put = (url: string, body: unknown) => new Request(url, { method: "PUT", body: JSON.stringify(body), headers: { "content-type": "application/json" } });
@@ -24,7 +24,7 @@ async function create(id: string, extra: Record<string, unknown> = {}): Promise<
 }
 
 beforeAll(() => {
-  usePacksDir();
+  copyFixturePacks();
 });
 
 describe("POST /api/worlds", () => {

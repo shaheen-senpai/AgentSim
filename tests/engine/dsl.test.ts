@@ -4,10 +4,10 @@ import { loadPack } from "@/engine/pack";
 import type { EntitySpec, ToolDef, WorldPack } from "@/engine/pack";
 import { seedWorld } from "@/engine/world";
 import { runTool, toolSubject, ToolError } from "@/engine/dsl";
-import { usePacksDir } from "../helpers/packs";
+import { copyFixturePacks } from "../helpers/packs";
 
 beforeAll(() => {
-  usePacksDir("northwind");
+  copyFixturePacks("northwind");
 });
 
 describe("tool declarations", () => {

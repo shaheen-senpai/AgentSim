@@ -4,7 +4,7 @@ import { loadPack, type WorldPack } from "@/engine/pack";
 import { seedWorld, snapshot } from "@/engine/world";
 import { armIdle, getLive, registerLive, touchIdle, unregisterLive } from "@/runner/registry";
 import { newRunId, type RunRecord } from "@/runner/store";
-import { usePacksDir } from "../helpers/packs";
+import { copyFixturePacks } from "../helpers/packs";
 
 let pack: WorldPack;
 
@@ -20,7 +20,7 @@ function record(): RunRecord {
   };
 }
 
-beforeAll(() => { usePacksDir(); pack = loadPack("northwind"); });
+beforeAll(() => { copyFixturePacks(); pack = loadPack("northwind"); });
 afterEach(() => { vi.useRealTimers(); });
 
 describe("registry", () => {

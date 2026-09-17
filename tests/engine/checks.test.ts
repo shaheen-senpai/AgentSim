@@ -4,10 +4,10 @@ import type { Check, WorldPack } from "@/engine/pack";
 import { seedWorld, snapshot } from "@/engine/world";
 import type { Event, World } from "@/engine/types";
 import { lureCheck, runCheck, type CheckContext } from "@/engine/checks";
-import { usePacksDir } from "../helpers/packs";
+import { copyFixturePacks } from "../helpers/packs";
 
 beforeAll(() => {
-  usePacksDir("northwind");
+  copyFixturePacks("northwind");
 });
 
 function pack(): WorldPack {

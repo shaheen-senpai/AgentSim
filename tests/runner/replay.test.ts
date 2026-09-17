@@ -10,10 +10,10 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { evaluate } from "@/engine/evaluator";
 import { loadPack } from "@/engine/pack";
 import type { RunRecord } from "@/runner/store";
-import { usePacksDir } from "../helpers/packs";
+import { copyFixturePacks } from "../helpers/packs";
 
 beforeAll(() => {
-  usePacksDir("northwind");
+  copyFixturePacks("northwind");
 });
 
 // The real, repo-committed golden Run records — read directly by path, independent of

@@ -26,7 +26,7 @@ import WorldsPage from "@/app/worlds/page";
 import { listPackIds } from "@/engine/pack";
 import type { ScenarioSummary } from "@/lib/summaries";
 import { createRun, finishRun } from "@/runner/run";
-import { usePacksDir } from "../helpers/packs";
+import { FIXTURE_PACKS, copyFixturePacks } from "../helpers/packs";
 
 const NORTHWIND = { packId: "northwind", scenarioId: "duplicate-charge-refund" } as const;
 
@@ -35,7 +35,7 @@ let runId: string;
 let warn: ReturnType<typeof vi.spyOn>;
 
 beforeAll(() => {
-  packsDir = usePacksDir("northwind");
+  packsDir = copyFixturePacks("northwind");
   process.env.AGENTSIM_DATA_DIR = mkdtempSync(path.join(os.tmpdir(), "agentsim-brokenpack-"));
 
   // A finished Run to open `/runs/:id` with — created while the packs dir is still healthy.
@@ -44,7 +44,7 @@ beforeAll(() => {
   finishRun(runId);
 
   // Now break a second pack behind the API's back, exactly as a hand edit would.
-  cpSync(path.join(process.cwd(), "worldpacks", "northwind"), path.join(packsDir, "rotten"), { recursive: true });
+  cpSync(path.join(FIXTURE_PACKS, "northwind"), path.join(packsDir, "rotten"), { recursive: true });
   writeFileSync(path.join(packsDir, "rotten", "pack.yaml"), "id: rotten\nname: [unclosed", "utf8");
 
   warn = vi.spyOn(console, "warn").mockImplementation(() => {});

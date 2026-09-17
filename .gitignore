@@ -5,6 +5,12 @@ node_modules/
 !.env.example
 data/runs/
 data/agents.json*
+
+# A developer's own Worlds are local state, like data/runs: each person starts with an empty
+# sandbox and builds or imports their own. The packs the tests run against are tracked separately,
+# under tests/fixtures/worldpacks/, so the suite does not depend on what happens to be on a machine.
+worldpacks/*
+!worldpacks/.gitkeep
 .scratch/**/results/
 *.log
 .DS_Store

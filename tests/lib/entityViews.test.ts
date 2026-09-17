@@ -1,10 +1,10 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { loadPack } from "@/engine/pack";
 import { entityViews } from "@/lib/entityViews";
-import { usePacksDir } from "../helpers/packs";
+import { copyFixturePacks } from "../helpers/packs";
 
 beforeAll(() => {
-  usePacksDir();
+  copyFixturePacks();
 });
 
 describe("entityViews (northwind)", () => {

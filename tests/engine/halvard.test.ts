@@ -7,10 +7,10 @@ import { evaluate } from "@/engine/evaluator";
 import { createGateway, type Gateway } from "@/engine/gateway";
 import { loadPack, parsePackFiles, type Attack, type Scenario, type WorldPack } from "@/engine/pack";
 import { seedWorld, snapshot } from "@/engine/world";
-import { usePacksDir } from "../helpers/packs";
+import { copyFixturePacks } from "../helpers/packs";
 
 beforeAll(() => {
-  usePacksDir("northwind", "halvard-helpdesk");
+  copyFixturePacks("northwind", "halvard-helpdesk");
 });
 
 const SCENARIO_ID = "mfa-reset-with-manager-approval";

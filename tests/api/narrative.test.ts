@@ -16,7 +16,7 @@ import { loadPack } from "@/engine/pack";
 import { seedWorld, snapshot } from "@/engine/world";
 import { REFERENCE_AGENT_MODEL } from "@/runner/agents";
 import { isGoldenRun, loadRun, newRunId, saveRun, type RunRecord } from "@/runner/store";
-import { usePacksDir } from "../helpers/packs";
+import { copyFixturePacks } from "../helpers/packs";
 
 const ctx = (id: string) => ({ params: Promise.resolve({ id }) });
 const post = (id: string) => new Request(`http://localhost/api/runs/${id}/narrative`, { method: "POST" });
@@ -47,7 +47,7 @@ function promote(run: RunRecord): RunRecord {
 const runsFile = (id: string) => path.join(dataDir, "runs", `${id}.json`);
 
 beforeAll(() => {
-  usePacksDir();
+  copyFixturePacks();
   dataDir = mkdtempSync(path.join(os.tmpdir(), "agentsim-narrative-"));
   process.env.AGENTSIM_DATA_DIR = dataDir;
 });

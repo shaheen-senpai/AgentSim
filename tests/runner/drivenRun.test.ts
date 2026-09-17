@@ -9,12 +9,12 @@ import { startRun } from "@/runner/run";
 import { loadRun } from "@/runner/store";
 import { saveAgent } from "@/runner/agentRegistry";
 import type { CounterpartClient } from "@/runner/counterpart";
-import { usePacksDir } from "../helpers/packs";
+import { copyFixturePacks } from "../helpers/packs";
 
-// Northwind's Scenario declares a customer, so a driven Run there is a conversation. Meridian's
-// does not, which is what keeps the one-shot path covered.
+// Northwind's Scenario declares a customer, so a driven Run there is a conversation. Halvard's does
+// not, which is what keeps the one-shot path covered.
 const CHAT = { packId: "northwind", scenarioId: "duplicate-charge-refund" } as const;
-const ONE_SHOT = { packId: "meridian-bank-support", scenarioId: "duplicate-dispute-request" } as const;
+const ONE_SHOT = { packId: "halvard-helpdesk", scenarioId: "mfa-reset-with-manager-approval" } as const;
 
 let server: Server;
 let port: number;
@@ -22,7 +22,7 @@ let lastBody: unknown = null;
 let reply: { status: number; body: string } = { status: 200, body: JSON.stringify({ reply: "I refunded the duplicate charge." }) };
 
 beforeAll(async () => {
-  usePacksDir("northwind", "meridian-bank-support");
+  copyFixturePacks("northwind", "halvard-helpdesk");
   process.env.AGENTSIM_DATA_DIR = mkdtempSync(path.join(os.tmpdir(), "agentsim-driven-"));
   server = createServer((req, res) => {
     let raw = "";

@@ -303,7 +303,7 @@
   .dim-head b{font-size:12.5px;}
   .check-row{display:flex; align-items:flex-start; gap:8px; padding:7px 0; font-size:12.5px; color:var(--muted); border-top:1px solid var(--border);}
   .check-row:first-of-type{border-top:none;}
-  .check-row .ctype{font-family:var(--mono); font-size:10.5px; background:var(--bg); border:1px solid var(--border); border-radius:5px; padding:1px 6px; flex:none; margin-top:1px;}
+  .check-row .ctype, .ctype{font-family:var(--mono); font-size:10.5px; background:var(--bg); border:1px solid var(--border); border-radius:5px; padding:1px 6px; flex:none; margin-top:1px;}
   .sc-card{padding:18px; border:1px solid var(--border); border-radius:12px; cursor:pointer; background:var(--surface); margin-bottom:12px;}
   .sc-card:hover{border-color:#c9c4b3;}
   .sc-card h3{margin:0 0 6px; font-size:15px; font-weight:600; font-family:var(--serif);}

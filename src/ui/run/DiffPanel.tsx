@@ -3,6 +3,7 @@
 // unchanged count and how many reads left the Run's principal.
 import type { RunRecord } from "@/ui/types";
 import { countReadsOutside, readsOutsideLabel } from "@/ui/diffSummary";
+import { flaggedEntityIds } from "./eventFlags";
 
 export function DiffPanel({ run, principalLabel }: { run: RunRecord; principalLabel: string }) {
   if (run.status === "running") {
@@ -14,8 +15,7 @@ export function DiffPanel({ run, principalLabel }: { run: RunRecord; principalLa
     );
   }
   const diff = run.diff ?? [];
-  const violatingSeqs = new Set(run.violations.map((v) => v.eventSeq).filter((s): s is number => s !== null));
-  const flagged = new Set(run.events.filter((e) => violatingSeqs.has(e.seq)).flatMap((e) => e.changes.map((c) => c.id)));
+  const flagged = flaggedEntityIds(run);
   return (
     <>
       {diff.map((d) => {

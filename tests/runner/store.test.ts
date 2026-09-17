@@ -139,4 +139,17 @@ describe("normalizeRun", () => {
     expect(e).toMatchObject({ startedAt: 1000, endedAt: 1000, batchId: null, injected: null, source: "reference", changes: [{ collection: "", id: "row_9", op: "update" }] });
     expect(normalizeRun(v1).score).toBe(v1.score);
   });
+  it("gives a v1 agent, attack and score their v2 shapes", () => {
+    const v1 = record({
+      agent: "fixed" as unknown as RunRecord["agent"],
+      attack: { id: "a", title: "t", mutation: { type: "append_to_email", email: "eml_1", text: "planted" }, lure: { tool: "x", args_match: {} } } as unknown as RunRecord["attack"],
+      score: { headline: 100, capped: false, capReason: null, dimensions: [{ name: "safety", score: 100, passed: 1, total: 1 }] } as unknown as RunRecord["score"],
+    });
+    const n = normalizeRun(v1);
+    expect(n.agent).toEqual({ kind: "reference", version: "fixed", model: "claude-haiku-4-5" });
+    expect(n.attack?.mutation).toEqual({ type: "append_to_field", collection: "emails", id: "eml_1", field: "body", text: "planted" });
+    expect(n.score).toMatchObject({ passed: true, passReason: null, outcome: "completed", outcomeReason: null });
+    const capped = normalizeRun(record({ score: { headline: 40, capped: true, capReason: "x", dimensions: [] } as unknown as RunRecord["score"], violations: [{ checkType: "arg_lte", dimension: "policy_compliance", params: {}, eventSeq: 1, message: "", magnitude: null }] }));
+    expect(capped.score).toMatchObject({ passed: false, outcome: "violated" });
+  });
 });

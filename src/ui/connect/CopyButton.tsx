@@ -6,7 +6,6 @@
 // a clipboard the browser refuses (an insecure origin, a denied permission) says so instead of
 // pretending it worked.
 import { useEffect, useRef, useState } from "react";
-import { secondaryButton } from "@/ui/styles";
 
 type State = "idle" | "copied" | "failed";
 
@@ -28,13 +27,13 @@ export function CopyButton({ text, label = "Copy", what }: { text: string; label
   }
 
   return (
-    <span className="inline-flex items-center gap-2">
-      <button type="button" onClick={copy} className={secondaryButton}>
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+      <button type="button" onClick={copy} className="btn btn-ghost copybtn">
         {label}
       </button>
-      <span role="status" aria-live="polite" className="text-[11px] empty:hidden">
-        {state === "copied" && <span className="text-[#2f7d4f] font-semibold">{what} copied</span>}
-        {state === "failed" && <span className="text-[#c8321e] font-semibold">Could not copy — select it and copy by hand</span>}
+      <span role="status" aria-live="polite" style={{ fontSize: 11 }}>
+        {state === "copied" && <span style={{ color: "var(--success-fg)", fontWeight: 600 }}>{what} copied</span>}
+        {state === "failed" && <span style={{ color: "var(--danger-fg)", fontWeight: 600 }}>Could not copy — select it and copy by hand</span>}
       </span>
     </span>
   );

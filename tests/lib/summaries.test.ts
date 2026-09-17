@@ -32,7 +32,9 @@ describe("toWizardPack", () => {
     expect(w.principal).toBe(pack.meta.principal);
     expect(w.entities).toBe(Object.keys(pack.meta.entities).length);
     expect(w.tools).toHaveLength(Object.keys(pack.tools).length);
-    expect(w.agentVersions).toEqual(referenceVersions(pack));
+    // Same versions as the pack ships, but "naive" first: the wizard defaults to the first entry.
+    expect([...w.agentVersions].sort()).toEqual([...referenceVersions(pack)].sort());
+    expect(w.agentVersions[0]).toBe("naive");
     expect(w.scenarios).toHaveLength(pack.scenarios.length);
     expect(w.systems).toBeGreaterThan(0);
   });

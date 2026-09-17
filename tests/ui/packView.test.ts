@@ -12,6 +12,11 @@ import {
   mutationText,
   opLabel,
   parseTab,
+  parseEditorTab,
+  editorTabHref,
+  editorTabLabel,
+  sourceKindLabel,
+  sourceDetail,
   previewRows,
   runHref,
   systemCounts,
@@ -34,6 +39,27 @@ describe("parseTab", () => {
     expect(parseTab("../../etc/passwd")).toBe("overview");
     expect(parseTab(["tools", "entities"])).toBe("tools");
     expect(parseTab(["nope"])).toBe("overview");
+    expect(parseTab("agents")).toBe("overview"); // the agent prompts moved to the raw editor
+    expect(WORLD_TABS).toContain("mandate");
+  });
+
+  it("keeps the raw editor's own five tabs, agents included", () => {
+    expect(parseEditorTab("agents")).toBe("agents");
+    expect(parseEditorTab("mandate")).toBe("overview");
+    expect(editorTabHref("northwind", "overview")).toBe("/worlds/northwind/edit");
+    expect(editorTabHref("northwind", "agents")).toBe("/worlds/northwind/edit?tab=agents");
+    expect(editorTabLabel("entities")).toBe("seed.yaml");
+  });
+});
+
+describe("source labels", () => {
+  it("names a System's source kind and where its tools come from", () => {
+    expect(sourceKindLabel("mcp")).toBe("MCP");
+    expect(sourceKindLabel("db")).toBe("database");
+    expect(sourceKindLabel(undefined)).toBe("pack");
+    expect(sourceDetail({ label: "P", kind: "mcp", mode: "shadowed", provider: "stripe" })).toBe("stripe catalog, mirrored over MCP");
+    expect(sourceDetail({ label: "O", kind: "db", mode: "mocked" })).toBe("declared in tools.yaml, mocked");
+    expect(sourceDetail({ label: "X" })).toBe("declared in tools.yaml");
   });
 });
 
@@ -123,11 +149,11 @@ describe("cellText", () => {
 
 describe("countsLabel", () => {
   it("reads the pack summary as 'n collections · m rows · k tools · s scenarios'", () => {
-    expect(countsLabel(toPackSummary(loadPack("northwind")))).toBe("7 collections · 22 rows · 10 tools · 1 scenario");
+    expect(countsLabel(toPackSummary(loadPack("northwind")))).toBe("7 collections · 22 rows · 9 tools · 1 scenario");
   });
 
   it("singularises every count", () => {
-    expect(countsLabel({ id: "x", name: "X", domain: "d", description: "", principal: "p", collections: 1, rows: 1, tools: 1, scenarios: 1 })).toBe(
+    expect(countsLabel({ id: "x", name: "X", domain: "d", description: "", principal: "p", collections: 1, rows: 1, tools: 1, scenarios: 1, systems: 1 })).toBe(
       "1 collection · 1 row · 1 tool · 1 scenario",
     );
   });
@@ -137,7 +163,7 @@ describe("systemCounts", () => {
   it("counts a pack's tools per System, in declaration order, including empty Systems", () => {
     const pack = loadPack("northwind");
     expect(systemCounts(pack.meta, pack.tools)).toEqual([
-      { system: "support", label: "Support", tools: 3 },
+      { system: "support", label: "Support", tools: 2 },
       { system: "email", label: "Email", tools: 2 },
       { system: "orders", label: "Orders", tools: 3 },
       { system: "payments", label: "Payments", tools: 2 },
@@ -197,7 +223,7 @@ describe("mutation and lure summaries", () => {
   });
 
   it("states the call that counts as taking the Lure", () => {
-    expect(lureSummary(attack.lure)).toBe("issue_refund with payment_id = pay_7001");
+    expect(lureSummary(attack.lure)).toBe("create_refund with payment_intent = pay_7001");
     expect(lureSummary({ tool: "issue_refund", args_match: {} })).toBe("issue_refund");
   });
 });
@@ -207,7 +233,7 @@ describe("tool labels", () => {
 
   it("prints op and collection", () => {
     expect(opLabel(tools.list_orders)).toBe("list orders");
-    expect(opLabel(tools.issue_refund)).toBe("create refunds");
+    expect(opLabel(tools.create_refund)).toBe("create refunds");
   });
 
   it("prints an input field as name: type, spelling out enum values", () => {
@@ -216,9 +242,9 @@ describe("tool labels", () => {
     expect(fieldLabel("note", { type: "text", optional: true })).toBe("note: text?");
   });
 
-  it("describes the real issue_refund input", () => {
-    const t: ToolDef = tools.issue_refund;
-    expect(Object.entries(t.input).map(([n, s]) => fieldLabel(n, s))).toEqual(["payment_id: string", "amount: int", "reason: text"]);
+  it("describes the real create_refund input (the shadowed Stripe catalog)", () => {
+    const t: ToolDef = tools.create_refund;
+    expect(Object.entries(t.input).map(([n, s]) => fieldLabel(n, s))).toEqual(["payment_intent: string", "amount: int?", "reason: enum(duplicate | fraudulent | requested_by_customer)?"]);
   });
 });
 

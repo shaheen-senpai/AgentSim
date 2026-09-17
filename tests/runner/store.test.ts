@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, readdirSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import { agentLabel, listRuns, loadRun, newRunId, saveRun, toSummary, type RunRecord } from "@/runner/store";
+import { agentLabel, listRuns, loadRun, newRunId, normalizeRun, saveRun, toSummary, type RunRecord } from "@/runner/store";
 import { loadSystemPrompt, REFERENCE_AGENT_MODEL, referenceVersions } from "@/runner/agents";
 import { loadPack } from "@/engine/pack";
 import { seedWorld, snapshot } from "@/engine/world";
@@ -35,7 +35,7 @@ describe("store", () => {
     saveRun(a); saveRun(b);
     expect(loadRun(a.id)).toEqual(a);
     expect(listRuns().map((s) => s.id)).toEqual([b.id, a.id]);
-    expect(toSummary(b)).toMatchObject({ headline: 40, capped: true, attackId: null, packId: "northwind", agentKind: "reference", agentLabel: "naïve" });
+    expect(toSummary(b)).toMatchObject({ headline: 40, capped: true, attackId: null, packId: "northwind", agentKind: "reference", agentLabel: "naïve", packName: "Northwind Outfitters", scenarioTitle: "Dup", lureTaken: false });
     expect(listRuns("other-scenario")).toEqual([]);
   });
 
@@ -122,5 +122,34 @@ describe("agents", () => {
     const prompt = loadSystemPrompt(minimalPack(), "generic");
     expect(prompt.length).toBeGreaterThan(0);
     expect(prompt).toContain("Task Brief");
+  });
+});
+
+describe("toSummary · lureTaken", () => {
+  it("flags a Run that took the Lure", () => {
+    const r = record({ status: "completed", violations: [{ checkType: "lure_not_taken", dimension: "safety", params: {}, eventSeq: 3, message: "took it", magnitude: null }] });
+    expect(toSummary(r).lureTaken).toBe(true);
+  });
+});
+
+describe("normalizeRun", () => {
+  it("gives a v1 Event the v2 fields readers assume, without touching what is stored", () => {
+    const v1 = record({ events: [{ seq: 1, at: 1000, toolUseId: "t1", tool: "get_x", input: {}, isError: false, changes: ["row_9"], result: "{}" } as unknown as RunRecord["events"][number]] });
+    const [e] = normalizeRun(v1).events;
+    expect(e).toMatchObject({ startedAt: 1000, endedAt: 1000, batchId: null, injected: null, source: "reference", changes: [{ collection: "", id: "row_9", op: "update" }] });
+    expect(normalizeRun(v1).score).toBe(v1.score);
+  });
+  it("gives a v1 agent, attack and score their v2 shapes", () => {
+    const v1 = record({
+      agent: "fixed" as unknown as RunRecord["agent"],
+      attack: { id: "a", title: "t", mutation: { type: "append_to_email", email: "eml_1", text: "planted" }, lure: { tool: "x", args_match: {} } } as unknown as RunRecord["attack"],
+      score: { headline: 100, capped: false, capReason: null, dimensions: [{ name: "safety", score: 100, passed: 1, total: 1 }] } as unknown as RunRecord["score"],
+    });
+    const n = normalizeRun(v1);
+    expect(n.agent).toEqual({ kind: "reference", version: "fixed", model: "claude-haiku-4-5" });
+    expect(n.attack?.mutation).toEqual({ type: "append_to_field", collection: "emails", id: "eml_1", field: "body", text: "planted" });
+    expect(n.score).toMatchObject({ passed: true, passReason: null, outcome: "completed", outcomeReason: null });
+    const capped = normalizeRun(record({ score: { headline: 40, capped: true, capReason: "x", dimensions: [] } as unknown as RunRecord["score"], violations: [{ checkType: "arg_lte", dimension: "policy_compliance", params: {}, eventSeq: 1, message: "", magnitude: null }] }));
+    expect(capped.score).toMatchObject({ passed: false, outcome: "violated" });
   });
 });

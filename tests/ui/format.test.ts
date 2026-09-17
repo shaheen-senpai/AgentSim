@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ToolDef } from "@/engine/pack";
 import type { Event } from "@/engine/types";
-import { clockTime, fmtArgs, outcomeBadge, prettyJson, runDate, scoreSummary, summarizeResult } from "@/ui/format";
+import { clockTime, firstSentence, fmtArgs, outcomeBadge, prettyJson, runDate, runName, scenarioShortTitle, scoreSummary, summarizeResult } from "@/ui/format";
 import { DIMENSIONS } from "@/engine/dimensions";
 import type { Score } from "@/engine/evaluator";
 
@@ -201,5 +201,20 @@ describe("outcomeBadge", () => {
     expect(outcomeBadge("completed")).toBeNull();
     expect(outcomeBadge("violated")).toBeNull();
     expect(outcomeBadge(null)).toBeNull();
+  });
+});
+
+describe("runName / scenarioShortTitle / firstSentence", () => {
+  it("names a run by its agent and whether it was attacked", () => {
+    expect(runName("naïve", "billing-note-injection")).toBe("naïve — attacked");
+    expect(runName("Halvard Loop Agent", null)).toBe("Halvard Loop Agent — clean");
+  });
+  it("keeps the part of a title before the arrow", () => {
+    expect(scenarioShortTitle("Duplicate charge → refund the extra payment")).toBe("Duplicate charge");
+    expect(scenarioShortTitle("No arrow here")).toBe("No arrow here");
+  });
+  it("takes the first sentence", () => {
+    expect(firstSentence("You may reset MFA only. Then stop.")).toBe("You may reset MFA only.");
+    expect(firstSentence("No full stop")).toBe("No full stop");
   });
 });

@@ -1,63 +1,98 @@
-// `/worlds` — every World pack on disk (spec §6.2). A server component: it reads the packs
-// directly rather than going through `GET /api/worlds`, so there is no round trip.
+// `/worlds` — every World pack on disk, plus any worldbuilder drafts awaiting review
+// (design/agentsim-console.html 626-640, `renderWorldCards` 1363-1386, `draftRowHtml` 1956-1967).
 import type { Metadata } from "next";
 import Link from "next/link";
-import { loadPacks, toPackSummary } from "@/lib/summaries";
+import { listDrafts } from "@/generate/draftRegistry";
+import { summarizeDraft } from "@/lib/draftSummary";
+import { loadPacks } from "@/lib/summaries";
 import { ConsoleShell } from "@/ui/ConsoleShell";
-import { heading, mono } from "@/ui/styles";
-import { PackCard } from "@/ui/worlds/PackCard";
+import { relativeTime } from "@/ui/relativeTime";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = { title: "Worlds · AgentSim" };
+export const metadata: Metadata = { title: "World · AgentSim Console" };
+
+const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
 export default function WorldsPage() {
-  // `loadPacks` is the one place a pack hand-edited into an invalid state is skipped rather than
-  // thrown; this page is the one that then says which pack, and why.
-  const { packs: loaded, broken } = loadPacks();
-  const packs = loaded.map(toPackSummary);
+  // `loadPacks` skips a pack hand-edited into an invalid state; this page says which, and why.
+  const { packs, broken } = loadPacks();
+  const drafts = listDrafts().map(summarizeDraft);
+  // eslint-disable-next-line react-hooks/purity -- a Server Component renders once per request; one clock reading keeps every draft's age consistent
+  const now = Date.now();
+
   return (
     <ConsoleShell>
-      <main className="p-4 flex flex-col gap-4 max-w-[1200px]">
-        <div className="flex items-baseline gap-3">
-          <h1 className="text-[17px] font-extrabold tracking-tight">Worlds</h1>
-          <p className="text-[12px] text-[#6E6B60]">
-            A World pack is the simulated business a Run happens inside: its entities, its seeded rows, its tools and its Scenarios.
-          </p>
+      <section id="view-world">
+        <div className="crumb">AgentSim</div>
+        <div className="runs-toolbar" style={{ alignItems: "flex-start" }}>
+          <div>
+            <h1 className="page serif">World</h1>
+            <p className="sub" style={{ marginBottom: 0 }}>The packs a Run happens inside — entities, ownership, tools, seed data.</p>
+          </div>
+          <Link href="/worlds/new" className="btn btn-primary">+ New world</Link>
         </div>
 
-        <div className="grid gap-3 grid-cols-[repeat(auto-fill,minmax(300px,1fr))]">
-          {packs.map((p) => (
-            <PackCard key={p.id} summary={p} />
-          ))}
-          <Link
-            href="/worlds/new"
-            className="border border-dashed border-[#E3E0D5] rounded p-4 flex flex-col items-center justify-center gap-1 text-[#6E6B60] hover:border-[#1B1A17] hover:text-[#1B1A17] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B1A17] min-h-[140px]"
-          >
-            <span className="text-lg leading-none">+</span>
-            <span className="text-[13px] font-semibold">New world</span>
-            <span className="text-[11px]">from a template, or generated</span>
-          </Link>
-        </div>
-
-        {packs.length === 0 && broken.length === 0 && (
-          <p className="text-[13px] text-[#6E6B60]">
-            No World packs found under <span className={mono}>worldpacks/</span>.
-          </p>
-        )}
-
-        {broken.length > 0 && (
-          <section className="border border-[#B23A22] bg-[#FBEAE7] rounded p-3 flex flex-col gap-1">
-            <h2 className={heading}>Packs that failed to load</h2>
-            {broken.map((b) => (
-              <div key={b.id} className="text-[12px]">
-                <span className={`${mono} font-semibold text-[#B23A22]`}>{b.id}</span>
-                <pre className={`${mono} text-[11px] whitespace-pre-wrap text-[#1B1A17]`}>{b.message}</pre>
+        {drafts.length > 0 && (
+          <div className="panel card-pad" style={{ margin: "22px 0 20px" }}>
+            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 10 }}>
+              <h2 style={{ margin: 0 }}>Worldbuilder drafts awaiting review — {drafts.length}</h2>
+              <span style={{ fontSize: 11.5, color: "var(--muted)" }}>One per plugin run. Drafts live in memory for two hours.</span>
+            </div>
+            {drafts.map((d) => (
+              <div key={d.id} className="draft-row">
+                <div style={{ minWidth: 0 }}>
+                  <div>
+                    <span className="draft-id">{d.id}</span>
+                    <span className={`pill-badge ${d.valid ? "badge-warning" : "badge-danger"}`} style={{ marginLeft: 6 }}>
+                      {d.valid ? "awaiting review" : plural(d.errorCount, "error", "errors")}
+                    </span>
+                  </div>
+                  <div className="draft-meta">
+                    {d.name} · {relativeTime(new Date(d.createdAt).toISOString(), now)} · {plural(d.tools, "tool", "tools")}, {plural(d.entities, "entity", "entities")} · new World
+                  </div>
+                </div>
+                <div className="draft-actions">
+                  <Link className="btn btn-ghost" style={{ height: 30, fontSize: 12 }} href={`/worlds/new?draft=${encodeURIComponent(d.id)}`}>Review →</Link>
+                </div>
               </div>
             ))}
-          </section>
+          </div>
         )}
-      </main>
+
+        <div className="world-grid" style={{ marginTop: drafts.length > 0 ? 0 : 22 }}>
+          {packs.map((p) => {
+            const principal = p.meta.entities[p.meta.principal]?.label ?? p.meta.principal;
+            return (
+              <Link key={p.meta.id} href={`/worlds/${p.meta.id}`} className="world-card" style={{ display: "block" }}>
+                <h3>{p.meta.name}</h3>
+                <div className="domain">{p.meta.domain}</div>
+                <p>{p.meta.description}</p>
+                <div className="meta-row">
+                  <span>{plural(Object.keys(p.meta.entities).length, "entity", "entities")}</span>
+                  <span>Principal: {principal}</span>
+                  <span>{plural(Object.keys(p.meta.systems).length, "system", "systems")}</span>
+                  <span>{plural(Object.keys(p.tools).length, "tool", "tools")}</span>
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+
+        {packs.length === 0 && broken.length === 0 && <p className="sub" style={{ marginTop: 22 }}>No World packs found under <span className="mono">worldpacks/</span>.</p>}
+
+        {broken.length > 0 && (
+          <div className="nw-note" style={{ borderLeftColor: "var(--danger-fg)", marginTop: 20 }}>
+            <b>{plural(broken.length, "pack", "packs")} failed to load.</b>
+            {broken.map((b) => (
+              <div key={b.id} style={{ marginTop: 8 }}>
+                <Link href={`/worlds/${b.id}/edit`} className="linkish" style={{ color: "var(--danger-fg)" }}>{b.id}</Link>
+                <pre className="mono" style={{ whiteSpace: "pre-wrap", margin: "4px 0 0", fontSize: 11 }}>{b.message}</pre>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
     </ConsoleShell>
   );
 }

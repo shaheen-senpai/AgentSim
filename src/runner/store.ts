@@ -46,6 +46,9 @@ export type RunRecord = {
 };
 
 export type RunSummary = Pick<RunRecord, "id" | "createdAt" | "status" | "packId" | "scenarioId"> & {
+  /** Copied from the record so a list row never needs the pack loaded. */
+  packName: string;
+  scenarioTitle: string;
   agentLabel: string;
   agentKind: "reference" | "byo";
   attackId: string | null;
@@ -57,6 +60,8 @@ export type RunSummary = Pick<RunRecord, "id" | "createdAt" | "status" | "packId
   passed: boolean;
   golden: boolean;
   dimensions: DimensionScore[];
+  /** Whether a `lure_not_taken` Violation exists — the Run performed the Attack's Lure. */
+  lureTaken: boolean;
 };
 
 export const dataDir = () => process.env.AGENTSIM_DATA_DIR ?? path.join(process.cwd(), "data");
@@ -76,9 +81,54 @@ export function isGoldenRun(id: string): boolean {
   return RUN_ID_RE.test(id) && existsSync(path.join(goldenDir(), `${id}.json`));
 }
 
+/**
+ * A v1 record still on disk (pre-`packId`, Events without `startedAt`/`endedAt`/`batchId`/
+ * `injected`/`source`) is given the v2 shape every reader assumes. `scripts/migrate-runs.ts` is the
+ * real migration; this only stops a stale file from rendering every Event as injected and every
+ * call as one wave. The Score and the rest of the record are left exactly as stored.
+ */
+export function normalizeRun(run: RunRecord): RunRecord {
+  // v1 `agent` was a bare version string; v1 attacks used `append_to_email`; v1 scores predate
+  // `passed`/`outcome`. The defaults below are the evaluator's own rules for a record with no
+  // Violations recorded against a threshold: a pass is no cap and every Dimension at 100.
+  const agentRaw = run.agent as unknown;
+  const agent: RunAgentRef =
+    typeof agentRaw === "string"
+      ? agentRaw === "byo"
+        ? { kind: "byo", agentId: null, name: "BYO agent", shape: "mcp", toolAliases: {} }
+        : { kind: "reference", version: agentRaw, model: (run as { model?: string }).model ?? "claude-haiku-4-5" }
+      : run.agent;
+  type V1Mutation = { type: "append_to_email"; email: string; text: string };
+  const attackRaw = run.attack as (Omit<Attack, "mutation"> & { mutation: Attack["mutation"] | V1Mutation }) | null;
+  const attack: Attack | null =
+    attackRaw && attackRaw.mutation.type === "append_to_email"
+      ? { ...attackRaw, mutation: { type: "append_to_field", collection: "emails", id: attackRaw.mutation.email, field: "body", text: attackRaw.mutation.text } }
+      : (attackRaw as Attack | null);
+  const score = run.score
+    ? {
+        ...run.score,
+        passed: run.score.passed ?? (!run.score.capped && run.score.dimensions.every((d) => d.score >= 100)),
+        passReason: run.score.passReason ?? null,
+        outcome: run.score.outcome ?? ((run.violations ?? []).length === 0 ? "completed" : "violated"),
+        outcomeReason: run.score.outcomeReason ?? null,
+      }
+    : run.score;
+  const events = (run.events ?? []).map((e) => ({
+    ...e,
+    startedAt: e.startedAt ?? e.at,
+    endedAt: e.endedAt ?? e.at,
+    batchId: e.batchId ?? null,
+    injected: e.injected ?? null,
+    source: e.source ?? "reference",
+    // v1 stored bare entity ids; the collection is only recoverable with the pack (the migration does that).
+    changes: (e.changes ?? []).map((c) => (typeof c === "string" ? { collection: "", id: c, op: "update" as const } : c)),
+  }));
+  return { ...run, agent, attack, score, events, violations: run.violations ?? [], transcript: run.transcript ?? [] };
+}
+
 function readRunFile(file: string): RunRecord | null {
   try {
-    return JSON.parse(readFileSync(file, "utf8")) as RunRecord;
+    return normalizeRun(JSON.parse(readFileSync(file, "utf8")) as RunRecord);
   } catch {
     console.warn(`[store] skipping unreadable run file ${file}`);
     return null;
@@ -118,7 +168,9 @@ export function toSummary(r: RunRecord, golden = false): RunSummary {
     createdAt: r.createdAt,
     status: r.status,
     packId: r.packId ?? "", // v1 records predate packs; Task 10 migrates them
+    packName: r.packName ?? "",
     scenarioId: r.scenarioId,
+    scenarioTitle: r.scenarioTitle ?? r.scenarioId,
     agentLabel: agentLabel(r.agent),
     agentKind: agentKind(r.agent),
     attackId: r.attack?.id ?? null,
@@ -128,6 +180,7 @@ export function toSummary(r: RunRecord, golden = false): RunSummary {
     passed: r.score?.passed ?? false,
     golden,
     dimensions: r.score?.dimensions ?? [],
+    lureTaken: (r.violations ?? []).some((v) => v.checkType === "lure_not_taken"),
   };
 }
 

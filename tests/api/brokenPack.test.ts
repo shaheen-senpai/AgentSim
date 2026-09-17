@@ -6,7 +6,7 @@
 // pack 500'd the home page and every Run page — the two routes on the demo's critical path, and the
 // two you need working to reach `/worlds/:id`, which exists precisely to *fix* a broken pack.
 //
-// Every route below now reads packs through `loadPacks` in `src/lib/summaries.ts`. Server
+// Every list-shaped route below reads packs through `loadPacks` in `src/lib/summaries.ts`. Server
 // components are called as plain functions: they build their props (which is where the throw was)
 // and return a React element without rendering, which is all this needs to prove.
 import { cpSync, writeFileSync } from "node:fs";
@@ -16,12 +16,12 @@ import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { GET as scenariosRoute } from "@/app/api/scenarios/route";
 import { GET as listWorldsRoute } from "@/app/api/worlds/route";
-import ConnectRoute from "@/app/connect/page";
-import MandatesPage from "@/app/mandates/page";
+import Compare from "@/app/compare/page";
 import Home from "@/app/page";
 import RunRoute from "@/app/runs/[id]/page";
-import ScenarioDetailPage from "@/app/scenarios/[packId]/[scenarioId]/page";
-import ScenariosPage from "@/app/scenarios/page";
+import NewRun from "@/app/runs/new/page";
+import WorldPage from "@/app/worlds/[id]/page";
+import NewWorldPage from "@/app/worlds/new/page";
 import WorldsPage from "@/app/worlds/page";
 import { listPackIds } from "@/engine/pack";
 import type { ScenarioSummary } from "@/lib/summaries";
@@ -87,9 +87,11 @@ describe("a World pack that no longer loads", () => {
     await expect(RunRoute({ params: Promise.resolve({ id: runId }) })).resolves.toBeTruthy();
   });
 
-  it("does not 500 /worlds or /connect, which were already guarded", () => {
+  it("does not 500 /worlds, /runs/new, /compare or /worlds/new", async () => {
     expect(() => WorldsPage()).not.toThrow();
-    expect(() => ConnectRoute()).not.toThrow();
+    expect(() => NewRun()).not.toThrow();
+    await expect(Compare({ searchParams: Promise.resolve({}) })).resolves.toBeTruthy();
+    await expect(NewWorldPage({ searchParams: Promise.resolve({}) })).resolves.toBeTruthy();
   });
 
   it("does not 500 GET /api/worlds", async () => {
@@ -98,16 +100,13 @@ describe("a World pack that no longer loads", () => {
     expect(((await res.json()) as { id: string }[]).map((p) => p.id)).toEqual(["northwind"]);
   });
 
-  it("does not 500 /scenarios or /mandates", () => {
-    expect(() => ScenariosPage()).not.toThrow();
-    expect(() => MandatesPage()).not.toThrow();
+  it("renders the broken pack's own page as an error frame rather than throwing", async () => {
+    await expect(WorldPage({ params: Promise.resolve({ id: "rotten" }), searchParams: Promise.resolve({}) })).resolves.toBeTruthy();
   });
 
-  it("does not 500 a Scenario's detail page", async () => {
-    await expect(ScenarioDetailPage({ params: Promise.resolve(NORTHWIND) })).resolves.toBeTruthy();
-  });
-
-  it("404s a Scenario detail page for a scenario id that doesn't exist", async () => {
-    await expect(ScenarioDetailPage({ params: Promise.resolve({ packId: NORTHWIND.packId, scenarioId: "no-such-scenario" }) })).rejects.toThrow();
+  it("still renders the good pack's page on every tab", async () => {
+    for (const tab of ["overview", "entities", "tools", "mandate", "scenarios"]) {
+      await expect(WorldPage({ params: Promise.resolve({ id: "northwind" }), searchParams: Promise.resolve({ tab }) })).resolves.toBeTruthy();
+    }
   });
 });

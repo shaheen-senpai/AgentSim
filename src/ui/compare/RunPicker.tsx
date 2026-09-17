@@ -15,7 +15,7 @@ export function RunPicker({ runs, a, b }: { runs: RunSummary[]; a: string; b: st
   const completed = runs.filter((r) => r.status === "completed");
   const peersOf = (id: string) => {
     const runA = completed.find((r) => r.id === id);
-    return runA ? completed.filter((r) => r.scenarioId === runA.scenarioId && r.id !== id) : [];
+    return runA ? completed.filter((r) => r.scenarioId === runA.scenarioId && r.packId === runA.packId && r.id !== id) : [];
   };
   const peers = peersOf(a);
 

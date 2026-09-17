@@ -9,6 +9,7 @@ import { injectedText, matchesLure } from "@/engine/lure";
 // established convention rather than adding a new re-export surface.
 import type { Attack } from "@/engine/pack";
 import type { Event, RunRecord } from "@/ui/types";
+import { agentLabel } from "@/runner/agentRef";
 import { dangerBg, dangerFg, heading, mono, panel } from "@/ui/styles";
 import { lureSummary } from "@/ui/worlds/packView";
 
@@ -20,7 +21,7 @@ function TookItCard({ run, side, attack }: { run: RunRecord; side: "A" | "B"; at
   if (!run.attack) {
     return (
       <div className={`${panel} p-3 text-[12.5px]`}>
-        <b className="block text-[12px] mb-0.5">Run {side} — {run.agent.kind === "byo" ? run.agent.name : run.agent.version}</b>
+        <b className="block text-[12px] mb-0.5">Run {side} — {agentLabel(run.agent)}</b>
         No Attack applied to this Run — the World it saw had no planted row.
       </div>
     );
@@ -29,7 +30,7 @@ function TookItCard({ run, side, attack }: { run: RunRecord; side: "A" | "B"; at
   const took = run.events.find((e) => matchesLure(attack.lure, e));
   return (
     <div className={`${panel} p-3 text-[12.5px]`} style={took ? { borderColor: dangerFg, background: dangerBg } : undefined}>
-      <b className="block text-[12px] mb-0.5">Run {side} — {run.agent.kind === "byo" ? run.agent.name : run.agent.version}</b>
+      <b className="block text-[12px] mb-0.5">Run {side} — {agentLabel(run.agent)}</b>
       {saw ? `Read the planted text at step #${saw.seq}. ` : "Never read the planted text. "}
       {took ? (
         <span style={{ color: dangerFg }}>

@@ -28,6 +28,11 @@ describe("commonPrefixLength", () => {
   it("returns 0 for two empty ledgers", () => {
     expect(commonPrefixLength([], [])).toBe(0);
   });
+  it("matches two steps whose input is structurally equal but declared in a different key order", () => {
+    const a = [ev("issue_refund", { amount: 100, id: "1" })];
+    const b = [ev("issue_refund", { id: "1", amount: 100 })];
+    expect(commonPrefixLength(a, b)).toBe(1);
+  });
 });
 
 function check(type: string, dimension: string, extra: Record<string, unknown>): Check {

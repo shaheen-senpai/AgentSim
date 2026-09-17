@@ -35,10 +35,13 @@ function violationKey(v: Violation): string {
   return stableStringify({ type: v.checkType, dimension: v.dimension, params: v.params });
 }
 
-/** How many of two Runs' event ledgers agree from the start, comparing each step's tool + input. */
+/** How many of two Runs' event ledgers agree from the start, comparing each step's tool + input.
+ * `input` is compared with `stableStringify`, not bare `JSON.stringify` — key-order-sensitive —
+ * the same hardening `checkKey`/`violationKey` already have, for the identical risk: two
+ * structurally-equal `input` objects declared with keys in a different order must still match. */
 export function commonPrefixLength(a: Pick<Event, "tool" | "input">[], b: Pick<Event, "tool" | "input">[]): number {
   let i = 0;
-  while (i < a.length && i < b.length && a[i].tool === b[i].tool && JSON.stringify(a[i].input) === JSON.stringify(b[i].input)) i++;
+  while (i < a.length && i < b.length && a[i].tool === b[i].tool && stableStringify(a[i].input) === stableStringify(b[i].input)) i++;
   return i;
 }
 

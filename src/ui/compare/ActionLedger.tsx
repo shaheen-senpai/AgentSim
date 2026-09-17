@@ -13,6 +13,8 @@ import { matchesLure } from "@/engine/lure";
 // follows the same established convention rather than adding a new re-export surface.
 import type { Attack } from "@/engine/pack";
 import type { Event, RunRecord } from "@/ui/types";
+import { prettyJson } from "@/ui/format";
+import { agentLabel } from "@/runner/agentRef";
 import { dangerBg, dangerFg, heading, mono, panel, successFg } from "@/ui/styles";
 import { commonPrefixLength } from "./compareLedger";
 
@@ -21,7 +23,23 @@ function argSummary(e: Event): string {
   return entries.length === 0 ? "—" : entries.map(([k, v]) => `${k}: ${JSON.stringify(v)}`).join(", ");
 }
 
-function StepRow({ event, seq, attack }: { event: Event; seq: number; attack: Attack | null }) {
+/** A `<pre>` that wraps rather than widening the page — long results scroll, never push. Same
+    treatment as `EventDrawer.tsx`'s `Json` (Finding 3): real tool results here can carry hundreds
+    of unbroken characters with no whitespace, which force the page wider with no wrap point. */
+function Json({ text }: { text: string }) {
+  return <pre className={`${mono} max-h-64 overflow-y-auto whitespace-pre-wrap break-words rounded border border-[#E3E0D5] bg-[#F7F5EF] p-2 text-[11px] leading-4`}>{text}</pre>;
+}
+
+/**
+ * `event` drives everything a step can be flagged for (injected/lure/error/result) — for a shared
+ * step this is *not* always `eventsA[i]` (see the caller in `ActionLedger`): two Runs can share a
+ * step's tool+input while their results genuinely differ, e.g. one Run's copy carries the Attack's
+ * planted text and the other's doesn't (Finding 1). `labelEvent` (defaults to `event`) drives only
+ * the header's tool name + argument summary — tool+input are identical by definition for a shared
+ * step, so the caller pins this to Run A's copy for a deterministic display line regardless of
+ * which Run's copy was picked to flag from.
+ */
+function StepRow({ event, labelEvent = event, seq, attack }: { event: Event; labelEvent?: Event; seq: number; attack: Attack | null }) {
   const [open, setOpen] = useState(false);
   const injected = event.injected !== null;
   const lure = attack ? matchesLure(attack.lure, event) : false;
@@ -40,20 +58,22 @@ function StepRow({ event, seq, attack }: { event: Event; seq: number; attack: At
             single unbroken tool name has no natural wrap point, and without a non-`visible` overflow
             a flex item's automatic minimum width is its full content width, not 0. */}
         <span className={`${mono} font-semibold truncate shrink min-w-0`} style={lure ? { color: dangerFg } : undefined}>
-          {event.tool}
+          {labelEvent.tool}
         </span>
-        <span className={`${mono} text-[11px] text-[#6E6B60] truncate flex-1`}>{argSummary(event)}</span>
+        <span className={`${mono} text-[11px] text-[#6E6B60] truncate flex-1`}>{argSummary(labelEvent)}</span>
         {lure && <span className="text-[9px] font-bold uppercase tracking-wide shrink-0" style={{ color: dangerFg }}>Lure taken</span>}
         {!lure && injected && <span className="text-[9px] font-bold uppercase tracking-wide shrink-0 text-[#6E6B60]">attack text read</span>}
         {event.error && <span className="text-[9px] font-bold uppercase tracking-wide shrink-0 text-[#6E6B60]">error</span>}
       </button>
       {open && (
-        <div className="ml-8 mr-2.5 mb-2 pl-2.5 border-l-2 border-[#E3E0D5] text-[11.5px] text-[#6E6B60] leading-relaxed">
+        <div className="ml-8 mr-2.5 mb-2 pl-2.5 border-l-2 border-[#E3E0D5] text-[11.5px] text-[#6E6B60] leading-relaxed flex flex-col gap-1.5">
           <div>
-            <b className="text-[#1B1A17]">input</b> · {JSON.stringify(event.input)}
+            <b className="text-[#1B1A17] block mb-0.5">input</b>
+            <Json text={JSON.stringify(event.input, null, 2)} />
           </div>
           <div>
-            <b className="text-[#1B1A17]">result</b> · {event.error ?? event.result ?? "ok"}
+            <b className="text-[#1B1A17] block mb-0.5">result</b>
+            <Json text={prettyJson(event.error ?? event.result ?? "ok")} />
           </div>
           {injected && event.injected && (
             <div>
@@ -86,11 +106,18 @@ export function ActionLedger({ runA, runB }: { runA: RunRecord; runB: RunRecord 
       {shared > 0 && (
         <div className="flex flex-col gap-0.5">
           <div className="text-[10px] uppercase tracking-wide text-[#6E6B60] font-semibold px-2.5">
-            ◦ identical — both Runs took these {shared} steps, in this order
+            ◦ same calls, in the same order — both Runs took these {shared} steps
           </div>
-          {eventsA.slice(0, shared).map((e, i) => (
-            <StepRow key={i} event={e} seq={i + 1} attack={attackA} />
-          ))}
+          {eventsA.slice(0, shared).map((eA, i) => {
+            // Shared means eA/eB agree on tool+input by definition — but their *results* can
+            // genuinely differ (e.g. one Run's copy carries the Attack's planted text and the
+            // other's doesn't). Flag from whichever copy actually has `injected` set, matching
+            // whichever Run's Attack actually surfaced there (Finding 1); fall back to eB when
+            // neither does, and to whichever Run actually has an Attack for lure-matching.
+            const eB = eventsB[i];
+            const flagged = eA.injected ? eA : eB;
+            return <StepRow key={i} event={flagged} labelEvent={eA} seq={i + 1} attack={attackA ?? attackB} />;
+          })}
         </div>
       )}
 
@@ -108,7 +135,7 @@ export function ActionLedger({ runA, runB }: { runA: RunRecord; runB: RunRecord 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="flex flex-col gap-0.5">
               <div className="text-[10px] uppercase tracking-wide font-bold px-2.5" style={{ color: runA.score?.capped ? dangerFg : successFg }}>
-                ● A — {runA.id.slice(0, 12)}
+                ● A — {agentLabel(runA.agent)} · {runA.id.slice(0, 12)}
               </div>
               {eventsA.slice(shared).length === 0 ? (
                 <div className="text-[12px] text-[#6E6B60] px-2.5">— ends here</div>
@@ -118,7 +145,7 @@ export function ActionLedger({ runA, runB }: { runA: RunRecord; runB: RunRecord 
             </div>
             <div className="flex flex-col gap-0.5">
               <div className="text-[10px] uppercase tracking-wide font-bold px-2.5" style={{ color: runB.score?.capped ? dangerFg : successFg }}>
-                ● B — {runB.id.slice(0, 12)}
+                ● B — {agentLabel(runB.agent)} · {runB.id.slice(0, 12)}
               </div>
               {eventsB.slice(shared).length === 0 ? (
                 <div className="text-[12px] text-[#6E6B60] px-2.5">— ends here</div>

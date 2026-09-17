@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { listPackIds, loadPack, type ToolDef } from "@/engine/pack";
+import { listPackIds, loadPack, type Check, type ToolDef } from "@/engine/pack";
 import { listRuns, loadRun, type RunRecord } from "@/runner/store";
 import { entityLabel } from "@/engine/world";
 import { ConsoleShell } from "@/ui/ConsoleShell";
@@ -14,7 +14,7 @@ import { WorldDiffCompare } from "@/ui/compare/WorldDiffCompare";
 // `latestComparablePair` during render, which Next's server/client boundary only allows when the
 // function's defining module carries no "use client" directive.
 import { latestComparablePair } from "@/ui/compare/latestComparablePair";
-import { serif } from "@/ui/styles";
+import { heading, serif } from "@/ui/styles";
 
 export const dynamic = "force-dynamic";
 
@@ -45,7 +45,11 @@ export default async function Compare({ searchParams }: { searchParams: Promise<
   const runs = listRuns();
 
   let aId = a, bId = b;
-  if (!aId || !bId) {
+  // Only fall back to the latest comparable pair when *neither* query param was given at all (e.g.
+  // landing on `/compare` directly). `RunPicker`'s A select navigates to `?a=<id>&b=` when the
+  // newly-picked Run A has no Scenario peer — falling back here on a missing `b` alone would
+  // silently discard that choice and overwrite both ids (Finding 5).
+  if (!aId && !bId) {
     const pair = latestComparablePair(runs);
     if (pair) {
       aId = pair.a.id;
@@ -59,7 +63,10 @@ export default async function Compare({ searchParams }: { searchParams: Promise<
         <div className="p-4 flex flex-col gap-4 max-w-[720px]">
           <h1 className={`${serif} text-[34px] font-medium tracking-tight`}>Compare runs</h1>
           <p className="text-[13px] text-[#6E6B60]">Pick two Runs of the same Scenario to compare.</p>
-          <RunPicker runs={runs} a={runs.find((r) => r.status === "completed")?.id ?? ""} b="" />
+          {/* `aId` is preserved when the user just picked a Run A with no peer, rather than being
+              overridden by the "first completed Run" default — that default only applies when
+              nothing was picked at all. */}
+          <RunPicker runs={runs} a={aId ?? runs.find((r) => r.status === "completed")?.id ?? ""} b={bId ?? ""} />
         </div>
       </ConsoleShell>
     );
@@ -70,8 +77,10 @@ export default async function Compare({ searchParams }: { searchParams: Promise<
   if (!ra || !rb) notFound();
   const va = packViewFor(ra), vb = packViewFor(rb);
 
-  const sameScenario = ra.scenarioId === rb.scenarioId;
-  let sharedChecks: import("@/engine/pack").Check[] = [];
+  // `packId` too, not just `scenarioId` — two Runs from different packs can share a `scenarioId`
+  // string and would otherwise compare against the wrong pack's Checks (Finding 9).
+  const sameScenario = ra.scenarioId === rb.scenarioId && ra.packId === rb.packId;
+  let sharedChecks: Check[] = [];
   if (sameScenario) {
     try {
       const pack = loadPack(ra.packId);
@@ -81,11 +90,31 @@ export default async function Compare({ searchParams }: { searchParams: Promise<
       sharedChecks = [];
     }
   }
+  // `lure_not_taken` (the synthesized Safety Check every Attack implies) is added at evaluation
+  // time only (`src/engine/evaluator.ts` → `lureCheck`) and is never part of `scenario.checks` —
+  // so without this, the Checks table's Safety dimension is always empty and gets dropped, even
+  // though both the score header and the Attack panel/Action ledger report the Lure (Finding 2).
+  // Only synthesized when both Runs were attacked with the *same* Attack — matching the assumption
+  // the rest of this page already makes about what makes a pair comparable. Shaped to match
+  // `lureCheck`'s own Violation exactly (`src/engine/checks.ts`) so it produces the identical
+  // `checkKey`/`violationKey` in `compareLedger.ts` with zero changes there.
+  if (ra.attack && rb.attack && ra.attack.id === rb.attack.id) {
+    sharedChecks = [
+      ...sharedChecks,
+      { type: "lure_not_taken", dimension: "safety", attack: ra.attack.id, lure: ra.attack.lure } as unknown as Check,
+    ];
+  }
 
   return (
     <ConsoleShell>
       <div className="p-4 flex flex-col gap-4">
-        <h1 className={`${serif} text-[28px] font-medium tracking-tight`}>Compare runs</h1>
+        <div>
+          <div className={heading}>AgentSim</div>
+          <h1 className={`${serif} text-[34px] font-medium tracking-tight`}>Compare runs</h1>
+        </div>
+        <p className="text-[13px] text-[#6E6B60] max-w-[70ch]">
+          Two Runs of the same Scenario, step by step — what each agent called, what came back, and where they diverged.
+        </p>
         <RunPicker runs={runs} a={ra.id} b={rb.id} />
         {/* Stacks to one column below `md`, like every other side-by-side section on this page
             (`AttackPanel`, `ActionLedger`, `WorldDiffCompare`). The flow's own bounded height lives

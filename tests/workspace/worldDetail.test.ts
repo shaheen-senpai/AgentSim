@@ -54,13 +54,25 @@ describe("draftScenarios", () => {
   });
 });
 
+function packWithMandates(scenarios: unknown[]): WorldPack {
+  return {
+    meta: {
+      id: "halvard-helpdesk", name: "Halvard", domain: "it", description: "", principal: "employees", systems: {}, entities: {}, status: "draft",
+      mandates: { "own-team": { id: "own-team", title: "Own team only", text: "Only your team.\n" }, "no-admins": { id: "no-admins", text: "Never touch admins." } },
+    },
+    seed: { now: "", currency: "GBP", rows: {} }, tools: {}, scenarios, agents: {}, files: { "pack.yaml": "id: halvard-helpdesk" },
+  } as unknown as WorldPack;
+}
+
 describe("draftDetailView / packDetailView", () => {
   it("falls back to the agent's tools when a draft carries no details", () => {
     const v = draftDetailView({ id: "wld_1", name: "Atlas", domain: "eng", description: "d", scenarios: 3, tools: 3, rows: 20, createdAt: "2026-09-01T00:00:00Z" }, agent);
     expect(v.kind).toBe("draft");
     expect(v.systems.map((s) => s.key)).toEqual(["jira", "slack"]);
     expect(v.scenarios).toHaveLength(3);
-    expect(v.mandates[0]).toEqual({ label: "Agent mandate", text: agent.mandate });
+    expect(v.mandates[0]).toEqual({ id: "agent-mandate", label: "Agent mandate", text: agent.mandate, citedBy: [] });
+    expect(v.status).toBeNull();
+    expect(v.files).toBeNull();
   });
   it("reads a pack's systems, entities, tools and scenario policies", () => {
     const pack = {
@@ -68,19 +80,35 @@ describe("draftDetailView / packDetailView", () => {
         id: "halvard-helpdesk", name: "Halvard Logistics", domain: "it-helpdesk", description: "desc", principal: "employees",
         systems: { directory: { label: "Directory", kind: "mcp", mode: "shadowed", provider: "okta" }, helpdesk: { label: "Helpdesk", kind: "tools", mode: "pasted" } },
         entities: { employees: { label: "Employee", owner: "self", fields: { id: "string", name: "string" } }, issues: { label: "Issue", owner: { via: "requester_id" }, fields: { id: "string" } } },
+        status: "draft",
+        mandates: { "own-team": { id: "own-team", title: "Own team only", text: "Only your team.\n" }, "no-admins": { id: "no-admins", text: "Never touch admins." } },
       },
       seed: { now: "", currency: "GBP", rows: {} },
       tools: { get_user: { name: "get_user", system: "directory", kind: "read", description: "Get" }, close_issue: { name: "close_issue", system: "helpdesk", kind: "write", description: "Close" } },
-      scenarios: [{ id: "s1", title: "Reset MFA", task_brief: "", policy: { text: "Only your team." }, checks: [], attacks: [{ id: "a" }] }],
-      agents: {}, files: {},
+      scenarios: [{ id: "s1", title: "Reset MFA", task_brief: "", policy: { text: "Only your team.", mandate: "own-team" }, checks: [], attacks: [{ id: "a" }] }],
+      agents: {}, files: { "pack.yaml": "id: halvard-helpdesk" },
     } as unknown as WorldPack;
-    const v = packDetailView(pack);
+    const v = packDetailView(pack, { s1: 2 });
     expect(v.kind).toBe("pack");
     expect(v.systems.map((s) => [s.key, s.tools, s.provider])).toEqual([["directory", 1, "okta"], ["helpdesk", 1, undefined]]);
     expect(v.principal).toBe("Employee");
     expect(v.entities).toEqual([{ name: "employees", label: "Employee", fields: 2, owner: "self" }, { name: "issues", label: "Issue", fields: 1, owner: "requester_id" }]);
-    expect(v.scenarios).toEqual([{ id: "s1", title: "Reset MFA", policy: "Only your team.", attacked: true }]);
-    expect(v.mandates).toEqual([{ label: "Reset MFA", text: "Only your team." }]);
+    // The full Scenario rides along so the workspace can edit it in place; `runs` decides whether it can be removed.
+    expect(v.scenarios).toEqual([{ id: "s1", title: "Reset MFA", brief: "", policy: "Only your team.", mandateId: "own-team", attacked: true, checks: [], attacks: [{ id: "a" }], runs: 2 }]);
     expect(v.consoleHref).toBe("/worlds/halvard-helpdesk");
+  });
+  it("reads a pack's own Mandates — not its Scenario policies — with who cites each, plus status and files", () => {
+    const v = packDetailView(packWithMandates([]));
+    // The plugin captures Mandates before any Scenario exists; the page must still show them.
+    expect(v.mandates).toEqual([
+      { id: "own-team", label: "Own team only", text: "Only your team.", citedBy: [] },
+      { id: "no-admins", label: "no-admins", text: "Never touch admins.", citedBy: [] },
+    ]);
+    expect(v.status).toBe("draft");
+    expect(v.files).toEqual({ "pack.yaml": "id: halvard-helpdesk" });
+
+    const cited = packDetailView(packWithMandates([{ id: "s1", title: "Reset MFA", task_brief: "", policy: { text: "Only your team.", mandate: "own-team" }, checks: [], attacks: [] }]));
+    expect(cited.mandates[0].citedBy).toEqual(["Reset MFA"]);
+    expect(cited.mandates[1].citedBy).toEqual([]);
   });
 });

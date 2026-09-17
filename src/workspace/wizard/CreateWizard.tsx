@@ -3,7 +3,8 @@
 // from the same sources — shadowed MCP providers, your own tools, a schema, a pack — so the flow is
 // the same: How → Compose → Review. `target` decides the copy, the fields and what gets saved.
 import { useRouter } from "next/navigation";
-import { useId, useMemo, useRef, useState } from "react";
+import Link from "next/link";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Button } from "@/marketing/Button";
 import { Icon } from "@/marketing/icons";
 import type { Agent } from "@/ui/types";
@@ -54,7 +55,23 @@ export function CreateWizard({ target, providers, packs, agent, initialHow = nul
   const [script, setScript] = useState<HandshakeStep[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** Where the created thing lives, once it is saved — shown as a link in case the redirect does not land. */
+  const [created, setCreated] = useState<string | null>(null);
   const timers = useRef<number[]>([]);
+
+  // Handshake timers outlive a navigation away from the wizard unless cleared here.
+  useEffect(() => () => { for (const t of timers.current) window.clearTimeout(t); }, []);
+
+  /**
+   * The save has happened; go to what was made. A soft push first (keeps the workspace shell), and
+   * a hard navigation if the page is still here a moment later — the push has been seen to be
+   * dropped now and then, leaving the wizard on Review with the agent already in the registry.
+   */
+  const go = (href: string) => {
+    setCreated(href);
+    router.push(href);
+    timers.current.push(window.setTimeout(() => window.location.assign(href), 2500));
+  };
 
   const tools = useMemo(() => composedTools(sources, providers), [sources, providers]);
   const entities = useMemo(() => composedEntities(sources), [sources]);
@@ -118,12 +135,12 @@ export function CreateWizard({ target, providers, packs, agent, initialHow = nul
       if (target === "agent") {
         const result = await createAgent(agentFromDraft(d, worldId));
         if (result.agent === null) return fail(result.error);
-        return router.push(`/agents/${result.agent.id}?fresh=${worldId}`);
+        return go(`/agents/${result.agent.id}?fresh=${worldId}`);
       }
       if (!agent) return;
       const result = await updateAgent({ ...agent, worldIds: [...agent.worldIds, worldId] });
       if (result.agent === null) return fail(result.error);
-      router.push(`/agents/${agent.id}?fresh=${worldId}`);
+      go(`/agents/${agent.id}?fresh=${worldId}`);
     });
   };
 
@@ -136,7 +153,7 @@ export function CreateWizard({ target, providers, packs, agent, initialHow = nul
       return play(buildAgentCreateScript(body.name, tools.length), async () => {
         const result = await createAgent(body);
         if (result.agent === null) return fail(result.error);
-        router.push(`/agents/${result.agent.id}?fresh=${firstWorld.id}`);
+        go(`/agents/${result.agent.id}?fresh=${firstWorld.id}`);
       });
     }
     if (!agent) return;
@@ -144,14 +161,14 @@ export function CreateWizard({ target, providers, packs, agent, initialHow = nul
       return play([{ text: `attaching ${chosenPack.name}`, at: 0 }, { text: `attached ${chosenPack.name}`, at: 500, done: true }], async () => {
         const result = await updateAgent({ ...agent, worldIds: [...agent.worldIds, chosenPack.id] });
         if (result.agent === null) return fail(result.error);
-        router.push(`/agents/${agent.id}?fresh=${chosenPack.id}`);
+        go(`/agents/${agent.id}?fresh=${chosenPack.id}`);
       });
     }
     const world = { ...(how === "draft" && draft ? draft : composedWorld), id: newWorldId(), createdAt: new Date().toISOString() };
     return play(buildWorldDraftScript(world.name, world.tools), async () => {
       const result = await updateAgent({ ...agent, worlds: [world, ...agent.worlds] });
       if (result.agent === null) return fail(result.error);
-      router.push(`/agents/${agent.id}?fresh=${world.id}`);
+      go(`/agents/${agent.id}?fresh=${world.id}`);
     });
   };
 
@@ -295,6 +312,12 @@ export function CreateWizard({ target, providers, packs, agent, initialHow = nul
                     <li key={s.at} className={`animate-line-in flex gap-2 ${s.done ? "text-primary" : "text-foreground"}`}><span className="text-muted-foreground" aria-hidden>▸</span><span>{s.text}</span></li>
                   ))}
                   {busy && !script.at(-1)?.done && <li className="flex items-center gap-2 text-muted-foreground"><Icon name="spinner" className="size-3.5 animate-spin" /> working…</li>}
+                  {created && (
+                    <li className="flex items-center gap-2 text-muted-foreground">
+                      <Icon name="spinner" className="size-3.5 animate-spin" /> opening it…{" "}
+                      <Link href={created} className="text-primary underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-ring">open the {copy.noun.toLowerCase()} →</Link>
+                    </li>
+                  )}
                 </ol>
               </div>
             )}

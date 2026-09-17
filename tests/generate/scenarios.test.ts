@@ -44,6 +44,7 @@ describe("buildPrompt", () => {
 
     expect(system).toContain(formatDoc.trim());
     expect(system).toContain("Seed at least three principals");
+    expect(system).toContain("no arrows");
     expect(system).toContain(TOOL_NAME);
     // The structure is fixed input, and the prompt says so — this stage may not redesign the World.
     expect(system).toContain("are fixed and are not yours to change");

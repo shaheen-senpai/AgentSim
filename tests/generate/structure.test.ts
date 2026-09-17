@@ -112,6 +112,12 @@ describe("docs/worldpack-format.md", () => {
     const cited = pack!.scenarios[0].policy.mandate!;
     expect(pack!.meta.mandates[cited].text).toBe(pack!.scenarios[0].policy.text);
   });
+
+  it("titles every example Scenario as a plain phrase — the model copies the doc's form, arrows included", () => {
+    const titles = formatDoc.split("\n").filter((l) => /^\s*title:/.test(l));
+    expect(titles.length).toBeGreaterThan(0);
+    for (const t of titles) expect(t).not.toContain("→");
+  });
 });
 
 // The seed the plugin is now *incapable* of filling: the rows are the platform's, and before this

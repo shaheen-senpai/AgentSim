@@ -91,7 +91,10 @@ export function RunLive({ runId, initialRun, agent, runAgent, world, tools, syst
 
   return (
     <main id="main" className={`${container} pb-20 pt-8`}>
-      <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-2 text-body text-muted-foreground">
+      <Link href={`/agents/${agent.id}/worlds/${world.id}`} className={`${eyebrow} inline-flex items-center gap-2 hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring`}>
+        <Icon name="arrow-left" className="size-3.5" /> {world.name}
+      </Link>
+      <nav aria-label="Breadcrumb" className="mt-4 flex flex-wrap items-center gap-2 text-body text-muted-foreground">
         <Link href="/agents" className="hover:text-foreground">Agents</Link><span aria-hidden>/</span>
         <Link href={`/agents/${agent.id}`} className="hover:text-foreground">{agent.name}</Link><span aria-hidden>/</span>
         <Link href={`/agents/${agent.id}/worlds/${world.id}`} className="hover:text-foreground">{world.name}</Link><span aria-hidden>/</span>

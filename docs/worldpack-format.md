@@ -286,7 +286,7 @@ error the pack validator reports.
 
 ```yaml
 id: duplicate-charge-refund          # matches the file name
-title: Duplicate charge → refund the extra payment
+title: Refund the duplicate charge   # one short plain phrase; no arrows or other symbols
 task_brief: |
   Support ticket tkt_1001 has been assigned to you. Handle it end to end.
 policy: { mandate: refund-limits }   # or an inline `policy: { text: ... }`
@@ -504,7 +504,7 @@ add_loan_note:
 
 ```yaml title="scenarios/renew-a-members-loan.yaml"
 id: renew-a-members-loan
-title: Renew a member's loan → one loan, two weeks
+title: Renew one loan by two weeks
 
 task_brief: |
   Ben Halloran (mem_002) has asked the front desk to renew his loan lon_1002. Handle it end to end.

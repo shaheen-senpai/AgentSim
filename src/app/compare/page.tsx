@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Check } from "@/engine/pack";
 import { packForRun, withPackName } from "@/lib/runPack";
@@ -17,6 +18,7 @@ function Frame({ children }: { children: React.ReactNode }) {
   return (
     <ConsoleShell>
       <section id="view-compare">
+        <Link className="back-link" href="/runs">← Runs</Link>
         <div className="crumb">AgentSim</div>
         <h1 className="page serif">Compare runs</h1>
         <p className="sub">Two Runs of the same Scenario, step by step: what each agent called, what came back, where the Attack’s text entered, and which Checks each one failed.</p>

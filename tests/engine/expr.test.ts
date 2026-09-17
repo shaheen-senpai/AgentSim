@@ -46,6 +46,16 @@ describe("evaluate", () => {
     expect(evaluate("lower('ABC')", b)).toBe("abc");
     expect(evaluate("concat('a', 'b')", b)).toBe("ab");
   });
+  it("coalesce returns the first defined, non-null argument", () => {
+    expect(evaluate("coalesce(a, b)", { a: undefined, b: 5 })).toBe(5);
+    expect(evaluate("coalesce(a, b)", { a: 3, b: 5 })).toBe(3);
+    expect(evaluate("coalesce(a, b)", { a: null, b: 5 })).toBe(5);
+  });
+  it("appendIfSet appends only when the item is defined and non-null", () => {
+    expect(evaluate("appendIfSet(xs, x)", { xs: ["a"], x: "b" })).toEqual(["a", "b"]);
+    expect(evaluate("appendIfSet(xs, x)", { xs: ["a"], x: undefined })).toEqual(["a"]);
+    expect(evaluate("appendIfSet(xs, x)", { xs: ["a"], x: null })).toEqual(["a"]);
+  });
   it("rejects unknown functions and syntax errors", () => {
     expect(() => evaluate("nope(1)", b)).toThrow(ExprError);
     expect(() => evaluate("1 +", b)).toThrow(ExprError);

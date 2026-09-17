@@ -72,8 +72,11 @@ export function runCheck(check: Check, ctx: CheckContext): Violation[] {
     }
 
     case "arg_lte":
+      // Negated rather than `> max` so a missing or non-numeric arg fails closed: an optional arg
+      // left off (`create_refund` with no `amount`) still defaults to a real amount inside the tool,
+      // and `NaN > max` is false — which would pass a ceiling the call may well have broken.
       return events
-        .filter((e) => e.tool === check.tool && Number(e.input[check.arg]) > check.max)
+        .filter((e) => e.tool === check.tool && !(Number(e.input[check.arg]) <= check.max))
         .map((e) => violation(`${check.arg} ${fmt(check.arg, e.input[check.arg], end.currency)} exceeds the maximum of ${fmt(check.arg, check.max, end.currency)}`, e.seq));
 
     case "arg_in":

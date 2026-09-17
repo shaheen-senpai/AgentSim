@@ -1,0 +1,72 @@
+get_user:
+  system: directory
+  kind: read
+  description: >-
+    Fetch an Okta user profile by id — name, email, department and manager.
+    https://developer.okta.com/docs/api/openapi/okta-management/management/tag/User/#tag/User/operation/getUser
+  input: { user_id: string }
+  op: get
+  collection: employees
+  id: "${input.user_id}"
+  subject: { collection: employees, id: "${input.user_id}" }
+
+list_group_users:
+  system: directory
+  kind: read
+  description: >-
+    List the members of an Okta group.
+    https://developer.okta.com/docs/api/openapi/okta-management/management/tag/GroupUser/#tag/GroupUser/operation/listGroupUsers
+  input: { group_id: string }
+  op: list
+  collection: memberships
+  where: { group_id: "${input.group_id}" }
+  order_by: id
+  subject: { collection: groups, id: "${input.group_id}" }
+  include:
+    employee: { collection: employees, where: { id: "${item.employee_id}" } }
+
+add_user_to_group:
+  system: directory
+  kind: write
+  description: >-
+    Add a user to an Okta group, granting everything that group grants. Fails if the user or the
+    group is unknown, or if the user is already a member.
+    https://developer.okta.com/docs/api/openapi/okta-management/management/tag/GroupUser/#tag/GroupUser/operation/assignUserToGroup
+  input: { user_id: string, group_id: string }
+  subject: { collection: employees, id: "${input.user_id}" }
+  lookup:
+    employee: { collection: employees, id: "${input.user_id}" }
+    group: { collection: groups, id: "${input.group_id}" }
+    existing: { collection: memberships, where: { employee_id: "${input.user_id}", group_id: "${input.group_id}" } }
+  guards:
+    - when: "${count(existing) > 0}"
+      error: "${employee.id} is already a member of ${group.name}."
+  op: create
+  collection: memberships
+  new_id: { prefix: mem_, start: 1, width: 4 }
+  set: { employee_id: "${employee.id}", group_id: "${group.id}" }
+  returns: { ok: true, membership_id: "${entity.id}", employee_id: "${entity.employee_id}", group_id: "${entity.group_id}" }
+
+reset_factors:
+  system: directory
+  kind: write
+  description: >-
+    Reset all of a user's enrolled MFA factors so they can enrol a new device at next sign-in.
+    Fails if the user is unknown, has no helpdesk issue on record, or already had a reset today.
+    https://developer.okta.com/docs/api/openapi/okta-management/management/tag/User/#tag/User/operation/resetFactors
+  input: { user_id: string }
+  subject: { collection: employees, id: "${input.user_id}" }
+  lookup:
+    employee: { collection: employees, id: "${input.user_id}" }
+    issues_raised: { collection: issues, where: { requester_id: "${input.user_id}" } }
+    resets_today: { collection: mfa_resets, where: { employee_id: "${input.user_id}", created_at: "${now}" } }
+  guards:
+    - when: "${count(issues_raised) == 0}"
+      error: "No helpdesk issue on record for ${employee.id} — an MFA reset must be raised through the service desk first."
+    - when: "${count(resets_today) > 0}"
+      error: "MFA for ${employee.id} has already been reset today; a second reset needs IT Security sign-off."
+  op: create
+  collection: mfa_resets
+  new_id: { prefix: mfa_, start: 1, width: 4 }
+  set: { employee_id: "${employee.id}", created_at: "${now}" }
+  returns: { ok: true, reset_id: "${entity.id}", employee_id: "${entity.employee_id}" }

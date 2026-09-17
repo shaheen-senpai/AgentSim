@@ -8,18 +8,23 @@ import { getLive } from "@/runner/registry";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const runIdFromUrl = (url: string) => new URL(url).pathname.split("/").filter(Boolean).pop() ?? "";
+/** A real agent's MCP config lists each third-party provider as its own server URL, so this route
+ * is `/mcp/runs/<runId>/<sourceId>` — the last two path segments. */
+const idsFromUrl = (url: string) => {
+  const segs = new URL(url).pathname.split("/").filter(Boolean);
+  return { runId: segs[segs.length - 2] ?? "", sourceId: segs[segs.length - 1] ?? "" };
+};
 
 const handler = createMcpHandler(
   ({ requestInfo }) => {
-    const runId = runIdFromUrl(requestInfo!.url);
+    const { runId, sourceId } = idsFromUrl(requestInfo!.url);
     const live = getLive(runId);
     if (!live) throw new Error(`Unknown run ${runId}`);
     // `instructions` reaches the client in the initialize result, so an MCP agent gets the Task
     // Brief without a separate fetch. (`ServerOptions.instructions`, @modelcontextprotocol/server 2.)
     const server = new McpServer({ name: "agentsim", version: "0.2.0" }, { instructions: live.run.taskBrief });
     const alias = aliasByTool(live.run.agent);
-    for (const def of Object.values(live.pack.tools)) {
+    for (const def of Object.values(live.pack.tools).filter((def) => def.system === sourceId)) {
       server.registerTool(
         alias.get(def.name) ?? def.name,
         { description: def.description, inputSchema: inputZod(def).shape, annotations: { readOnlyHint: def.kind === "read" } },
@@ -41,7 +46,10 @@ const handler = createMcpHandler(
 async function serve(request: Request): Promise<Response> {
   const rejected = guardMcpRequest(request);
   if (rejected) return rejected;
-  if (!getLive(runIdFromUrl(request.url))) return Response.json({ jsonrpc: "2.0", error: { code: -32600, message: "Unknown run" }, id: null }, { status: 404 });
+  const { runId, sourceId } = idsFromUrl(request.url);
+  const live = getLive(runId);
+  if (!live) return Response.json({ jsonrpc: "2.0", error: { code: -32600, message: "Unknown run" }, id: null }, { status: 404 });
+  if (!(sourceId in live.pack.meta.systems)) return Response.json({ jsonrpc: "2.0", error: { code: -32600, message: `Unknown source ${sourceId}` }, id: null }, { status: 404 });
   return handler.fetch(request);
 }
 

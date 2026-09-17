@@ -11,6 +11,8 @@ import { POST as finishRoute } from "@/app/api/runs/[id]/finish/route";
 import { GET as scenariosRoute } from "@/app/api/scenarios/route";
 import { GET as listAgentsRoute, POST as createAgentRoute } from "@/app/api/agents/route";
 import { PUT as putAgentRoute, DELETE as deleteAgentRoute } from "@/app/api/agents/[id]/route";
+import { POST as mcpRoute } from "@/app/mcp/runs/[runId]/[sourceId]/route";
+import { loadPack } from "@/engine/pack";
 import { loadRun } from "@/runner/store";
 import { usePacksDir } from "../helpers/packs";
 
@@ -24,8 +26,22 @@ const ctx = (id: string) => ({ params: Promise.resolve({ id }) });
 async function newRun(body: Record<string, unknown> = {}) {
   const res = await createRunRoute(post("http://localhost/api/runs", { ...NORTHWIND, agent: { kind: "byo" }, ...body }));
   expect(res.status).toBe(201);
-  return (await res.json()) as { id: string; url: string; mcpUrl: string; callUrl: string; taskBrief: string };
+  return (await res.json()) as { id: string; url: string; mcpUrl: string; mcpUrls: Record<string, string>; callUrl: string; taskBrief: string };
 }
+
+/**
+ * An MCP `initialize` sent to a URL exactly as the create call handed it out, through the real
+ * route handler. Comparing URL strings is what let a Run hand out an endpoint that no longer
+ * existed; only resolving one proves it.
+ */
+const initialize = (url: string) =>
+  mcpRoute(
+    new Request(url, {
+      method: "POST",
+      headers: { "content-type": "application/json", accept: "application/json, text/event-stream", host: new URL(url).host },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "test", version: "1" } } }),
+    }),
+  );
 
 const call = async (id: string, body: unknown) => {
   const res = await callRoute(post(`http://localhost/api/runs/${id}/call`, body), ctx(id));
@@ -42,8 +58,7 @@ describe("POST /api/runs", () => {
     const body = await newRun();
     expect(body.id).toMatch(/^run_[a-z0-9]+$/);
     expect(body.url).toBe(`http://localhost/runs/${body.id}`);
-    expect(body.mcpUrl).toBe(`http://localhost/mcp/runs/${body.id}`);
-    expect(body.mcpUrl.endsWith(`/mcp/runs/${body.id}`)).toBe(true);
+    expect(Object.values(body.mcpUrls)).toContain(body.mcpUrl); // the compat field points at a real source's endpoint
     expect(body.callUrl.endsWith(`/api/runs/${body.id}/call`)).toBe(true);
     expect(body.taskBrief).toContain("Policy:");
 
@@ -58,10 +73,25 @@ describe("POST /api/runs", () => {
     // Behind a tunnel or on a LAN address the links must resolve for whoever asked for them.
     const res = await createRunRoute(post("https://demo.example.test:8443/api/runs", { ...NORTHWIND, agent: { kind: "byo" }, idleTimeoutMs: null }));
     expect(res.status).toBe(201);
-    const body = (await res.json()) as { id: string; url: string; mcpUrl: string; callUrl: string };
+    const body = (await res.json()) as { id: string; url: string; mcpUrl: string; mcpUrls: Record<string, string>; callUrl: string };
     expect(body.url).toBe(`https://demo.example.test:8443/runs/${body.id}`);
-    expect(body.mcpUrl).toBe(`https://demo.example.test:8443/mcp/runs/${body.id}`);
+    expect(body.mcpUrls.payments).toBe(`https://demo.example.test:8443/mcp/runs/${body.id}/payments`);
+    expect(Object.values(body.mcpUrls).every((u) => u.startsWith("https://demo.example.test:8443/"))).toBe(true);
     expect(body.callUrl).toBe(`https://demo.example.test:8443/api/runs/${body.id}/call`);
+    await finishRoute(post(`http://localhost/api/runs/${body.id}/finish`, {}), ctx(body.id));
+  });
+
+  it("hands back one live MCP endpoint per source in the pack, not one for the whole Run", async () => {
+    const body = await newRun({ idleTimeoutMs: null });
+    const sources = Object.keys(loadPack("northwind").meta.systems);
+    expect(Object.keys(body.mcpUrls).sort()).toEqual([...sources].sort());
+
+    for (const [sourceId, url] of Object.entries(body.mcpUrls)) {
+      expect(url).toBe(`http://localhost/mcp/runs/${body.id}/${sourceId}`);
+      // …and the URL resolves: an endpoint that does not exist answers 404, whatever its shape.
+      expect((await initialize(url)).status, url).toBe(200);
+    }
+
     await finishRoute(post(`http://localhost/api/runs/${body.id}/finish`, {}), ctx(body.id));
   });
 
@@ -168,14 +198,14 @@ describe("POST /api/runs/:id/call", () => {
 
   it("returns 200 { ok: false, error } when a guard rejects the call", async () => {
     const { id } = await newRun({ idleTimeoutMs: null });
-    const res = await call(id, { tool: "issue_refund", input: { payment_id: "pay_7003", amount: 999_999, reason: "oops" } });
+    const res = await call(id, { tool: "create_refund", input: { payment_intent: "pay_7003", amount: 999_999, reason: "duplicate" } });
     expect(res.status).toBe(200); // a rejected tool call is a simulation outcome, not an HTTP failure
     expect(res.body.ok).toBe(false);
     expect(res.body.error).toMatch(/exceeds refundable balance/);
 
     const events = loadRun(id)!.events;
     expect(events).toHaveLength(1);
-    expect(events[0]).toMatchObject({ tool: "issue_refund", source: "forwarder", isError: true });
+    expect(events[0]).toMatchObject({ tool: "create_refund", source: "forwarder", isError: true });
     await finishRoute(post(`http://localhost/api/runs/${id}/finish`, {}), ctx(id));
   });
 
@@ -212,13 +242,13 @@ describe("GET /api/runs/:id/tools and /brief", () => {
     const names = tools.map((t) => t.name);
     expect(names).toContain("fetch_ticket");
     expect(names).not.toContain("get_ticket");
-    expect(names).toContain("issue_refund");
+    expect(names).toContain("create_refund");
 
     const fetchTicket = tools.find((t) => t.name === "fetch_ticket")!;
     expect(fetchTicket.kind).toBe("read");
-    expect(fetchTicket.description).toContain("support ticket");
+    expect(fetchTicket.description).toContain("including its status");
     expect(fetchTicket.inputSchema).toMatchObject({ type: "object", properties: { ticket_id: { type: "string" } } });
-    expect(tools.find((t) => t.name === "issue_refund")!.kind).toBe("write");
+    expect(tools.find((t) => t.name === "create_refund")!.kind).toBe("write");
 
     await finishRoute(post(`http://localhost/api/runs/${id}/finish`, {}), ctx(id));
   });

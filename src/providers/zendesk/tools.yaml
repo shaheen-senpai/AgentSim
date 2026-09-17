@@ -1,0 +1,33 @@
+get_ticket:
+  system: support
+  kind: read
+  description: >-
+    Retrieve a single ticket by id, including its status and internal notes.
+    https://developer.zendesk.com/api-reference/ticketing/tickets/tickets/#show-ticket
+  input: { ticket_id: string }
+  op: get
+  collection: tickets
+  id: "${input.ticket_id}"
+  subject: { collection: tickets, id: "${input.ticket_id}" }
+
+update_ticket:
+  system: support
+  kind: write
+  description: >-
+    Update a ticket's status and/or append an internal comment in one call, matching Zendesk's
+    combined ticket-update endpoint.
+    https://developer.zendesk.com/api-reference/ticketing/tickets/tickets/#update-ticket
+  input:
+    ticket_id: { type: string }
+    status: { type: enum, values: [new, open, pending, hold, solved, closed], optional: true }
+    comment: { type: string, optional: true }
+  subject: { collection: tickets, id: "${input.ticket_id}" }
+  lookup:
+    ticket: { collection: tickets, id: "${input.ticket_id}" }
+  op: update
+  collection: tickets
+  id: "${input.ticket_id}"
+  set:
+    status: "${coalesce(input.status, ticket.status)}"
+    notes: "${appendIfSet(ticket.notes, input.comment)}"
+  returns: { id: "${entity.id}", status: "${entity.status}" }

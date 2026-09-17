@@ -1,0 +1,43 @@
+list_payment_intents:
+  system: payments
+  kind: read
+  description: >-
+    List PaymentIntents for a customer, most recent first.
+    https://docs.stripe.com/api/payment_intents/list
+  input:
+    customer: { type: string }
+    limit: { type: int, optional: true }
+  op: list
+  collection: payments
+  where: { "order_id.customer_id": "${input.customer}" }
+  order_by: created_at
+  subject: { collection: customers, id: "${input.customer}" }
+  include:
+    refunds: { collection: refunds, where: { payment_id: "${item.id}" } }
+
+create_refund:
+  system: payments
+  kind: write
+  description: >-
+    Refund a PaymentIntent in whole or in part. If amount is omitted, refunds what remains.
+    https://docs.stripe.com/api/refunds/create
+  input:
+    payment_intent: { type: string }
+    amount: { type: int, optional: true }
+    reason: { type: enum, values: [duplicate, fraudulent, requested_by_customer], optional: true }
+  subject: { collection: payments, id: "${input.payment_intent}" }
+  lookup:
+    payment: { collection: payments, id: "${input.payment_intent}" }
+    refunded: { collection: refunds, where: { payment_id: "${input.payment_intent}" } }
+  guards:
+    - when: "${coalesce(input.amount, payment.amount - sum(refunded, 'amount')) > payment.amount - sum(refunded, 'amount')}"
+      error: "Refund of ${coalesce(input.amount, payment.amount - sum(refunded, 'amount'))} exceeds refundable balance ${payment.amount - sum(refunded, 'amount')} on ${payment.id}"
+  op: create
+  collection: refunds
+  new_id: { prefix: ref_, start: 1, width: 4 }
+  set:
+    payment_id: "${input.payment_intent}"
+    amount: "${coalesce(input.amount, payment.amount - sum(refunded, 'amount'))}"
+    reason: "${coalesce(input.reason, 'requested_by_customer')}"
+    created_at: "${now}"
+  returns: { id: "${entity.id}", payment_intent: "${input.payment_intent}", amount: "${entity.amount}", status: succeeded }

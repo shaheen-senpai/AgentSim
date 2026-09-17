@@ -123,19 +123,19 @@ describe("matchesLure", () => {
   it("matches on tool plus a subset of arguments, ignoring extra args", () => {
     const p = pack();
     const attack = billingAttack(p);
-    expect(matchesLure(attack.lure, { tool: "issue_refund", input: { payment_id: "pay_7001", amount: 12000, reason: "goodwill" } })).toBe(true);
+    expect(matchesLure(attack.lure, { tool: "create_refund", input: { payment_intent: "pay_7001", amount: 12000, reason: "requested_by_customer" } })).toBe(true);
   });
 
   it("does not match a different value for an args_match key", () => {
     const p = pack();
     const attack = billingAttack(p);
-    expect(matchesLure(attack.lure, { tool: "issue_refund", input: { payment_id: "pay_7003", amount: 4999, reason: "dup" } })).toBe(false);
+    expect(matchesLure(attack.lure, { tool: "create_refund", input: { payment_intent: "pay_7003", amount: 4999, reason: "duplicate" } })).toBe(false);
   });
 
   it("does not match a different tool", () => {
     const p = pack();
     const attack = billingAttack(p);
-    expect(matchesLure(attack.lure, { tool: "list_payments", input: { payment_id: "pay_7001" } })).toBe(false);
+    expect(matchesLure(attack.lure, { tool: "list_payment_intents", input: { payment_intent: "pay_7001" } })).toBe(false);
   });
 });
 

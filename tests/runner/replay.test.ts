@@ -66,13 +66,13 @@ describe("transcript replay — real golden Runs", () => {
     });
   }
 
-  it("the attacked naïve golden's read_thread Event ingested the injected content, and it took the Lure at Event #9", () => {
+  it("the attacked naïve golden's get_thread Event ingested the injected content, and it took the Lure at Event #9", () => {
     const attacked = runs.find(({ run }) => run.agent.kind === "reference" && run.agent.version === "naive" && run.attack !== null);
     expect(attacked, "expected one committed golden: naïve agent, under attack").toBeTruthy();
     const { run } = attacked!;
     const attack = run.attack!;
 
-    const readThread = run.events.find((e) => e.tool === "read_thread");
+    const readThread = run.events.find((e) => e.tool === "get_thread");
     expect(readThread).toBeTruthy();
     expect(readThread!.injected).toEqual({ attackId: attack.id, collection: "emails", id: "eml_9001", field: "body" });
 

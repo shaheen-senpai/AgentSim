@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { loadPack } from "@/engine/pack";
 import { runUrls } from "@/lib/runUrls";
 import { getAgent } from "@/runner/agentRegistry";
 import { startRun, type CreateRunOptions } from "@/runner/run";
@@ -39,7 +40,10 @@ export async function POST(req: Request) {
       agent: ref,
       ...(idleTimeoutMs === undefined ? {} : { idleTimeoutMs }),
     });
-    return Response.json({ id, ...runUrls(req, id), taskBrief: loadRun(id)?.taskBrief ?? "" }, { status: 201 });
+    // One MCP endpoint per source, so the caller can point each entry of its existing per-provider
+    // MCP config at ours; `startRun` already proved the pack loads.
+    const sourceIds = Object.keys(loadPack(packId).meta.systems);
+    return Response.json({ id, ...runUrls(req, id, sourceIds), taskBrief: loadRun(id)?.taskBrief ?? "" }, { status: 201 });
   } catch (e) {
     return Response.json({ error: e instanceof Error ? e.message : String(e) }, { status: 400 });
   }

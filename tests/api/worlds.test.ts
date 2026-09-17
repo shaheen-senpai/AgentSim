@@ -38,7 +38,7 @@ describe("GET /api/worlds", () => {
       principal: "customers",
       collections: 7,
       rows: 22,
-      tools: 10,
+      tools: 9,
       scenarios: 1,
     });
   });
@@ -51,7 +51,7 @@ describe("GET /api/worlds/:id", () => {
     const { pack } = (await res.json()) as { pack: WorldPack };
     expect(pack.meta.id).toBe("northwind");
     expect(pack.scenarios.map((s) => s.id)).toEqual(["duplicate-charge-refund"]);
-    expect(Object.keys(pack.tools)).toContain("issue_refund");
+    expect(Object.keys(pack.tools)).toContain("create_refund");
     expect(pack.files["pack.yaml"]).toContain("id: northwind");
     expect(pack.files["scenarios/duplicate-charge-refund.yaml"]).toContain("task_brief");
     expect(Object.keys(pack.agents).sort()).toEqual(["fixed", "naive"]);

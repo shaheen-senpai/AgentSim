@@ -4,9 +4,9 @@ domain: it-helpdesk
 description: The IT service desk of a freight operator. The employee directory, the helpdesk queue and the internal chat share one World.
 principal: employees                        # every row resolves to one row of this collection
 systems:                                    # tool grouping + colour in the UI
-  directory: { label: Directory }
-  helpdesk:  { label: Helpdesk }
-  chat:      { label: Chat }
+  directory: { label: Directory, kind: mcp,   mode: shadowed, provider: okta }
+  helpdesk:  { label: Helpdesk,  kind: tools, mode: pasted }
+  chat:      { label: Chat,      kind: mcp,   mode: shadowed, provider: slack }
 entities:
   employees:
     label: Employee

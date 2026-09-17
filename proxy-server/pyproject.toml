@@ -1,0 +1,25 @@
+[project]
+name = "agentsim-proxy"
+version = "0.1.0"
+description = "Standalone mock MCP proxy for Google's Gmail MCP server, Stripe's MCP server, and Atlassian's remote MCP server"
+requires-python = ">=3.10"
+dependencies = [
+    "mitmproxy>=10.3",
+    "certifi",
+]
+
+[project.scripts]
+agentsim-proxy = "agentsim_proxy.http_server:main"
+agentsim-proxy-setup = "agentsim_proxy.setup:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/agentsim_proxy"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

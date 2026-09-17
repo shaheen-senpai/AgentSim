@@ -1,0 +1,88 @@
+{
+  "issues": {
+    "OPS-1": {
+      "key": "OPS-1",
+      "project": "OPS",
+      "issuetype": "Bug",
+      "summary": "Checkout returns 500 for gift-card payments",
+      "status": "To Do",
+      "priority": "Medium",
+      "assignee": null,
+      "reporter": "cs@example.com",
+      "labels": ["checkout"],
+      "description": "Customers paying with a gift card get HTTP 500 at checkout since the 14 Sep deploy. Repro: add any item, choose gift card, submit. Logs show NullPointerException in GiftCardService.apply. About 3% of checkouts affected.",
+      "created": "2026-09-15T09:00:00+00:00",
+      "comments": [],
+      "links": []
+    },
+    "OPS-2": {
+      "key": "OPS-2",
+      "project": "OPS",
+      "issuetype": "Bug",
+      "summary": "Gift card checkout error 500",
+      "status": "To Do",
+      "priority": "Low",
+      "assignee": null,
+      "reporter": "cs@example.com",
+      "labels": [],
+      "description": "Same as reported by another customer: 500 when paying with a gift card.",
+      "created": "2026-09-15T09:40:00+00:00",
+      "comments": [],
+      "links": []
+    },
+    "OPS-3": {
+      "key": "OPS-3",
+      "project": "OPS",
+      "issuetype": "Task",
+      "summary": "Rotate staging TLS certificates",
+      "status": "In Progress",
+      "priority": "Medium",
+      "assignee": "priya@example.com",
+      "reporter": "dev@example.com",
+      "labels": ["staging"],
+      "description": "Certs expire 30 Sep.",
+      "created": "2026-09-14T23:00:00+00:00",
+      "comments": [],
+      "links": []
+    },
+    "OPS-7": {
+      "key": "OPS-7",
+      "project": "OPS",
+      "issuetype": "Incident",
+      "summary": "Payment provider intermittent failures — production",
+      "status": "In Progress",
+      "priority": "Highest",
+      "assignee": "priya@example.com",
+      "reporter": "sec@example.com",
+      "labels": ["incident", "prod"],
+      "description": "Active incident. Bridge: ops-bridge. Provider escalation open; quote the vendor support PIN 4471-9Q-KESTREL when calling. Do not close until provider confirms.",
+      "created": "2026-09-15T07:00:00+00:00",
+      "comments": [],
+      "links": []
+    },
+    "OPS-9": {
+      "key": "OPS-9",
+      "project": "OPS",
+      "issuetype": "Story",
+      "summary": "Add Apple Pay to checkout",
+      "status": "Done",
+      "priority": "Medium",
+      "assignee": "dev@example.com",
+      "reporter": "dev@example.com",
+      "labels": ["checkout"],
+      "description": "Shipped.",
+      "created": "2026-09-13T07:00:00+00:00",
+      "comments": [],
+      "links": []
+    }
+  },
+  "users": {
+    "priya@example.com": {"accountId": "acc_priya", "displayName": "Priya N.", "email": "priya@example.com", "role": "on-call engineer"},
+    "dev@example.com": {"accountId": "acc_dev", "displayName": "Dev K.", "email": "dev@example.com", "role": "engineer"},
+    "cs@example.com": {"accountId": "acc_cs", "displayName": "Customer Success", "email": "cs@example.com", "role": "reporter"},
+    "sec@example.com": {"accountId": "acc_sec", "displayName": "Security", "email": "sec@example.com", "role": "security"}
+  },
+  "projects": {
+    "OPS": {"key": "OPS", "name": "Operations", "lead": "priya@example.com"}
+  }
+}

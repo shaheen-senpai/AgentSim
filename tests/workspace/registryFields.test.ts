@@ -12,7 +12,7 @@ beforeAll(() => {
 describe("agent registry: workspace fields", () => {
   it("fills defaults on a legacy record that predates the workspace fields", () => {
     writeFileSync(path.join(dataDir(), "agents.json"), JSON.stringify([{ id: "agt_old", name: "Old", version: "1", shape: "mcp", toolAliases: {}, notes: "", createdAt: "2026-01-01T00:00:00Z" }]));
-    expect(listAgents()[0]).toMatchObject({ source: "manual", description: "", mandate: "", tools: [], entities: [], worldIds: [] });
+    expect(listAgents()[0]).toMatchObject({ source: "manual", description: "", mandate: "", tools: [], entities: [], worldIds: [], worlds: [] });
   });
 
   it("persists description, mandate, tools, entities, source and worldIds", () => {
@@ -21,6 +21,14 @@ describe("agent registry: workspace fields", () => {
     expect(listAgents()[0]).toEqual(saved);
     expect(saved.tools).toEqual(["a", "b"]);
     expect(saved.worldIds).toEqual(["halvard-helpdesk"]);
+  });
+
+  it("stores drafted worlds on the agent", () => {
+    writeFileSync(path.join(dataDir(), "agents.json"), "[]");
+    const world = { id: "wld_abc", name: "Harbor Support Desk", domain: "support", description: "d", scenarios: 3, tools: 4, rows: 20, createdAt: "2026-09-01T00:00:00Z" };
+    saveAgent({ name: "X", version: "1", shape: "mcp", toolAliases: {}, notes: "", worlds: [world] });
+    expect(listAgents()[0].worlds).toEqual([world]);
+    expect(AgentInputSchema.parse({ name: "X", version: "1", shape: "mcp", worlds: [world] }).worlds).toEqual([world]);
   });
 
   it("accepts an API body without the new fields and defaults them", () => {

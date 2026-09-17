@@ -46,7 +46,7 @@ export function AgentCard({ agent, activity, href, fresh = false, style }: { age
       </ul>
       <dl className="mt-6 grid grid-cols-3 gap-3 border-t border-border pt-4">
         <Stat label="Trust"><span className={trustText[band]}>{activity.trust ?? "—"}</span></Stat>
-        <Stat label="Worlds">{agent.worldIds.length}</Stat>
+        <Stat label="Worlds">{agent.worldIds.length + agent.worlds.length}</Stat>
         <Stat label="Runs">{activity.runs}</Stat>
       </dl>
     </>
@@ -79,7 +79,7 @@ export function AgentRow({ agent, activity, href, fresh = false, style }: { agen
       <p className="hidden truncate text-caption text-muted-foreground md:block">{agent.description}</p>
       <dl className="flex items-center gap-6 font-label text-[11px] uppercase text-muted-foreground">
         <div className="flex items-baseline gap-1.5"><dt>Tools</dt><dd className="text-foreground">{agent.tools.length}</dd></div>
-        <div className="flex items-baseline gap-1.5"><dt>Worlds</dt><dd className="text-foreground">{agent.worldIds.length}</dd></div>
+        <div className="flex items-baseline gap-1.5"><dt>Worlds</dt><dd className="text-foreground">{agent.worldIds.length + agent.worlds.length}</dd></div>
         <div className="flex items-baseline gap-1.5"><dt>Trust</dt><dd className={`text-body font-semibold ${trustText[band]}`}>{activity.trust ?? "—"}</dd></div>
       </dl>
     </Link>

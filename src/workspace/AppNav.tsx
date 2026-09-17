@@ -19,7 +19,7 @@ export const WORKSPACE = { name: "Acme Risk", initials: "SR" } as const;
 export function AppNav() {
   const pathname = usePathname();
   return (
-    <nav className="sticky top-0 z-50 border-b border-border bg-background/85 backdrop-blur-xl" aria-label="Workspace">
+    <nav className="sticky top-0 z-50 border-b border-border bg-background" aria-label="Workspace">
       <div className={`${container} flex h-16 items-center gap-4`}>
         <div className="shrink-0"><Logo /></div>
         {/* On narrow screens the sections scroll sideways instead of wrapping or overflowing the page. */}

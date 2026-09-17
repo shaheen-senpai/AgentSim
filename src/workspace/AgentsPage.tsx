@@ -37,7 +37,7 @@ export function AgentsPage({ initialAgents, runs }: { initialAgents: Agent[]; ru
     setImportOpen(false);
     setAgents((current) => sortAgents([agent, ...current.filter((a) => a.id !== agent.id)]));
     setFreshId(agent.id);
-    setToast({ title: `${agent.name} connected via MCP`, body: `${agent.tools.length} tools and ${agent.entities.length} entities imported.` });
+    setToast({ title: `${agent.name} connected via MCP`, body: `${agent.tools.length} tools, ${agent.entities.length} entities and ${agent.worlds.length} drafted world${agent.worlds.length === 1 ? "" : "s"} imported.` });
     window.setTimeout(() => setFreshId(null), 3000);
   }, []);
 
@@ -57,16 +57,12 @@ export function AgentsPage({ initialAgents, runs }: { initialAgents: Agent[]; ru
   const dismiss = useCallback(() => setToast(null), []);
 
   return (
-    <main id="main" className={`${container} pb-24 pt-10`}>
-      <header className="grid gap-6 lg:grid-cols-[1fr_auto] lg:items-end">
+    <main id="main" className={`${container} pb-20 pt-8`}>
+      <header className="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-end">
         <div className="animate-reveal">
-          <p className={`${eyebrow} flex items-center gap-2 text-primary`}>
-            <span className="animate-radar-pulse size-1.5 rounded-full bg-primary" aria-hidden /> Onboarded agents
-          </p>
-          <h1 className="mt-3 max-w-[18ch] font-heading text-h2 font-medium sm:text-5xl sm:leading-[1.05]">
-            Your agents, <span className="text-primary">ready for the exam room.</span>
-          </h1>
-          <p className="mt-4 max-w-xl text-body text-muted-foreground">
+          <p className={eyebrow}>Workspace</p>
+          <h1 className="mt-2 font-heading text-display font-semibold">Agents</h1>
+          <p className="mt-2 max-w-xl text-body text-muted-foreground">
             Every agent here can be dropped into a seeded World, run clean and poisoned, and graded on the business outcome.
           </p>
         </div>
@@ -80,7 +76,7 @@ export function AgentsPage({ initialAgents, runs }: { initialAgents: Agent[]; ru
         </div>
       </header>
 
-      <div className="animate-reveal mt-8 [animation-delay:180ms]">
+      <div className="animate-reveal mt-6 [animation-delay:180ms]">
         <StatsStrip stats={stats} />
       </div>
 
@@ -94,7 +90,7 @@ export function AgentsPage({ initialAgents, runs }: { initialAgents: Agent[]; ru
         </div>
       ) : (
         <>
-          <div className="animate-reveal mt-8 flex flex-wrap items-center justify-between gap-3 [animation-delay:240ms]">
+          <div className="animate-reveal mt-6 flex flex-wrap items-center justify-between gap-3 [animation-delay:240ms]">
             <label className="relative w-full max-w-sm">
               <span className="sr-only">Search agents or tools</span>
               <Icon name="search" className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -109,7 +105,7 @@ export function AgentsPage({ initialAgents, runs }: { initialAgents: Agent[]; ru
           {visible.length === 0 ? (
             <p className="mt-10 text-center text-body text-muted-foreground">No agent or tool matches “{query}”.</p>
           ) : view === "grid" ? (
-            <ul key="grid" className="animate-fade-in mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <ul key="grid" className="animate-fade-in mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               {visible.map((a, i) => (
                 <li key={a.id}>
                   <AgentCard agent={a} activity={agentTrust(a.id, runs)} href={`/agents/${a.id}`} fresh={a.id === freshId} style={enter(i)} />
@@ -117,7 +113,7 @@ export function AgentsPage({ initialAgents, runs }: { initialAgents: Agent[]; ru
               ))}
             </ul>
           ) : (
-            <ul key="list" className="animate-fade-in mt-5 flex flex-col gap-2">
+            <ul key="list" className="animate-fade-in mt-4 flex flex-col gap-2">
               {visible.map((a, i) => (
                 <li key={a.id}>
                   <AgentRow agent={a} activity={agentTrust(a.id, runs)} href={`/agents/${a.id}`} fresh={a.id === freshId} style={enter(i)} />

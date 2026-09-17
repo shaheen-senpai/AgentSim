@@ -1,7 +1,8 @@
 "use client";
-// `/agents/[id]` — one agent: what it does, what it may do, and the Worlds it is examined in.
+// `/agents/[id]` — one agent, its trust, and straight into the Worlds it is examined in. A World is
+// either a pack on disk attached to the agent, or one drafted for it (by the plugin, or here).
 import Link from "next/link";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { Button, LinkButton } from "@/marketing/Button";
 import { Icon } from "@/marketing/icons";
 import type { Agent, PackSummary } from "@/ui/types";
@@ -9,111 +10,142 @@ import type { TrustDimension } from "./agentStats";
 import { SourceTag } from "./AgentCard";
 import { updateAgent } from "./api";
 import { EmptyState } from "./EmptyState";
+import type { HandshakeStep } from "./handshake";
 import { Modal } from "./Modal";
 import { Toast, type ToastMessage } from "./Toast";
 import { TrustPanel } from "./TrustPanel";
-import { card, container, enter, eyebrow, tag } from "./ui";
+import { container, enter, eyebrow } from "./ui";
 import { WorldCard } from "./WorldCard";
+import { buildWorldDraftScript, newWorldId, nextDraftWorld, worldViews } from "./worlds";
 
 type Props = { agent: Agent; packs: PackSummary[]; trust: number | null; runs: number; dimensions: TrustDimension[] };
+type Mode = "draft" | "attach";
 
 export function AgentDetail({ agent: initial, packs, trust, runs, dimensions }: Props) {
   const [agent, setAgent] = useState(initial);
   const [adding, setAdding] = useState(false);
+  const [mode, setMode] = useState<Mode>("draft");
   const [choice, setChoice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [script, setScript] = useState<HandshakeStep[]>([]);
+  const [freshId, setFreshId] = useState<string | null>(null);
   const [toast, setToast] = useState<ToastMessage | null>(null);
+  const timers = useRef<number[]>([]);
 
-  const byId = useMemo(() => new Map(packs.map((p) => [p.id, p])), [packs]);
-  const attached = agent.worldIds.map((id) => byId.get(id)).filter((p): p is PackSummary => !!p);
+  const views = useMemo(() => worldViews(agent, packs), [agent, packs]);
   const available = packs.filter((p) => !agent.worldIds.includes(p.id));
+  const draft = useMemo(() => nextDraftWorld(agent), [agent]);
 
-  const save = async (worldIds: string[], done: string) => {
+  const clearTimers = () => {
+    for (const t of timers.current) window.clearTimeout(t);
+    timers.current = [];
+  };
+
+  const save = async (next: Agent, done: string): Promise<boolean> => {
     setBusy(true);
-    const result = await updateAgent({ ...agent, worldIds });
+    const result = await updateAgent(next);
     setBusy(false);
     if (result.agent === null) {
       setToast({ title: "Not saved", body: result.error, tone: "danger" });
-      return;
+      return false;
     }
     setAgent(result.agent);
     setToast({ title: done });
+    return true;
   };
+
+  const closeAdd = useCallback(() => {
+    clearTimers();
+    setAdding(false);
+    setChoice(null);
+    setScript([]);
+  }, []);
 
   const attach = async () => {
     if (!choice) return;
-    await save([...agent.worldIds, choice], `${byId.get(choice)?.name ?? "World"} attached to ${agent.name}`);
-    setAdding(false);
-    setChoice(null);
+    const ok = await save({ ...agent, worldIds: [...agent.worldIds, choice] }, `${packs.find((p) => p.id === choice)?.name ?? "World"} attached to ${agent.name}`);
+    if (ok) {
+      setFreshId(choice);
+      window.setTimeout(() => setFreshId(null), 3000);
+      closeAdd();
+    }
+  };
+
+  /** Plays the drafting script, then saves the new World at the top of the agent's list. */
+  const draftWorld = () => {
+    clearTimers();
+    setScript([]);
+    setBusy(true);
+    const steps = buildWorldDraftScript(draft.name, agent.tools.length || 4);
+    for (const step of steps) {
+      timers.current.push(
+        window.setTimeout(async () => {
+          setScript((s) => [...s, step]);
+          if (!step.done) return;
+          const world = { ...draft, id: newWorldId(), createdAt: new Date().toISOString() };
+          const ok = await save({ ...agent, worlds: [world, ...agent.worlds] }, `${world.name} drafted for ${agent.name}`);
+          if (ok) {
+            setFreshId(world.id);
+            window.setTimeout(() => setFreshId(null), 3000);
+            timers.current.push(window.setTimeout(closeAdd, 500));
+          }
+        }, step.at),
+      );
+    }
+  };
+
+  const remove = (view: (typeof views)[number]) => {
+    if (view.kind === "draft") return save({ ...agent, worlds: agent.worlds.filter((w) => w.id !== view.id) }, `${view.name} deleted`);
+    return save({ ...agent, worldIds: agent.worldIds.filter((id) => id !== view.id) }, `${view.name} detached`);
   };
 
   const dismiss = useCallback(() => setToast(null), []);
-  const closeAdd = useCallback(() => { setAdding(false); setChoice(null); }, []);
+  const drafting = busy && mode === "draft" && script.length > 0;
+  const progress = script.length === 0 ? 0 : Math.round((script.length / 5) * 100);
 
   return (
-    <main id="main" className={`${container} pb-24 pt-10`}>
+    <main id="main" className={`${container} pb-20 pt-8`}>
       <Link href="/agents" className={`${eyebrow} inline-flex items-center gap-2 hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring`}>
         <Icon name="arrow-left" className="size-3.5" /> All agents
       </Link>
 
-      <div className="mt-6 grid gap-8 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+      <div className="mt-6 grid gap-8 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] lg:items-start">
         <header className="animate-reveal">
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <SourceTag source={agent.source} />
-            <span className={eyebrow}>{agent.source === "mcp" ? "Connected via MCP" : "Created by hand"} · {agent.shape}</span>
+            <span className={eyebrow}>
+              {agent.source === "mcp" ? "Connected via MCP" : "Created by hand"} · {agent.tools.length} tools · {agent.entities.length} entities
+            </span>
           </div>
-          <h1 className="mt-4 font-heading text-display font-medium sm:text-6xl">{agent.name}</h1>
-          {agent.description && <p className="mt-4 max-w-2xl text-lead text-muted-foreground">{agent.description}</p>}
-
-          <section className={`${card} mt-8 p-5`} aria-labelledby="mandate-title">
-            <h2 id="mandate-title" className={`${eyebrow} flex items-center gap-2`}><Icon name="shield" className="size-3.5" /> Mandate</h2>
-            <p className="mt-3 font-label text-body leading-relaxed text-foreground">{agent.mandate ? `“${agent.mandate}”` : <span className="text-muted-foreground">No mandate recorded. Add one so violations have something to be graded against.</span>}</p>
-          </section>
-
-          <div className="mt-8 grid gap-8 sm:grid-cols-2">
-            <section aria-labelledby="tools-title">
-              <h2 id="tools-title" className={eyebrow}>Tools · {agent.tools.length}</h2>
-              <ul className="mt-3 flex flex-wrap gap-1.5">
-                {agent.tools.map((t, i) => <li key={t} className={`${tag} animate-reveal`} style={enter(i)}>{t}</li>)}
-                {agent.tools.length === 0 && <li className="text-caption text-muted-foreground">None listed.</li>}
-              </ul>
-            </section>
-            <section aria-labelledby="entities-title">
-              <h2 id="entities-title" className={eyebrow}>Entities · {agent.entities.length}</h2>
-              <ul className="mt-3 flex flex-wrap gap-1.5">
-                {agent.entities.map((t, i) => <li key={t} className={`${tag} animate-reveal text-foreground`} style={enter(i)}>{t}</li>)}
-                {agent.entities.length === 0 && <li className="text-caption text-muted-foreground">None listed.</li>}
-              </ul>
-            </section>
-          </div>
+          <h1 className="mt-3 font-heading text-display font-semibold">{agent.name}</h1>
+          {agent.description && <p className="mt-2 max-w-2xl text-lead text-muted-foreground">{agent.description}</p>}
         </header>
-
         <div className="animate-reveal [animation-delay:150ms]">
           <TrustPanel trust={trust} runs={runs} dimensions={dimensions} />
         </div>
       </div>
 
-      <section className="mt-16" aria-labelledby="worlds-title">
+      <section className="mt-10" aria-labelledby="worlds-title">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className={eyebrow}>Worlds · {attached.length}</p>
-            <h2 id="worlds-title" className="mt-2 font-heading text-h2 font-medium">Controlled companies built around {agent.name}.</h2>
+            <p className={eyebrow}>Worlds · {views.length}</p>
+            <h2 id="worlds-title" className="mt-1 font-heading text-h2 font-semibold">Worlds</h2>
           </div>
-          <Button onClick={() => setAdding(true)}><Icon name="plus" className="size-4" /> Add world</Button>
+          <Button onClick={() => { setMode("draft"); setAdding(true); }}><Icon name="plus" className="size-4" /> Add world</Button>
         </div>
 
-        {attached.length === 0 ? (
+        {views.length === 0 ? (
           <div className="mt-6">
-            <EmptyState icon="globe" title="No worlds yet" body="Attach a seeded World, or generate one from this agent's tools and schemas, then run the first clean-versus-poisoned shift.">
-              <Button variant="outline" onClick={() => setAdding(true)}><Icon name="plus" className="size-4" /> Attach a world</Button>
-              <LinkButton href="/worlds/new">Generate a world <Icon name="arrow-right" className="size-4" /></LinkButton>
+            <EmptyState icon="globe" title="No worlds yet" body="Draft a seeded World from this agent's tools, or attach one already installed, then run the first clean-versus-poisoned shift.">
+              <Button onClick={() => { setMode("draft"); setAdding(true); }}><Icon name="plus" className="size-4" /> Draft a world</Button>
+              <Button variant="outline" onClick={() => { setMode("attach"); setAdding(true); }}>Attach an installed world</Button>
             </EmptyState>
           </div>
         ) : (
-          <ul className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {attached.map((w, i) => (
+          <ul className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {views.map((w, i) => (
               <li key={w.id}>
-                <WorldCard world={w} style={enter(i)} onDetach={() => save(agent.worldIds.filter((id) => id !== w.id), `${w.name} detached`)} />
+                <WorldCard world={w} style={enter(i)} fresh={w.id === freshId} onRemove={() => remove(w)} />
               </li>
             ))}
           </ul>
@@ -121,10 +153,58 @@ export function AgentDetail({ agent: initial, packs, trust, runs, dimensions }: 
       </section>
 
       <Modal open={adding} onClose={closeAdd} eyebrow="Add world" title={`Where should ${agent.name} be examined?`}>
-        {available.length === 0 ? (
-          <p className="text-body text-muted-foreground">Every installed World is already attached. Generate a new one from this agent&apos;s tools.</p>
+        <div className="flex rounded-control border border-border bg-background p-1 font-label text-label uppercase" role="tablist" aria-label="How to add a world">
+          {(["draft", "attach"] as Mode[]).map((m) => (
+            <button
+              key={m}
+              type="button"
+              role="tab"
+              aria-selected={mode === m}
+              disabled={drafting}
+              onClick={() => setMode(m)}
+              className={`min-h-9 flex-1 cursor-pointer rounded-[4px] px-3 transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-ring ${mode === m ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              {m === "draft" ? "Draft from tools" : "Attach installed"}
+            </button>
+          ))}
+        </div>
+
+        {mode === "draft" ? (
+          <div className="mt-5">
+            <p className="text-body text-muted-foreground">
+              AgentSim reads {agent.name}&apos;s {agent.tools.length || "declared"} tools and schemas, seeds a realistic company around them, and writes clean and poisoned scenarios you can replay.
+            </p>
+            <div className="mt-4 rounded-control border border-border bg-background p-4">
+              <p className={eyebrow}>Next draft</p>
+              <p className="mt-1 font-heading text-body font-semibold">{draft.name}</p>
+              <p className="mt-1 text-caption text-muted-foreground">{draft.description}</p>
+              <p className="mt-2 font-label text-[11px] uppercase text-muted-foreground">{draft.scenarios} scenarios · {draft.tools} tools · {draft.rows} rows</p>
+            </div>
+            {script.length > 0 && (
+              <div className="mt-4 overflow-hidden rounded-control border border-border bg-background" aria-live="polite">
+                <div className="flex items-center justify-between border-b border-border px-4 py-2">
+                  <span className={`${eyebrow} flex items-center gap-2`}><Icon name="terminal" className="size-3.5" /> Drafting</span>
+                  <span className="font-label text-[11px] tabular-nums text-primary">{progress}%</span>
+                </div>
+                <ol className="space-y-1.5 px-4 py-3 font-label text-caption">
+                  {script.map((s) => (
+                    <li key={s.at} className={`animate-line-in flex gap-2 ${s.done ? "text-primary" : "text-foreground"}`}>
+                      <span className="text-muted-foreground" aria-hidden>▸</span>
+                      <span>{s.text}</span>
+                    </li>
+                  ))}
+                  {drafting && !script.at(-1)?.done && (
+                    <li className="flex items-center gap-2 text-muted-foreground"><Icon name="spinner" className="size-3.5 animate-spin" /> working…</li>
+                  )}
+                </ol>
+                <div className="h-0.5 w-full bg-border" aria-hidden><div className="h-full bg-primary transition-[width] duration-500 ease-soft" style={{ width: `${progress}%` }} /></div>
+              </div>
+            )}
+          </div>
+        ) : available.length === 0 ? (
+          <p className="mt-5 text-body text-muted-foreground">Every installed World is already attached. Draft a new one from this agent&apos;s tools instead.</p>
         ) : (
-          <ul className="flex flex-col gap-2" role="radiogroup" aria-label="Installed worlds">
+          <ul className="mt-5 flex flex-col gap-2" role="radiogroup" aria-label="Installed worlds">
             {available.map((p) => (
               <li key={p.id}>
                 <label className={`flex cursor-pointer items-start gap-3 rounded-control border px-4 py-3 transition-colors duration-200 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-ring ${choice === p.id ? "border-primary/60 bg-primary/10" : "border-border hover:border-primary/40"}`}>
@@ -139,13 +219,16 @@ export function AgentDetail({ agent: initial, packs, trust, runs, dimensions }: 
             ))}
           </ul>
         )}
+
         <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
-          <Link href="/worlds/new" className="inline-flex items-center gap-1 text-caption text-primary underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-ring">
-            Generate a new World instead <Icon name="arrow-right" className="size-3.5" />
-          </Link>
+          <LinkButton href="/worlds/new" variant="ghost" className="text-caption">Full World editor <Icon name="arrow-right" className="size-3.5" /></LinkButton>
           <div className="flex gap-2">
             <Button variant="ghost" onClick={closeAdd}>Cancel</Button>
-            <Button onClick={attach} disabled={!choice || busy}>{busy ? "Attaching…" : "Attach world"}</Button>
+            {mode === "draft" ? (
+              <Button onClick={draftWorld} disabled={busy}>{drafting ? "Drafting…" : <><Icon name="plus" className="size-4" /> Draft world</>}</Button>
+            ) : (
+              <Button onClick={attach} disabled={!choice || busy}>{busy ? "Attaching…" : "Attach world"}</Button>
+            )}
           </div>
         </div>
       </Modal>

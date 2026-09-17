@@ -12,6 +12,21 @@ import { dataDir } from "./store";
 /** How an Agent entered the workspace: through the AgentSim MCP plugin, or typed in by hand. */
 export type AgentSource = "mcp" | "manual";
 
+/**
+ * A World drafted for one agent (by the MCP plugin from its tools, or from the agent page) that has
+ * not been promoted to a pack on disk. Numbers are the draft's shape, not a pack's counts.
+ */
+export type DraftWorld = {
+  id: string;
+  name: string;
+  domain: string;
+  description: string;
+  scenarios: number;
+  tools: number;
+  rows: number;
+  createdAt: string;
+};
+
 export type Agent = {
   id: string;
   name: string;
@@ -38,9 +53,11 @@ export type Agent = {
   entities: string[];
   /** World packs attached to this agent — the controlled companies it is examined in. */
   worldIds: string[];
+  /** Worlds drafted for this agent that are not (yet) packs on disk. */
+  worlds: DraftWorld[];
 };
 
-type WorkspaceField = "source" | "description" | "mandate" | "tools" | "entities" | "worldIds";
+type WorkspaceField = "source" | "description" | "mandate" | "tools" | "entities" | "worldIds" | "worlds";
 
 /** What `saveAgent` accepts: a new agent (no id, no createdAt) or an existing one being replaced. */
 type OptionalField = "id" | "createdAt" | "url" | "authHeaderEnv" | WorkspaceField;
@@ -70,6 +87,21 @@ export const AgentInputSchema = z.object({
   tools: z.array(z.string().min(1).max(200)).max(200).default([]),
   entities: z.array(z.string().min(1).max(200)).max(200).default([]),
   worldIds: z.array(z.string().min(1).max(200)).max(50).default([]),
+  worlds: z
+    .array(
+      z.object({
+        id: z.string().min(1).max(64),
+        name: z.string().min(1).max(200),
+        domain: z.string().max(200).default(""),
+        description: z.string().max(2000).default(""),
+        scenarios: z.number().int().min(0),
+        tools: z.number().int().min(0),
+        rows: z.number().int().min(0),
+        createdAt: z.string().min(1),
+      }),
+    )
+    .max(50)
+    .default([]),
 });
 
 function isHttpUrl(raw: string): boolean {
@@ -95,6 +127,7 @@ function normalize(a: Partial<Agent> & Pick<Agent, "id" | "name" | "version" | "
     tools: a.tools ?? [],
     entities: a.entities ?? [],
     worldIds: a.worldIds ?? [],
+    worlds: a.worlds ?? [],
   };
 }
 
@@ -159,6 +192,7 @@ export function saveAgent(input: AgentInput): Agent {
     tools: input.tools ?? [],
     entities: input.entities ?? [],
     worldIds: input.worldIds ?? [],
+    worlds: input.worlds ?? [],
   };
   const next = existing ? agents.map((a) => (a.id === id ? agent : a)) : [...agents, agent];
   writeAll(next);

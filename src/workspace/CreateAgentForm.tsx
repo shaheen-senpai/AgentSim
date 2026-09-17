@@ -49,6 +49,7 @@ export function CreateAgentForm() {
     tools: lines(tools),
     entities: lines(entities),
     worldIds: [],
+    worlds: [],
   };
 
   const submit = async (e: React.FormEvent) => {
@@ -71,14 +72,14 @@ export function CreateAgentForm() {
   };
 
   return (
-    <main id="main" className={`${container} pb-24 pt-10`}>
+    <main id="main" className={`${container} pb-20 pt-8`}>
       <Link href="/agents" className={`${eyebrow} inline-flex items-center gap-2 hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring`}>
         <Icon name="arrow-left" className="size-3.5" /> All agents
       </Link>
       <div className="mt-6 grid gap-10 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
         <form onSubmit={submit} noValidate className="animate-reveal">
-          <p className={`${eyebrow} text-primary`}>Create agent</p>
-          <h1 className="mt-3 font-heading text-h2 font-medium">Describe the agent you want examined.</h1>
+          <p className={eyebrow}>Workspace</p>
+          <h1 className="mt-2 font-heading text-display font-semibold">Create agent</h1>
           <p className="mt-3 max-w-xl text-body text-muted-foreground">Tools and entities are one per line. You can attach Worlds afterwards.</p>
 
           <div className="mt-8 flex flex-col gap-5">

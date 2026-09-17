@@ -14,7 +14,7 @@ export function StatsStrip({ stats }: { stats: WorkspaceStats }) {
       {cells.map((c) => (
         <div key={c.label} className="px-5 py-4">
           <dt className={eyebrow}>{c.label}</dt>
-          <dd className="mt-1 font-heading text-2xl font-semibold tabular-nums">{c.value}</dd>
+          <dd className="mt-1 font-heading text-xl font-semibold tabular-nums">{c.value}</dd>
           <dd className="mt-0.5 font-label text-[11px] text-muted-foreground">{c.sub}</dd>
         </div>
       ))}

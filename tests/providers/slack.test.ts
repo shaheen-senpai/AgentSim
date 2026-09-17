@@ -31,7 +31,7 @@ function slackFixturePack(rows: { employees?: Row[]; messages?: Row[] }): WorldP
 
   return {
     meta: {
-      id: "slack-fixture", name: "Slack Fixture", domain: "test", description: "test pack", principal: "employees",
+      id: "slack-fixture", name: "Slack Fixture", domain: "test", description: "test pack", principal: "employees", status: "ready", mandates: {},
       systems: { chat: { label: "Chat" } },
       entities: { employees, messages },
     },

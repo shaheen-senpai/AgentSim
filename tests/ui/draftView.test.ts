@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { draftEntities, draftScenario, draftTools } from "@/ui/worlds/newWorld/draftView";
+import { proposalChanges } from "@/ui/worlds/GenerateScenarios";
 
 const files = {
   "pack.yaml": "entities:\n  members: { label: Member, id_prefix: mem_, owner: self, fields: { id: string } }\n  notes: { owner: { via: m }, fields: { id: string, body: { type: text, untrusted: true } } }\n",
@@ -26,5 +27,24 @@ describe("draftView", () => {
     expect(draftTools({})).toEqual([]);
     expect(draftScenario({})).toBeNull();
     expect(draftScenario({ "scenarios/a.yaml": "title: T\n" })).toEqual({ title: "T", policy: "", checks: [], attack: null });
+  });
+});
+
+// ── The generated-Scenario review (`GenerateScenarios`) ──
+
+describe("proposalChanges", () => {
+  const current = { "pack.yaml": "id: x\n", "seed.yaml": "rows: {}\n", "scenarios/one.yaml": "id: one\n" };
+
+  it("names the Scenarios a proposal adds, and says whether the Seed was rewritten", () => {
+    const proposed = { ...current, "seed.yaml": "rows: { customers: [] }\n", "scenarios/two.yaml": "id: two\n" };
+    expect(proposalChanges(current, proposed)).toEqual({ added: ["two"], seedChanged: true });
+  });
+
+  it("counts a rewritten existing Scenario as changed, so it cannot slip past the reviewer", () => {
+    expect(proposalChanges(current, { ...current, "scenarios/one.yaml": "id: one\ntitle: edited\n" }).added).toEqual(["one"]);
+  });
+
+  it("reports nothing when the proposal matches what is already there", () => {
+    expect(proposalChanges(current, { ...current })).toEqual({ added: [], seedChanged: false });
   });
 });

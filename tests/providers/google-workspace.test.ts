@@ -39,7 +39,7 @@ function googleWorkspaceFixturePack(emailRows: Row[]): WorldPack {
 
   return {
     meta: {
-      id: "google-workspace-fixture", name: "Google Workspace Fixture", domain: "test", description: "test pack", principal: "customers",
+      id: "google-workspace-fixture", name: "Google Workspace Fixture", domain: "test", description: "test pack", principal: "customers", status: "ready", mandates: {},
       systems: { email: { label: "Email" } },
       entities: { customers, threads, emails },
     },

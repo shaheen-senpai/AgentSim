@@ -3,7 +3,7 @@
 import { parse } from "yaml";
 import type { Draft } from "@/generate/draftRegistry";
 
-export type DraftSummary = { id: string; createdAt: number; name: string; domain: string; valid: boolean; errorCount: number; tools: number; entities: number };
+export type DraftSummary = { id: string; createdAt: number; name: string; domain: string; valid: boolean; errorCount: number; tools: number; entities: number; mandates: number; token: string; client?: string; repo?: string };
 
 /** Top-level keys of a YAML mapping (or of `path` inside it); 0 for anything that does not parse. */
 function keysOf(text: string | undefined, path?: string): number {
@@ -26,5 +26,9 @@ export function summarizeDraft(d: Draft): DraftSummary {
     errorCount: d.errors.length,
     tools: keysOf(d.files["tools.yaml"]),
     entities: keysOf(d.files["pack.yaml"], "entities"),
+    mandates: keysOf(d.files["pack.yaml"], "mandates"),
+    token: d.meta.token,
+    ...(d.meta.client ? { client: d.meta.client } : {}),
+    ...(d.meta.repo ? { repo: d.meta.repo } : {}),
   };
 }

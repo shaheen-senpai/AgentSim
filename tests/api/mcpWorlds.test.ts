@@ -6,8 +6,10 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
-import { POST as mcpWorldsRoute } from "@/app/mcp/worlds/route";
+import { clientLabel, freeWorldId, POST as mcpWorldsRoute, renderRepo } from "@/app/mcp/worlds/route";
+import type { McpServer } from "@modelcontextprotocol/server";
 import { loadPack, packsDir, type PackFiles } from "@/engine/pack";
+import { issueToken } from "@/generate/buildTokens";
 import { createDraft } from "@/generate/draftRegistry";
 import { usePacksDir } from "../helpers/packs";
 
@@ -56,13 +58,31 @@ describe("/mcp/worlds", () => {
   it("register_agent refuses to spend anything when ANTHROPIC_API_KEY is unset", async () => {
     delete process.env.ANTHROPIC_API_KEY;
     const init = await initialize();
-    const res = await call(init.sessionId, "register_agent", { name: "Acme Helpdesk", domain: "helpdesk", description: "An IT helpdesk." });
+    const res = await call(init.sessionId, "register_agent", { token: issueToken().token, name: "Acme Helpdesk", domain: "helpdesk", description: "An IT helpdesk." });
     expect(res.result.isError).toBe(true);
     expect(textOf(res.result)).toContain("ANTHROPIC_API_KEY");
   });
 
+  // The token is the gate, so it is checked before anything else — including the API key, which is
+  // the guard that would otherwise be doing this job by accident.
+  it("register_agent refuses a token AgentSim never issued, and refuses to reuse a spent one", async () => {
+    process.env.ANTHROPIC_API_KEY = "sk-ant-not-a-real-key";
+    const init = await initialize();
+
+    const bogus = await call(init.sessionId, "register_agent", { token: "wb_nope", name: "A", domain: "d", description: "x" });
+    expect(bogus.result.isError).toBe(true);
+    expect(textOf(bogus.result)).toContain("not one AgentSim issued");
+
+    const token = issueToken().token;
+    delete process.env.ANTHROPIC_API_KEY; // the first call gets past the token and stops at the key
+    await call(init.sessionId, "register_agent", { token, name: "A", domain: "d", description: "x" });
+    const reused = await call(init.sessionId, "register_agent", { token, name: "A", domain: "d", description: "x" });
+    expect(reused.result.isError).toBe(true);
+    expect(textOf(reused.result)).toContain("already been used");
+  });
+
   it("get_world_draft renders a seeded draft's files and its validation state", async () => {
-    const draft = createDraft({ name: "Northwind", domain: "commerce", description: "d" }, { files: northwindFiles, errors: [], attempts: 1 });
+    const draft = createDraft({ name: "Northwind", domain: "commerce", description: "d" }, { token: "wb_seeded", client: "claude-code 2.0.9", repo: "github.com/nw/bot@a1b2c3d" }, { files: northwindFiles, errors: [], attempts: 1 });
     const init = await initialize();
 
     const res = await call(init.sessionId, "get_world_draft", { draftId: draft.id });
@@ -72,16 +92,35 @@ describe("/mcp/worlds", () => {
   });
 
   it("create_world persists a seeded valid draft through the real POST /api/worlds path", async () => {
-    const draft = createDraft({ name: "Northwind", domain: "commerce", description: "d" }, { files: northwindFiles, errors: [], attempts: 1 });
+    const draft = createDraft({ name: "Northwind", domain: "commerce", description: "d" }, { token: "wb_seeded", client: "claude-code 2.0.9", repo: "github.com/nw/bot@a1b2c3d" }, { files: northwindFiles, errors: [], attempts: 1 });
     const init = await initialize();
 
     const res = await call(init.sessionId, "create_world", { draftId: draft.id, worldId: "northwind-mcp" });
     expect(res.result.isError).toBeFalsy();
-    const { worldId, url } = JSON.parse(textOf(res.result)) as { worldId: string; url: string };
+    const { worldId, url, status } = JSON.parse(textOf(res.result)) as { worldId: string; url: string; status: string };
     expect(worldId).toBe("northwind-mcp");
     expect(url).toBe("/worlds/northwind-mcp");
+    expect(status).toBe("draft");
     expect(existsSync(path.join(packsDir(), "northwind-mcp", "pack.yaml"))).toBe(true);
-    expect(loadPack("northwind-mcp").meta.id).toBe("northwind-mcp"); // withPackId stamped the new id
+
+    // A plugin-built World arrives in review, and remembers the run that built it.
+    const meta = loadPack("northwind-mcp").meta;
+    expect(meta.id).toBe("northwind-mcp"); // withPackId stamped the new id
+    expect(meta.status).toBe("draft");
+    // The client is the one captured when the run registered, not whoever is calling create_world.
+    expect(meta.built_by).toMatchObject({ source: "plugin", run: draft.id, token: "wb_seeded", client: "claude-code 2.0.9", repo: "github.com/nw/bot@a1b2c3d" });
+  });
+
+  it("create_world on a taken id creates the next free one rather than overwriting", async () => {
+    const draft = createDraft({ name: "Northwind", domain: "commerce", description: "d" }, { token: "wb_seeded2" }, { files: northwindFiles, errors: [], attempts: 1 });
+    const init = await initialize();
+
+    const res = await call(init.sessionId, "create_world", { draftId: draft.id, worldId: "northwind" });
+    expect(res.result.isError).toBeFalsy();
+    const { worldId, note } = JSON.parse(textOf(res.result)) as { worldId: string; note?: string };
+    expect(worldId).toBe("northwind-2");
+    expect(note).toContain("was taken");
+    expect(loadPack("northwind").meta.status).toBe("ready"); // the installed World is untouched
   });
 
   it("refuses get_world_draft/refine_world/create_world for an unknown draftId", async () => {
@@ -97,7 +136,7 @@ describe("/mcp/worlds", () => {
   });
 
   it("rejects create_world with an invalid worldId before touching the filesystem", async () => {
-    const draft = createDraft({ name: "Northwind", domain: "commerce", description: "d" }, { files: northwindFiles, errors: [], attempts: 1 });
+    const draft = createDraft({ name: "Northwind", domain: "commerce", description: "d" }, { token: "wb_seeded", client: "claude-code 2.0.9", repo: "github.com/nw/bot@a1b2c3d" }, { files: northwindFiles, errors: [], attempts: 1 });
     const init = await initialize();
 
     const res = await call(init.sessionId, "create_world", { draftId: draft.id, worldId: "Not Valid!" });
@@ -114,11 +153,57 @@ describe("/mcp/worlds", () => {
       name: "Test",
       domain: "d",
       description: "desc",
+      token: issueToken().token,
       tools: [{ name: "t", inputSchema: oversized }],
     });
 
     expect(res.result.isError).toBe(true);
     expect(textOf(res.result)).toContain("inputSchema is too large");
+  });
+});
+
+// ══════════════════════════════════════════════════════════════════════════
+// Identifying a run: who connected, from which repo, under which id
+// ══════════════════════════════════════════════════════════════════════════
+
+describe("clientLabel", () => {
+  const stub = (version?: { name: string; version?: string }) => ({ server: { getClientVersion: () => version } }) as unknown as McpServer;
+
+  it("prefers the per-request envelope over the deprecated initialize-scoped accessor", () => {
+    const ctx = { mcpReq: { envelope: { "io.modelcontextprotocol/clientInfo": { name: "claude-code", version: "2.0.9" } } } };
+    expect(clientLabel(ctx, stub({ name: "stale", version: "0.1" }))).toBe("claude-code 2.0.9");
+  });
+
+  it("falls back to the accessor on a 2025-era connection, which carries no envelope", () => {
+    expect(clientLabel({ mcpReq: {} }, stub({ name: "some-client", version: "3" }))).toBe("some-client 3");
+    expect(clientLabel(undefined, stub({ name: "nameless-version" }))).toBe("nameless-version");
+  });
+
+  it("is undefined when nothing identified itself, rather than inventing a label", () => {
+    expect(clientLabel({ mcpReq: { envelope: {} } }, stub(undefined))).toBeUndefined();
+    expect(clientLabel({ mcpReq: { envelope: { "io.modelcontextprotocol/clientInfo": { version: "2" } } } }, stub(undefined))).toBeUndefined();
+  });
+});
+
+describe("renderRepo", () => {
+  it("renders an ssh or https remote and a short commit as one comparable string", () => {
+    expect(renderRepo({ remote: "git@github.com:acme/support-bot.git", commit: "a1b2c3d4e5f6" })).toBe("github.com/acme/support-bot@a1b2c3d");
+    expect(renderRepo({ remote: "https://github.com/acme/support-bot.git", commit: "a1b2c3d4e5f6" })).toBe("github.com/acme/support-bot@a1b2c3d");
+    expect(renderRepo({ remote: "https://gitlab.com/acme/bot/" })).toBe("gitlab.com/acme/bot");
+  });
+
+  it("is undefined without a remote, so a repo-less run is not matched against another one", () => {
+    expect(renderRepo(undefined)).toBeUndefined();
+    expect(renderRepo({ commit: "a1b2c3d" })).toBeUndefined();
+    expect(renderRepo({ remote: "   " })).toBeUndefined();
+  });
+});
+
+describe("freeWorldId", () => {
+  it("keeps the asked-for id when it is free, and suffixes past every taken one", () => {
+    expect(freeWorldId("northwind", [])).toBe("northwind");
+    expect(freeWorldId("northwind", ["northwind"])).toBe("northwind-2");
+    expect(freeWorldId("northwind", ["northwind", "northwind-2", "northwind-3"])).toBe("northwind-4");
   });
 });
 

@@ -1,12 +1,14 @@
-// The generator, without the network. Every model call here comes from a fake client: the tests
-// prove what `buildPrompt` puts in front of the model and that the validate-and-retry loop really
-// re-prompts with the errors — never that the API works.
+// Stage one — the World's structure — without the network. Every model call here comes from a fake
+// client: the tests prove what `buildPrompt` puts in front of the model and that the
+// validate-and-retry loop really re-prompts with the errors — never that the API works.
 import { beforeAll, describe, expect, it } from "vitest";
 import type Anthropic from "@anthropic-ai/sdk";
 import { POST as generateRoute } from "@/app/api/worlds/generate/route";
 import { loadPack, parsePackFiles, type PackFiles, type ValidationError } from "@/engine/pack";
+import { MAX_ATTEMPTS } from "@/generate/call";
 import { examplePackFiles, loadFormatDoc } from "@/generate/formatDoc";
-import { buildPrompt, generateWorldPack, MAX_ATTEMPTS, PROPOSE_TOOL, TOOL_NAME, type GenerateInput } from "@/generate/worldpack";
+import { buildPrompt, generateStructure, mandateSection, matchProvider, mcpServerSection, PROPOSE_TOOL, TOOL_NAME, toolsToText, type StructureInput } from "@/generate/structure";
+import { withPackStatus } from "@/ui/worlds/packEdits";
 import { usePacksDir } from "../helpers/packs";
 
 // ───────────────────────────── the fake client ─────────────────────────────
@@ -20,13 +22,9 @@ type StreamParams = {
 
 type FakeMessage = { stop_reason: string; content: { type: string; name?: string; input?: unknown }[] };
 
-const proposal = (files: PackFiles, scenarioIds: string[], agentVersions: string[]) => ({
-  pack_yaml: files["pack.yaml"],
-  seed_yaml: files["seed.yaml"],
-  tools_yaml: files["tools.yaml"],
-  scenarios: scenarioIds.map((id) => ({ id, yaml: files[`scenarios/${id}.yaml`] })),
-  agents: agentVersions.map((version) => ({ version, markdown: files[`agents/${version}.md`] })),
-});
+const proposal = (files: PackFiles) => ({ pack_yaml: files["pack.yaml"], seed_yaml: files["seed.yaml"], tools_yaml: files["tools.yaml"] });
+
+const PROVIDERS = ["google-workspace", "okta", "slack", "stripe", "zendesk"];
 
 const toolUse = (input: unknown): FakeMessage => ({ stop_reason: "tool_use", content: [{ type: "tool_use", name: TOOL_NAME, input }] });
 
@@ -48,7 +46,7 @@ function fakeClient(replies: FakeMessage[], calls: StreamParams[]): Anthropic {
 
 // ───────────────────────────── fixtures ─────────────────────────────
 
-const INPUT: GenerateInput = {
+const INPUT: StructureInput = {
   name: "Halvard Helpdesk",
   domain: "it-helpdesk",
   description: "An internal IT helpdesk: employees raise tickets, agents grant access and reset devices.",
@@ -56,6 +54,14 @@ const INPUT: GenerateInput = {
   tools: "get_ticket, grant_access, reset_device",
   openapi: "openapi: 3.1.0",
 };
+
+/**
+ * What stage one really returns: the three structural files, and nothing else — with `status: draft`
+ * stamped on, because a World with no Scenarios is only valid as a draft.
+ */
+function structureOf(files: PackFiles): PackFiles {
+  return { "pack.yaml": withPackStatus(files["pack.yaml"], "draft"), "seed.yaml": files["seed.yaml"], "tools.yaml": files["tools.yaml"] };
+}
 
 let northwind: PackFiles;
 let formatDoc: string;
@@ -87,12 +93,15 @@ describe("docs/worldpack-format.md", () => {
     expect(pack!.seed.rows[pack!.meta.principal].length).toBeGreaterThanOrEqual(3);
     expect(pack!.scenarios.length).toBeGreaterThanOrEqual(1);
     expect(pack!.scenarios[0].attacks.length).toBeGreaterThanOrEqual(1);
+    // And that the Mandate citation the doc recommends is the one it demonstrates.
+    const cited = pack!.scenarios[0].policy.mandate!;
+    expect(pack!.meta.mandates[cited].text).toBe(pack!.scenarios[0].policy.text);
   });
 });
 
 describe("buildPrompt", () => {
   it("puts the whole format doc and every input in front of the model", () => {
-    const { system, user } = buildPrompt(INPUT, formatDoc);
+    const { system, user } = buildPrompt(INPUT, formatDoc, PROVIDERS);
 
     expect(system).toContain(formatDoc.trim());
     expect(system).toContain("Schema only, never real data");
@@ -108,7 +117,7 @@ describe("buildPrompt", () => {
   });
 
   it("omits the optional sections that were not given", () => {
-    const { user } = buildPrompt({ name: "A", domain: "b", description: "c" }, formatDoc);
+    const { user } = buildPrompt({ name: "A", domain: "b", description: "c" }, formatDoc, PROVIDERS);
     expect(user).not.toContain("## Database schema");
     expect(user).not.toContain("## Tool list");
     expect(user).not.toContain("## OpenAPI specification");
@@ -119,7 +128,7 @@ describe("buildPrompt", () => {
       { file: "tools.yaml", path: "tools.grant_access.system", message: "system 'access' is not declared in pack.yaml systems" },
       { file: "seed.yaml", path: "rows.tickets[0].id", message: "row t1 in tickets must start with tkt_" },
     ];
-    const { user } = buildPrompt(INPUT, formatDoc, previous);
+    const { user } = buildPrompt(INPUT, formatDoc, PROVIDERS, previous);
 
     expect(user).toContain("did not validate");
     for (const e of previous) {
@@ -131,7 +140,7 @@ describe("buildPrompt", () => {
 
   it("shows the current draft and the requested change when refining", () => {
     const previousFiles = { "pack.yaml": "id: acme\nname: Acme\n", "tools.yaml": "get_ticket:\n  system: support\n" };
-    const { user } = buildPrompt(INPUT, formatDoc, undefined, { note: "Add a Stripe-like payments system.", previousFiles });
+    const { user } = buildPrompt(INPUT, formatDoc, PROVIDERS, undefined, { note: "Add a Stripe-like payments system.", previousFiles });
 
     expect(user).toContain("## Current draft");
     expect(user).toContain("pack.yaml");
@@ -145,7 +154,7 @@ describe("buildPrompt", () => {
   it("carries both a refinement and validation errors when both are present", () => {
     const previousFiles = { "pack.yaml": "id: acme\n" };
     const errors: ValidationError[] = [{ file: "tools.yaml", path: "", message: "system 'nope' is not declared" }];
-    const { user } = buildPrompt(INPUT, formatDoc, errors, { note: "add refunds", previousFiles });
+    const { user } = buildPrompt(INPUT, formatDoc, PROVIDERS, errors, { note: "add refunds", previousFiles });
 
     expect(user).toContain("## Current draft");
     expect(user).toContain("## Requested change");
@@ -154,30 +163,85 @@ describe("buildPrompt", () => {
   });
 
   it("omits the current-draft section when there is no refinement", () => {
-    const { user } = buildPrompt(INPUT, formatDoc);
+    const { user } = buildPrompt(INPUT, formatDoc, PROVIDERS);
     expect(user).not.toContain("## Current draft");
     expect(user).not.toContain("## Requested change");
   });
 
-  it("names payments/messaging/email/storage dependencies as their own system, with a worked shape", () => {
-    const { system } = buildPrompt(INPUT, formatDoc);
-    expect(system).toContain("Stripe");
-    expect(system).toContain("issue_refund");
-    expect(system).toMatch(/refund.*exceed|balance/i);
+  it("tells the model this stage writes no rows, Scenarios or prompts", () => {
+    const { system } = buildPrompt(INPUT, formatDoc, PROVIDERS);
+    expect(system).toContain("empty array for every declared entity");
+    expect(system).toContain("Write no Scenarios, no Attacks and no agent prompts");
+    expect(system).not.toContain("Seed at least three principals"); // that rule belongs to stage two
+  });
+
+  it("carries the captured MCP servers, shadowing the ones our catalog covers", () => {
+    const { user } = buildPrompt(
+      { ...INPUT, mcpServers: [{ name: "stripe-mcp" }, { name: "acme-billing", tools: [{ name: "charge_card", description: "Take a payment." }] }] },
+      formatDoc,
+      PROVIDERS,
+    );
+    expect(user).toContain("Third-party MCP servers this agent integrates");
+    expect(user).toContain("mode: shadowed, provider: stripe");
+    expect(user).toContain("acme-billing → no catalog for it");
+    expect(user).toContain("charge_card"); // an unknown server's tools have to come from the repo
+  });
+
+  it("carries the Mandates verbatim, with where they were read from", () => {
+    const { user } = buildPrompt(
+      { ...INPUT, mandates: [{ title: "Refunds", text: "Never refund more than was charged.", source: "POLICY.md" }] },
+      formatDoc,
+      PROVIDERS,
+    );
+    expect(user).toContain("Mandates read from the agent's own policy");
+    expect(user).toContain("Refunds (from POLICY.md)");
+    expect(user).toContain("Never refund more than was charged.");
   });
 });
 
-describe("generateWorldPack", () => {
+describe("matchProvider", () => {
+  it("matches a catalog provider however the client config spells it", () => {
+    expect(matchProvider({ name: "stripe" }, PROVIDERS)).toBe("stripe");
+    expect(matchProvider({ name: "stripe-mcp" }, PROVIDERS)).toBe("stripe");
+    expect(matchProvider({ name: "Stripe Payments" }, PROVIDERS)).toBe("stripe");
+    expect(matchProvider({ name: "google_workspace" }, PROVIDERS)).toBe("google-workspace");
+  });
+
+  it("is null for a server we have no catalog for, which is what makes it a mocked system", () => {
+    expect(matchProvider({ name: "acme-billing" }, PROVIDERS)).toBeNull();
+    expect(matchProvider({ name: "" }, PROVIDERS)).toBeNull();
+  });
+});
+
+describe("prompt sections that are empty when nothing was captured", () => {
+  it("writes no MCP or Mandate section at all", () => {
+    expect(mcpServerSection(undefined, PROVIDERS)).toBe("");
+    expect(mcpServerSection([], PROVIDERS)).toBe("");
+    expect(mandateSection(undefined)).toBe("");
+    expect(mandateSection([])).toBe("");
+    expect(toolsToText(undefined)).toBeUndefined();
+    expect(toolsToText([])).toBeUndefined();
+  });
+
+  it("renders a tool list with its description and input schema", () => {
+    expect(toolsToText([{ name: "get_ticket", description: "Fetch one.", inputSchema: { type: "object" } }])).toBe(
+      '- get_ticket: Fetch one.\n  input: {"type":"object"}',
+    );
+  });
+});
+
+describe("generateStructure", () => {
   it("retries once with the validation errors, and returns the second, valid draft", async () => {
     const calls: StreamParams[] = [];
-    const broken = { ...proposal(northwind, ["duplicate-charge-refund"], ["naive", "fixed"]), tools_yaml: "get_ticket:\n  system: nope\n" };
-    const client = fakeClient([toolUse(broken), toolUse(proposal(northwind, ["duplicate-charge-refund"], ["naive", "fixed"]))], calls);
+    const broken = { ...proposal(northwind), tools_yaml: "get_ticket:\n  system: nope\n" };
+    const client = fakeClient([toolUse(broken), toolUse(proposal(northwind))], calls);
 
-    const result = await generateWorldPack(INPUT, { client, formatDoc });
+    const result = await generateStructure(INPUT, { client, formatDoc, providerIds: PROVIDERS });
 
     expect(result.attempts).toBe(2);
     expect(result.errors).toEqual([]);
-    expect(result.files).toEqual(northwind);
+    // Structure only: no scenario files, no agent prompts, whatever the model was shown.
+    expect(result.files).toEqual(structureOf(northwind));
 
     // Two calls; the first carries no error report, the second carries the first draft's errors.
     expect(calls).toHaveLength(2);
@@ -194,10 +258,10 @@ describe("generateWorldPack", () => {
 
   it("returns the draft and its remaining errors when the retry still does not validate", async () => {
     const calls: StreamParams[] = [];
-    const broken = { ...proposal(northwind, ["duplicate-charge-refund"], ["naive"]), tools_yaml: "get_ticket:\n  system: nope\n" };
+    const broken = { ...proposal(northwind), tools_yaml: "get_ticket:\n  system: nope\n" };
     const client = fakeClient([toolUse(broken), toolUse(broken)], calls);
 
-    const result = await generateWorldPack(INPUT, { client, formatDoc });
+    const result = await generateStructure(INPUT, { client, formatDoc, providerIds: PROVIDERS });
 
     expect(result.attempts).toBe(MAX_ATTEMPTS);
     expect(result.errors.length).toBeGreaterThan(0);
@@ -207,32 +271,32 @@ describe("generateWorldPack", () => {
 
   it("stops on the first call when the first draft validates", async () => {
     const calls: StreamParams[] = [];
-    const client = fakeClient([toolUse(proposal(northwind, ["duplicate-charge-refund"], ["naive", "fixed"]))], calls);
+    const client = fakeClient([toolUse(proposal(northwind))], calls);
 
-    const result = await generateWorldPack(INPUT, { client, formatDoc });
+    const result = await generateStructure(INPUT, { client, formatDoc, providerIds: PROVIDERS });
 
-    expect(result).toEqual({ files: northwind, errors: [], attempts: 1 });
+    expect(result).toEqual({ files: structureOf(northwind), errors: [], attempts: 1 });
     expect(calls).toHaveLength(1);
   });
 
   it("throws a clear error when the model refuses", async () => {
     const client = fakeClient([{ stop_reason: "refusal", content: [] }], []);
-    await expect(generateWorldPack(INPUT, { client, formatDoc })).rejects.toThrow(/refused/i);
+    await expect(generateStructure(INPUT, { client, formatDoc, providerIds: PROVIDERS })).rejects.toThrow(/refused/i);
   });
 
   it("throws when the model stops without calling the tool", async () => {
     const client = fakeClient([{ stop_reason: "end_turn", content: [{ type: "text" }] }], []);
-    await expect(generateWorldPack(INPUT, { client, formatDoc })).rejects.toThrow(/without calling propose_world_pack/);
+    await expect(generateStructure(INPUT, { client, formatDoc, providerIds: PROVIDERS })).rejects.toThrow(/without calling propose_world_structure/);
   });
 });
 
-describe("generateWorldPack with a refinement", () => {
+describe("generateStructure with a refinement", () => {
   it("passes the draft's current files and the note through to buildPrompt's user message", async () => {
     const calls: StreamParams[] = [];
-    const client = fakeClient([toolUse(proposal(northwind, ["duplicate-charge-refund"], ["naive", "fixed"]))], calls);
+    const client = fakeClient([toolUse(proposal(northwind))], calls);
     const previousFiles = { "pack.yaml": "id: old-draft\n" };
 
-    await generateWorldPack(INPUT, { client, formatDoc }, { note: "add a payments system", previousFiles });
+    await generateStructure(INPUT, { client, formatDoc, providerIds: PROVIDERS }, { note: "add a payments system", previousFiles });
 
     expect(calls).toHaveLength(1);
     expect(calls[0].messages[0].content).toContain("old-draft");

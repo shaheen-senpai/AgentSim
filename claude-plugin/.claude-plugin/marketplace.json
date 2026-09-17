@@ -5,8 +5,8 @@
   "plugins": [
     {
       "name": "agentsim-worldbuilder",
-      "description": "Draft an AgentSim World pack from your own agent's tools, schema and OpenAPI spec — no hand-written YAML.",
-      "version": "0.1.0",
+      "description": "Build an AgentSim World from your own agent's tools, schema, MCP integrations and Mandates — no hand-written YAML.",
+      "version": "0.2.0",
       "source": "./",
       "author": { "name": "AgentSim" }
     }

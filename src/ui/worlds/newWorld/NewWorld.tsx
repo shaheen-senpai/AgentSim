@@ -50,10 +50,21 @@ export function NewWorld({ providers, packs, drafts, initialDraft, now: initialN
   const [worldId, setWorldId] = useState(slugify(initialDraft?.input?.name ?? ""));
   const [idTouched, setIdTouched] = useState(false);
   const [liveDrafts, setLiveDrafts] = useState<DraftSummary[]>(drafts);
+  const [token, setToken] = useState<string | null>(null);
   const [now, setNow] = useState(initialNow);
   const [busy, setBusy] = useState<"generate" | "create" | "open" | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const [error, setError] = useState<string | null>(null);
+
+  /** A build token for one plugin run. `register_agent` refuses without a live one. */
+  async function newToken() {
+    try {
+      const res = await fetch("/api/worlds/build-tokens", { method: "POST" });
+      if (res.ok) setToken(((await res.json()) as { token: string }).token);
+    } catch {
+      /* the field stays empty; the copy says where it comes from */
+    }
+  }
 
   // The plugin step watches the draft registry: a draft the plugin just made appears within 5 s.
   useEffect(() => {
@@ -238,7 +249,15 @@ export function NewWorld({ providers, packs, drafts, initialDraft, now: initialN
               </div>
             </label>
             <label className={`option${mode === "plugin" ? " selected" : ""}`}>
-              <input type="radio" name="nwmode" checked={mode === "plugin"} onChange={() => setMode("plugin")} />
+              <input
+                type="radio"
+                name="nwmode"
+                checked={mode === "plugin"}
+                onChange={() => {
+                  setMode("plugin");
+                  if (token === null) void newToken(); // issued on the way in, so the step never renders an empty field
+                }}
+              />
               <div style={{ flex: 1 }}>
                 <div className="label">
                   Generate it with the worldbuilder plugin <span className="roadmap-tag">plugin</span>
@@ -253,7 +272,7 @@ export function NewWorld({ providers, packs, drafts, initialDraft, now: initialN
           <>
             <h2>Run the worldbuilder plugin</h2>
             <p style={{ fontSize: 12, color: "var(--muted)", margin: "-8px 0 16px" }}>
-              Install the plugin once, point it at this AgentSim, then ask it from your agent&rsquo;s own repo. It reads your tools, schema and OpenAPI from the codebase and drafts the pack here; you review it on the next step.
+              Install the plugin once, point it at this AgentSim, then ask it from your agent&rsquo;s own repo. It reads your tools, your schema, the third-party MCP servers you integrate and the Mandates your policy docs state, and drafts the World&rsquo;s structure here. It writes no Scenario and no seed row — those are generated on the World afterwards, once you have reviewed what it built.
             </p>
             <span className="field-label">1 · Install</span>
             <div className="copyfield" style={{ marginBottom: 8 }}>
@@ -272,10 +291,21 @@ export function NewWorld({ providers, packs, drafts, initialDraft, now: initialN
             <p style={{ fontSize: 11, color: "var(--muted)", margin: "0 0 18px" }}>
               The plugin&rsquo;s <span className="mono">.mcp.json</span> points at <span className="mono">http://localhost:3000/mcp/worlds</span>; edit it if this AgentSim is elsewhere. Off localhost, the server also needs <span className="mono">AGENTSIM_ALLOWED_HOSTS</span> naming the host it is reached on.
             </p>
-            <span className="field-label">3 · In your agent&rsquo;s repo, in a Claude Code session</span>
+            <span className="field-label">3 · Your build token</span>
+            <div className="token-line">
+              <div className="copyfield" style={{ flex: 1, minWidth: 220 }}>
+                <code>{token ?? "issuing…"}</code>
+                <CopyButton text={token ?? ""} what="Token" />
+              </div>
+              <button type="button" className="btn btn-ghost" style={{ height: 38, fontSize: 12 }} onClick={() => void newToken()}>New token</button>
+            </div>
+            <p style={{ fontSize: 11, color: "var(--muted)", margin: "0 0 18px" }}>
+              Single use, expires in an hour. It is what lets the plugin spend a model call here, so drafting a World needs this console rather than just the URL.
+            </p>
+            <span className="field-label">4 · In your agent&rsquo;s repo, in a Claude Code session</span>
             <div className="copyfield" style={{ marginBottom: 18 }}>
-              <code>Use agentsim-worldbuilder to build a test world for this agent.</code>
-              <CopyButton text="Use agentsim-worldbuilder to build a test world for this agent." what="Prompt" />
+              <code>{`Use agentsim-worldbuilder to build a test world for this agent. Build token: ${token ?? "…"}`}</code>
+              <CopyButton text={token ? `Use agentsim-worldbuilder to build a test world for this agent. Build token: ${token}` : ""} what="Prompt" />
             </div>
             <div className="chips">
               {WB_TOOLS.map((k) => (
@@ -286,14 +316,14 @@ export function NewWorld({ providers, packs, drafts, initialDraft, now: initialN
               <span className="field-label">Drafts · one per plugin run · refreshes every 5 s</span>
               {liveDrafts.length === 0 && <div className="empty-src">No drafts yet. When the plugin calls <span className="mono">register_agent</span>, its draft appears here.</div>}
               {liveDrafts.map((d) => (
-                <div key={d.id} className="draft-row mine">
+                <div key={d.id} className={`draft-row${d.token === token ? " mine" : ""}`}>
                   <div style={{ minWidth: 0 }}>
                     <div>
                       <span className="draft-id">{d.id}</span>
                       <span className={`pill-badge ${d.valid ? "badge-warning" : "badge-danger"}`} style={{ marginLeft: 6 }}>{d.valid ? "awaiting review" : plural(d.errorCount, "error")}</span>
                     </div>
                     <div className="draft-meta">
-                      {d.name} · {relativeTime(new Date(d.createdAt).toISOString(), now)} · {plural(d.tools, "tool")}, {plural(d.entities, "entity", "entities")} · new World
+                      {d.repo ?? d.name} · {d.client ?? "unknown client"} · {relativeTime(new Date(d.createdAt).toISOString(), now)} · {plural(d.tools, "tool")}, {plural(d.entities, "entity", "entities")}, {plural(d.mandates, "Mandate")}
                     </div>
                   </div>
                   <div className="draft-actions">

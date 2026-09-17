@@ -8,6 +8,7 @@ import { listPackIds, loadPack, PACK_ID_RE, type WorldPack } from "@/engine/pack
 import { entityViews } from "@/lib/entityViews";
 import { listRuns } from "@/runner/store";
 import { ConsoleShell } from "@/ui/ConsoleShell";
+import { DraftBar } from "@/ui/worlds/DraftBar";
 import { EntitiesTab } from "@/ui/worlds/EntitiesTab";
 import { MandateTab } from "@/ui/worlds/MandateTab";
 import { OverviewTab } from "@/ui/worlds/OverviewTab";
@@ -41,7 +42,7 @@ function Body({ pack, tab, scenario }: { pack: WorldPack; tab: WorldTab; scenari
     case "tools":
       return <ToolsTab tools={Object.values(pack.tools)} entities={pack.meta.entities} scenarios={pack.scenarios} systems={Object.keys(pack.meta.systems)} />;
     case "mandate":
-      return <MandateTab worldId={pack.meta.id} files={pack.files} scenarios={pack.scenarios} />;
+      return <MandateTab worldId={pack.meta.id} files={pack.files} mandates={Object.values(pack.meta.mandates)} scenarios={pack.scenarios} />;
     case "scenarios":
       return <ScenariosTab worldId={pack.meta.id} files={pack.files} scenarios={pack.scenarios} principal={pack.meta.principal} runsByScenario={runsByScenario(pack.meta.id)} selected={scenario} />;
   }
@@ -92,6 +93,7 @@ export default async function WorldPage({ params, searchParams }: { params: Para
   return (
     <Frame id={id} name={pack.meta.name}>
       <p className="sub">{pack.meta.description}</p>
+      {pack.meta.status === "draft" && <DraftBar worldId={id} files={pack.files} scenarioCount={pack.scenarios.length} />}
       <WorldTabs packId={id} current={tab} />
       <div className="panel card-pad" style={{ maxWidth: tab === "overview" ? 760 : 1040 }}>
         <Body pack={pack} tab={tab} scenario={scenario} />

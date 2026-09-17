@@ -90,7 +90,7 @@ export function toPackSummary(p: WorldPack): PackSummary {
 }
 
 export type WizardAttack = { id: string; title: string; lure: { tool: string; argsMatch: Record<string, unknown> } };
-export type WizardTool = { name: string; description: string };
+export type WizardTool = { name: string; description: string; op: string; collection: string };
 export type WizardScenario = {
   id: string;
   packId: string;
@@ -106,6 +106,8 @@ export type WizardPack = {
   domain: string;
   description: string;
   principal: string;
+  /** The principal entity's display label — "Customer", "Employee". */
+  principalLabel: string;
   entities: number;
   systems: number;
   tools: WizardTool[];
@@ -134,10 +136,12 @@ export function toWizardPack(p: WorldPack): WizardPack {
     domain: p.meta.domain,
     description: p.meta.description,
     principal: p.meta.principal,
+    principalLabel: p.meta.entities[p.meta.principal]?.label ?? p.meta.principal,
     entities: Object.keys(p.meta.entities).length,
     systems: new Set(Object.values(p.tools).map((t) => t.system)).size,
-    tools: Object.values(p.tools).map((t) => ({ name: t.name, description: t.description })),
-    agentVersions: referenceVersions(p),
+    tools: Object.values(p.tools).map((t) => ({ name: t.name, description: t.description, op: t.op, collection: t.collection })),
+    // "naive" first: the wizard defaults to the first version, and the story runs naïve before fixed.
+    agentVersions: [...referenceVersions(p)].sort((a, b) => (a === "naive" ? -1 : b === "naive" ? 1 : a.localeCompare(b))),
     scenarios: p.scenarios.map((s) => toWizardScenario(s, p.meta.id)),
   };
 }

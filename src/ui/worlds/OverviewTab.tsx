@@ -8,8 +8,19 @@ export function OverviewTab({ meta, tools }: { meta: PackMeta; tools: Record<str
   const counts = systemCounts(meta, tools);
   const keys = Object.keys(meta.systems);
   const principalLabel = meta.entities[meta.principal]?.label ?? meta.principal;
+  const built = meta.built_by;
   return (
     <>
+      {built && (
+        <div className="built-row">
+          Built {built.source === "plugin" ? "by the worldbuilder plugin" : "in the console"}
+          {built.run && <> · run <span className="mono">{built.run}</span></>}
+          {built.repo && <> · <span className="mono">{built.repo}</span></>}
+          {built.client && <> · {built.client}</>}
+          {built.token && <> · token <span className="mono">{built.token}</span></>}
+          <> · {built.at.slice(0, 10)}</>
+        </div>
+      )}
       <h2>What this World is made of</h2>
       <p style={{ fontSize: 12, color: "var(--muted)", margin: "-8px 0 14px" }}>
         A World is the union of everything the agent can reach — third-party MCPs, the team&rsquo;s own tools, a database, a bucket. Each source contributes its own Systems, tools and entities into one ownership graph.

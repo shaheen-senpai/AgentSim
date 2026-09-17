@@ -4,14 +4,18 @@
 // tool call and the next. Unlike a live Run, a draft has no external state to reconcile when it
 // goes away, so expiry is a lazy age check on read rather than a timer.
 import { randomUUID } from "node:crypto";
-import type { GenerateInput } from "./worldpack";
+import type { StructureInput } from "./structure";
 import type { PackFiles, ValidationError } from "@/engine/pack";
 
 export type DraftResult = { files: PackFiles; errors: ValidationError[]; attempts: number };
 
+/** Who ran the plugin, and from where. `client` is self-reported by the MCP client — a label, not an identity. */
+export type DraftMeta = { token: string; client?: string; repo?: string };
+
 export type Draft = DraftResult & {
   id: string;
-  input: GenerateInput;
+  input: StructureInput;
+  meta: DraftMeta;
   createdAt: number;
 };
 
@@ -24,8 +28,8 @@ function expired(draft: Draft): boolean {
   return Date.now() - draft.createdAt > TTL_MS;
 }
 
-export function createDraft(input: GenerateInput, result: DraftResult): Draft {
-  const draft: Draft = { id: `draft_${randomUUID()}`, input, ...result, createdAt: Date.now() };
+export function createDraft(input: StructureInput, meta: DraftMeta, result: DraftResult): Draft {
+  const draft: Draft = { id: `draft_${randomUUID()}`, input, meta, ...result, createdAt: Date.now() };
   drafts.set(draft.id, draft);
   return draft;
 }

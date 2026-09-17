@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { Scenario } from "@/engine/pack";
 import { EditableText } from "./EditableText";
+import { GenerateScenarios } from "./GenerateScenarios";
 import { isValidScenarioId, scenarioFileKey } from "./editorLogic";
 import { checkParams, checksByDimension, lureSummary } from "./packView";
 import { appendListItems, newScenarioFile, removeListItem, setPolicyText, setTaskBrief } from "./scenarioEdits";
@@ -212,6 +213,7 @@ export function ScenariosTab({ worldId, files, scenarios, principal, runsByScena
   // ---- The list ----
   return (
     <>
+      <GenerateScenarios worldId={worldId} files={files} />
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 6 }}>
         <h2 style={{ margin: 0 }}>Scenarios in this World</h2>
         <button type="button" className="btn btn-primary" style={{ height: 32, fontSize: 12 }} onClick={() => setCreating(true)}>+ New Scenario</button>

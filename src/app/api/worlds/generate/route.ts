@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { generateWorldPack } from "@/generate/worldpack";
+import { generateStructure } from "@/generate/structure";
 
 export const dynamic = "force-dynamic";
 // One generation is a long Opus call with a retry; the default serverless ceiling is far too short.
@@ -15,10 +15,12 @@ const Body = z.object({
 });
 
 /**
- * Drafts a World pack with Claude (spec §6.2, §7). Deliberately POST-only and never reachable by a
- * page load or a prefetch: this is one of the few routes in the app that spend money (the others
- * are /mcp/worlds's register_agent and refine_world), and it writes nothing — the draft comes back
- * for a human to review in the editor and create explicitly.
+ * Drafts a World's *structure* with Claude — systems, entities, tools, Mandates, and an empty seed.
+ * The rows and Scenarios come later, from `POST /api/worlds/[id]/scenarios`, once the World exists
+ * and has been reviewed. Deliberately POST-only and never reachable by a page load or a prefetch:
+ * this is one of the few routes in the app that spend money (the others are /mcp/worlds's
+ * register_agent and refine_world, and the scenarios route), and it writes nothing — the draft
+ * comes back for a human to review in the editor and create explicitly.
  */
 export async function POST(req: Request) {
   if (!process.env.ANTHROPIC_API_KEY) {
@@ -32,7 +34,7 @@ export async function POST(req: Request) {
   if (!parsed.success) return Response.json({ error: parsed.error.message }, { status: 400 });
 
   try {
-    const { files, errors, attempts } = await generateWorldPack(parsed.data);
+    const { files, errors, attempts } = await generateStructure(parsed.data);
     return Response.json({ files, errors, attempts });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);

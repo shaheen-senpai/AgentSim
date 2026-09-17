@@ -1,6 +1,7 @@
 import { z } from "zod";
-import { listPackIds, loadPack, PACK_ID_RE, packWriteErrors, parsePackFiles, savePack } from "@/engine/pack";
+import { deletePack, listPackIds, loadPack, PACK_ID_RE, packWriteErrors, parsePackFiles, savePack } from "@/engine/pack";
 import { toPackSummary } from "@/lib/summaries";
+import { listRuns } from "@/runner/store";
 
 export const dynamic = "force-dynamic";
 
@@ -34,4 +35,27 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 
   savePack(id, files);
   return Response.json(toPackSummary(pack));
+}
+
+/**
+ * Discards a World. Only ever a draft one, and only while no Run points at it: a published World is
+ * something other people's Runs and comparisons are written against, and a Run whose World has
+ * gone cannot be re-scored or re-read.
+ */
+export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  if (!PACK_ID_RE.test(id)) return Response.json({ error: `Invalid world id '${id}'` }, { status: 400 });
+  if (!listPackIds().includes(id)) return Response.json({ error: "Unknown world" }, { status: 404 });
+
+  const pack = loadPack(id);
+  if (pack.meta.status !== "draft") {
+    return Response.json({ error: `World ${id} is published — only a draft World can be discarded.` }, { status: 409 });
+  }
+  const runs = listRuns().filter((r) => r.packId === id).length;
+  if (runs > 0) {
+    return Response.json({ error: `World ${id} has ${runs} Run${runs === 1 ? "" : "s"} against it, so it cannot be discarded.` }, { status: 409 });
+  }
+
+  deletePack(id);
+  return Response.json({ id, deleted: true });
 }

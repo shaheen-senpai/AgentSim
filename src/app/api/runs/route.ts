@@ -32,6 +32,16 @@ export async function POST(req: Request) {
     ref = { kind: "byo", agentId: registered.id, name: registered.name, shape: registered.shape, toolAliases: registered.toolAliases };
   }
 
+  // The publish gate, server-side: the wizard only offers published Worlds, but the API is the
+  // authority — a deep link or a script must not be able to run a World nobody reviewed.
+  try {
+    if (loadPack(packId).meta.status === "draft") {
+      return Response.json({ error: `World ${packId} is still in review — publish it before starting a Run.` }, { status: 409 });
+    }
+  } catch {
+    // An unloadable pack is `startRun`'s error to report, in its own words.
+  }
+
   try {
     const id = startRun({
       packId,

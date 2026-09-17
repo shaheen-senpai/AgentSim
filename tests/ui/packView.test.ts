@@ -153,7 +153,7 @@ describe("countsLabel", () => {
   });
 
   it("singularises every count", () => {
-    expect(countsLabel({ id: "x", name: "X", domain: "d", description: "", principal: "p", collections: 1, rows: 1, tools: 1, scenarios: 1, systems: 1 })).toBe(
+    expect(countsLabel({ id: "x", status: "ready", name: "X", domain: "d", description: "", principal: "p", collections: 1, rows: 1, tools: 1, scenarios: 1, systems: 1 })).toBe(
       "1 collection · 1 row · 1 tool · 1 scenario",
     );
   });

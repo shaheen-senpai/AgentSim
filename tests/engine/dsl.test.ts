@@ -236,7 +236,7 @@ describe("runTool — create validates against the entity schema", () => {
     };
     return {
       meta: {
-        id: "fixture", name: "Fixture", domain: "test", description: "test pack", principal: "widgets",
+        id: "fixture", name: "Fixture", domain: "test", description: "test pack", principal: "widgets", status: "ready", mandates: {},
         systems: { sys: { label: "Sys" } },
         entities: { widgets },
       },
@@ -288,7 +288,7 @@ describe("runTool — an unscoped `where` returns nothing, never everything", ()
       where,
     };
     return {
-      meta: { id: "probe", name: "Probe", domain: "test", description: "test pack", principal: "notes", systems: { sys: { label: "Sys" } }, entities: { notes } },
+      meta: { id: "probe", name: "Probe", domain: "test", description: "test pack", principal: "notes", status: "ready", mandates: {}, systems: { sys: { label: "Sys" } }, entities: { notes } },
       seed: { now: "2026-01-01T00:00:00Z", currency: "GBP", rows: { notes: [{ id: "note_1", text: "a" }, { id: "note_2", text: "b" }] } },
       tools: { list_notes: listNotes },
       scenarios: [],
@@ -329,7 +329,7 @@ describe("runTool — create refuses to mint an id that already exists", () => {
       set: { name: "${input.name}" },
     };
     return {
-      meta: { id: "collide", name: "Collide", domain: "test", description: "test pack", principal: "widgets", systems: { sys: { label: "Sys" } }, entities: { widgets } },
+      meta: { id: "collide", name: "Collide", domain: "test", description: "test pack", principal: "widgets", status: "ready", mandates: {}, systems: { sys: { label: "Sys" } }, entities: { widgets } },
       // One seeded row, but numbered 2 — so `nextId` mints `wid_2`, which is taken.
       seed: { now: "2026-01-01T00:00:00Z", currency: "GBP", rows: { widgets: [{ id: "wid_2", name: "seeded" }] } },
       tools: { make_widget: makeWidget },

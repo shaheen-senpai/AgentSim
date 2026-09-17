@@ -22,7 +22,9 @@ export default async function AgentRoute({ params }: { params: Promise<{ id: str
   if (!agent) notFound();
   const runs = listRuns();
   const { trust, runs: runCount } = agentTrust(agent.id, runs);
-  // A pack hand-edited into an invalid state is skipped here; `/worlds` reports it.
-  const packs = loadPacks().packs.map(toPackSummary);
+  // A pack hand-edited into an invalid state is skipped here; `/worlds` reports it. So is a draft
+  // World: `POST /api/runs` refuses one, so attaching it to an agent would promise a Run it cannot
+  // start — it becomes attachable the moment someone publishes it.
+  const packs = loadPacks().packs.filter((p) => p.meta.status !== "draft").map(toPackSummary);
   return <AgentDetail agent={agent} packs={packs} trust={trust} runs={runCount} dimensions={trustDimensions(agent.id, runs)} />;
 }

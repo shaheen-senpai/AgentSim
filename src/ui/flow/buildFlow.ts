@@ -46,7 +46,9 @@ export type FlowNode = {
 
 export type FlowEdge = { id: string; source: string; target: string; bad: boolean };
 
-export type Wave = { batchId: string | null; maxEndedAt: number; seqs: number[] };
+import { groupWaves, type Wave } from "../waves";
+export { groupWaves };
+export type { Wave };
 
 export type BuildFlowInput = {
   events: Event[];
@@ -64,31 +66,7 @@ export const NODE_H = 96;
 export const COL_PITCH = 320;
 export const ROW_PITCH = 128;
 export const JUNCTION = 12;
-
 const START_X = 40;
-
-/**
- * Groups `events` (assumed already in `seq` order) into waves of concurrent tool calls: an Event
- * joins the current wave when it shares the wave's non-null `batchId`, or when it started before
- * the wave's latest finish so far (`startedAt < maxEndedAt`, i.e. it overlapped in wall-clock time
- * with something already in the wave). Otherwise it starts a new wave. `maxEndedAt` keeps tracking
- * the wave's latest finish as it grows, so a third Event can join purely because it overlaps the
- * wave's running end time, not just its immediate predecessor.
- */
-export function groupWaves(events: Event[]): Wave[] {
-  const waves: Wave[] = [];
-  for (const e of events) {
-    const wave = waves[waves.length - 1];
-    const joins = wave !== undefined && ((e.batchId !== null && e.batchId === wave.batchId) || e.startedAt < wave.maxEndedAt);
-    if (wave && joins) {
-      wave.seqs.push(e.seq);
-      wave.maxEndedAt = Math.max(wave.maxEndedAt, e.endedAt);
-    } else {
-      waves.push({ batchId: e.batchId, maxEndedAt: e.endedAt, seqs: [e.seq] });
-    }
-  }
-  return waves;
-}
 
 /** Position of the i-th (0-based) of `n` nodes sharing a column, given that node's own height. */
 function rowY(i: number, n: number, height: number): number {

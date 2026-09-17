@@ -17,8 +17,11 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { GET as scenariosRoute } from "@/app/api/scenarios/route";
 import { GET as listWorldsRoute } from "@/app/api/worlds/route";
 import ConnectRoute from "@/app/connect/page";
+import MandatesPage from "@/app/mandates/page";
 import Home from "@/app/page";
 import RunRoute from "@/app/runs/[id]/page";
+import ScenarioDetailPage from "@/app/scenarios/[packId]/[scenarioId]/page";
+import ScenariosPage from "@/app/scenarios/page";
 import WorldsPage from "@/app/worlds/page";
 import { listPackIds } from "@/engine/pack";
 import type { ScenarioSummary } from "@/lib/summaries";
@@ -93,5 +96,18 @@ describe("a World pack that no longer loads", () => {
     const res = await listWorldsRoute();
     expect(res.status).toBe(200);
     expect(((await res.json()) as { id: string }[]).map((p) => p.id)).toEqual(["northwind"]);
+  });
+
+  it("does not 500 /scenarios or /mandates", () => {
+    expect(() => ScenariosPage()).not.toThrow();
+    expect(() => MandatesPage()).not.toThrow();
+  });
+
+  it("does not 500 a Scenario's detail page", async () => {
+    await expect(ScenarioDetailPage({ params: Promise.resolve(NORTHWIND) })).resolves.toBeTruthy();
+  });
+
+  it("404s a Scenario detail page for a scenario id that doesn't exist", async () => {
+    await expect(ScenarioDetailPage({ params: Promise.resolve({ packId: NORTHWIND.packId, scenarioId: "no-such-scenario" }) })).rejects.toThrow();
   });
 });

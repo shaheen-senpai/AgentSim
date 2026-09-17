@@ -4,7 +4,7 @@
 // renders, or the list page would just be the World Scenarios tab repeated once per pack.
 import Link from "next/link";
 import type { Scenario } from "@/engine/pack";
-import { serif } from "@/ui/styles";
+import { focusRing, miniTag, serif } from "@/ui/styles";
 import { truncate } from "@/ui/worlds/packView";
 
 export function ScenarioListCard({ packId, packName, scenario }: { packId: string; packName: string; scenario: Scenario }) {
@@ -12,17 +12,17 @@ export function ScenarioListCard({ packId, packName, scenario }: { packId: strin
   return (
     <Link
       href={`/scenarios/${encodeURIComponent(packId)}/${encodeURIComponent(scenario.id)}`}
-      className="bg-white border border-[#E3E0D5] rounded-lg p-4 flex flex-col gap-2 hover:border-[#1B1A17] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B1A17]"
+      className={`bg-white border border-[#E3E0D5] rounded-lg p-4 flex flex-col gap-2 hover:border-[#1B1A17] ${focusRing}`}
     >
       <h2 className={`${serif} text-[15px] font-semibold`}>{scenario.title}</h2>
       <p className="text-[12.5px] text-[#6E6B60]" title={brief.truncated ? scenario.task_brief.trim() : undefined}>
         {packName} — {brief.text}
       </p>
       <div className="flex gap-2 mt-1">
-        <span className="text-[10.5px] text-[#6E6B60] bg-[#F7F5EF] border border-[#E3E0D5] rounded-full px-2 py-0.5">
+        <span className={miniTag}>
           {scenario.checks.length} {scenario.checks.length === 1 ? "Check" : "Checks"}
         </span>
-        <span className="text-[10.5px] text-[#6E6B60] bg-[#F7F5EF] border border-[#E3E0D5] rounded-full px-2 py-0.5">
+        <span className={miniTag}>
           {scenario.attacks.length} {scenario.attacks.length === 1 ? "Attack" : "Attacks"}
         </span>
       </div>

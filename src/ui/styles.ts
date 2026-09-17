@@ -28,3 +28,8 @@ export const secondaryButton = `h-10 rounded-full bg-white border border-[#E3E0D
 export const field = "rounded border border-[#E3E0D5] bg-white px-2 py-1.5 text-[13px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#1B1A17]";
 export const label = "text-[12px] font-semibold text-[#1B1A17]";
 export const hint = "text-[11px] text-[#6E6B60]";
+
+/** The small rounded status/count tag used on Scenario and Mandate cards. */
+export const miniTag = "text-[10.5px] text-[#6E6B60] bg-[#F7F5EF] border border-[#E3E0D5] rounded-full px-2 py-0.5";
+/** The quoted-block treatment for a Scenario's Policy text — same values `MandateStep.tsx` (the wizard's Mandate step) already established; keep both in sync if you change this. */
+export const policyQuote = "bg-[#F7F5EF] border border-[#E3E0D5] border-l-[3px] border-l-[#1B1A17] rounded-r-lg px-4.5 py-4 text-[13.5px] leading-relaxed whitespace-pre-line";

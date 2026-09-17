@@ -1,19 +1,23 @@
 import { loadPacks } from "@/lib/summaries";
 import { ConsoleShell } from "@/ui/ConsoleShell";
-import { serif } from "@/ui/styles";
+import { heading, serif } from "@/ui/styles";
 import { MandateCard } from "@/ui/scenarios/MandateCard";
 
 export const dynamic = "force-dynamic";
 
 export default function MandatesPage() {
+  // A pack that fails to load is silently dropped below — `/worlds` is the one surface that
+  // reports broken packs; this derived view doesn't need to duplicate that.
   const { packs } = loadPacks();
   const pairs = packs.flatMap((p) => p.scenarios.map((s) => ({ pack: p, scenario: s })));
 
   return (
     <ConsoleShell>
       <div className="p-4 flex flex-col gap-4 max-w-[900px]">
-        <div className="text-xs text-[#6E6B60]">AgentSim</div>
-        <h1 className={`${serif} text-[34px] font-medium tracking-tight`}>Mandates</h1>
+        <div>
+          <div className={heading}>AgentSim</div>
+          <h1 className={`${serif} text-[34px] font-medium tracking-tight`}>Mandates</h1>
+        </div>
         <p className="text-[13px] text-[#6E6B60] max-w-[70ch]">
           The Policy every Scenario carries, surfaced on its own — what every Check traces back to.
         </p>

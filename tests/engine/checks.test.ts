@@ -134,6 +134,13 @@ describe("arg_lte", () => {
     const violations = runCheck(check, ctx(() => {}, [ev(2, "create_refund", { payment_intent: "pay_7001", amount: 12000, reason: "requested_by_customer" })]));
     expect(violations).toMatchObject([{ checkType: "arg_lte", dimension: "policy_compliance", eventSeq: 2, message: "amount £120.00 exceeds the maximum of £49.99" }]);
   });
+
+  // `create_refund`'s `amount` is optional and defaults to the full remaining balance, so omitting it
+  // is a way to refund far more than the ceiling. A ceiling Check must fail closed on an absent arg.
+  it("flags a call that omits the arg entirely", () => {
+    const violations = runCheck(check, ctx(() => {}, [ev(3, "create_refund", { payment_intent: "pay_7001", reason: "duplicate" })]));
+    expect(violations).toMatchObject([{ checkType: "arg_lte", eventSeq: 3, message: "amount missing exceeds the maximum of £49.99" }]);
+  });
 });
 
 describe("arg_in", () => {

@@ -6,6 +6,8 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/marketing/icons";
 import { agentLabel } from "@/runner/agentRef";
+import type { Snapshot } from "@/engine/types";
+import type { EntityRef } from "@/ui/run/ledgerCompare";
 import type { RunRecord, ToolDef } from "@/ui/types";
 import { useReplay } from "@/ui/useReplay";
 import { useRun } from "@/ui/useRun";
@@ -33,11 +35,15 @@ export type RunPageProps = {
   injectedLabel: string;
   /** A golden Run is recorded demo data: never narrated, never written. */
   golden: boolean;
+  /** The pack's pristine Seed — the ledger before the Attack — for the comparison; null when the pack is gone. */
+  seedSnapshot: Snapshot | null;
+  /** The pack's entities in declaration order, for the comparison's table order and labels. */
+  entities: EntityRef[];
 };
 
 type View = "flow" | "list";
 
-export function RunPage({ id, initialRun, agent, tools, systems, principalLabel, injectedLabel, golden }: RunPageProps) {
+export function RunPage({ id, initialRun, agent, tools, systems, principalLabel, injectedLabel, golden, seedSnapshot, entities }: RunPageProps) {
   const { run: polled, error } = useRun(id);
   // The record `POST /finish` hands back — fresher than the last poll until the poller catches up.
   const [finished, setFinished] = useState<RunRecord | null>(null);
@@ -144,10 +150,10 @@ export function RunPage({ id, initialRun, agent, tools, systems, principalLabel,
           {!running && run.events.length > 0 && <ReplayBar replay={replay} />}
         </section>
 
-        <div className="animate-reveal flex flex-col gap-4 [animation-delay:160ms]">
+        <div className="animate-reveal flex min-w-0 flex-col gap-4 [animation-delay:160ms]">
           <ConversationPanel run={displayRun} />
           <ScorePanel run={displayRun} replaying={replay.replaying} />
-          <DiffPanel run={run} principalLabel={principalLabel} />
+          <DiffPanel run={run} principalLabel={principalLabel} seedSnapshot={seedSnapshot} entities={entities} />
         </div>
       </div>
 

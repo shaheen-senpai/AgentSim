@@ -81,9 +81,29 @@ export function isGoldenRun(id: string): boolean {
   return RUN_ID_RE.test(id) && existsSync(path.join(goldenDir(), `${id}.json`));
 }
 
+/**
+ * A v1 record still on disk (pre-`packId`, Events without `startedAt`/`endedAt`/`batchId`/
+ * `injected`/`source`) is given the v2 shape every reader assumes. `scripts/migrate-runs.ts` is the
+ * real migration; this only stops a stale file from rendering every Event as injected and every
+ * call as one wave. The Score and the rest of the record are left exactly as stored.
+ */
+export function normalizeRun(run: RunRecord): RunRecord {
+  const events = (run.events ?? []).map((e) => ({
+    ...e,
+    startedAt: e.startedAt ?? e.at,
+    endedAt: e.endedAt ?? e.at,
+    batchId: e.batchId ?? null,
+    injected: e.injected ?? null,
+    source: e.source ?? "reference",
+    // v1 stored bare entity ids; the collection is only recoverable with the pack (the migration does that).
+    changes: (e.changes ?? []).map((c) => (typeof c === "string" ? { collection: "", id: c, op: "update" as const } : c)),
+  }));
+  return { ...run, events, violations: run.violations ?? [], transcript: run.transcript ?? [] };
+}
+
 function readRunFile(file: string): RunRecord | null {
   try {
-    return JSON.parse(readFileSync(file, "utf8")) as RunRecord;
+    return normalizeRun(JSON.parse(readFileSync(file, "utf8")) as RunRecord);
   } catch {
     console.warn(`[store] skipping unreadable run file ${file}`);
     return null;

@@ -14,6 +14,10 @@
   main pre { margin-block: 1em; }
   main ul, main ol { margin-block: 1em; padding-inline-start: 40px; }
   main figure { margin: 1em 40px; }
+  /* The mock's clickable rows and nodes are <div>s; here they are <button>s for keyboard users. */
+  main button { text-align: inherit; color: inherit; }
+  main .list-strip .ledger-row { width: 100%; border: 0; background: transparent; }
+  main .flow-node { display: block; }
 }
 
 /* ---- Ported from design/agentsim-console.html <style> (lines 6-493). Fonts come from next/font; the

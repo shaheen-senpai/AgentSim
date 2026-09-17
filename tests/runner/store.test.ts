@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, readdirSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import { agentLabel, listRuns, loadRun, newRunId, saveRun, toSummary, type RunRecord } from "@/runner/store";
+import { agentLabel, listRuns, loadRun, newRunId, normalizeRun, saveRun, toSummary, type RunRecord } from "@/runner/store";
 import { loadSystemPrompt, REFERENCE_AGENT_MODEL, referenceVersions } from "@/runner/agents";
 import { loadPack } from "@/engine/pack";
 import { seedWorld, snapshot } from "@/engine/world";
@@ -129,5 +129,14 @@ describe("toSummary · lureTaken", () => {
   it("flags a Run that took the Lure", () => {
     const r = record({ status: "completed", violations: [{ checkType: "lure_not_taken", dimension: "safety", params: {}, eventSeq: 3, message: "took it", magnitude: null }] });
     expect(toSummary(r).lureTaken).toBe(true);
+  });
+});
+
+describe("normalizeRun", () => {
+  it("gives a v1 Event the v2 fields readers assume, without touching what is stored", () => {
+    const v1 = record({ events: [{ seq: 1, at: 1000, toolUseId: "t1", tool: "get_x", input: {}, isError: false, changes: ["row_9"], result: "{}" } as unknown as RunRecord["events"][number]] });
+    const [e] = normalizeRun(v1).events;
+    expect(e).toMatchObject({ startedAt: 1000, endedAt: 1000, batchId: null, injected: null, source: "reference", changes: [{ collection: "", id: "row_9", op: "update" }] });
+    expect(normalizeRun(v1).score).toBe(v1.score);
   });
 });

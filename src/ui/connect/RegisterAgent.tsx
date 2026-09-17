@@ -7,25 +7,21 @@ import { draftErrors, formatAliases, parseAliases } from "./aliases";
 
 export type AgentSubmission = { name: string; version: string; shape: AgentShape; toolAliases: Record<string, string>; notes: string };
 
-const SHAPES: { value: AgentShape; label: string; blurb: string }[] = [
-  { value: "mcp", label: "MCP", blurb: "Its tools come from MCP servers — point one at the Run's URL." },
-  { value: "forwarder", label: "Forwarder", blurb: "It runs its own loop — forward each tool call to the Run." },
-  { value: "connector", label: "Connector", blurb: "It is built on the Anthropic Messages API — pass the Run as an MCP server." },
-];
+// Every agent registered here connects over MCP; `AgentShape` still carries the shapes already
+// recorded against older agents and Runs.
+const SHAPE: AgentShape = "mcp";
 
 type Props = {
   editing: Agent | null;
-  lockedShape?: AgentShape;
   /** Resolves to an error message, or null when the agent was saved. */
   onSubmit: (submission: AgentSubmission) => Promise<string | null>;
   onCancel: () => void;
 };
 
-export function RegisterAgent({ editing, lockedShape, onSubmit, onCancel }: Props) {
+export function RegisterAgent({ editing, onSubmit, onCancel }: Props) {
   const ids = useId();
   const [name, setName] = useState(editing?.name ?? "");
   const [version, setVersion] = useState(editing?.version ?? "");
-  const [shape, setShape] = useState<AgentShape>(editing?.shape ?? lockedShape ?? "mcp");
   const [aliasText, setAliasText] = useState(formatAliases(editing?.toolAliases ?? {}));
   const [notes, setNotes] = useState(editing?.notes ?? "");
   const [errors, setErrors] = useState<string[]>([]);
@@ -41,7 +37,7 @@ export function RegisterAgent({ editing, lockedShape, onSubmit, onCancel }: Prop
     setErrors([]);
     setPending(true);
     try {
-      const failure = await onSubmit({ name: name.trim(), version: version.trim(), shape, toolAliases: parseAliases(aliasText).aliases, notes: notes.trim() });
+      const failure = await onSubmit({ name: name.trim(), version: version.trim(), shape: editing?.shape ?? SHAPE, toolAliases: parseAliases(aliasText).aliases, notes: notes.trim() });
       if (failure) {
         setErrors([failure]);
         return;
@@ -57,8 +53,6 @@ export function RegisterAgent({ editing, lockedShape, onSubmit, onCancel }: Prop
     }
   }
 
-  const current = SHAPES.find((s) => s.value === shape);
-
   return (
     <form onSubmit={handleSubmit} aria-labelledby={`${ids}-heading`}>
       <span id={`${ids}-heading`} className="field-label">{editing ? `Edit ${editing.name}` : "Register agent"}</span>
@@ -73,29 +67,15 @@ export function RegisterAgent({ editing, lockedShape, onSubmit, onCancel }: Prop
         </div>
       </div>
 
-      {lockedShape === undefined ? (
-        <div className="form-row">
-          <label>Shape</label>
-          <div className="seg">
-            {SHAPES.map((s) => (
-              <button key={s.value} type="button" className={shape === s.value ? "active" : ""} aria-pressed={shape === s.value} onClick={() => setShape(s.value)}>
-                {s.label}
-              </button>
-            ))}
-          </div>
-          <p className="hint" style={{ margin: "6px 0 0" }}>{current?.blurb}</p>
-        </div>
-      ) : (
-        <p className="hint">
-          Shape: <b style={{ color: "var(--ink)" }}>{current?.label}</b> — {current?.blurb}
-        </p>
-      )}
+      <p className="hint">
+        Shape: <b style={{ color: "var(--ink)" }}>MCP</b> — its tools come from MCP servers; point one at the Run&rsquo;s URL.
+      </p>
 
       <div className="form-row">
         <label htmlFor={`${ids}-aliases`}>Tool aliases</label>
         <textarea id={`${ids}-aliases`} className="mono" value={aliasText} onChange={(e) => setAliasText(e.target.value)} rows={4} spellCheck={false} placeholder={"fetch_ticket: get_ticket\nmail_customer: send_email"} aria-describedby={`${ids}-aliases-hint`} style={{ fontSize: 12 }} />
         <p id={`${ids}-aliases-hint`} className="hint" style={{ margin: "6px 0 0" }}>
-          One <span className="mono">their_name: our_tool</span> per line. Your agent keeps calling the tools it already knows; we publish ours under those names over MCP and accept them on the forwarder. Leave it empty if the names already match.
+          One <span className="mono">their_name: our_tool</span> per line. Your agent keeps calling the tools it already knows; we publish ours under those names over MCP. Leave it empty if the names already match.
         </p>
       </div>
 

@@ -5,7 +5,7 @@ import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { Agent, WizardPack } from "@/ui/types";
 import { StepStrip } from "./StepStrip";
-import { ConnectStep } from "./steps/ConnectStep";
+import { ConnectStep, mcpAgents } from "./steps/ConnectStep";
 import { WorldStep } from "./steps/WorldStep";
 import { ScenarioStep } from "./steps/ScenarioStep";
 import { MandateStep } from "./steps/MandateStep";
@@ -13,11 +13,9 @@ import { AttackStep } from "./steps/AttackStep";
 import { ReviewStep } from "./steps/ReviewStep";
 
 export const STEP_LABELS = ["Connect agent", "World", "Scenario", "Mandate", "Attacks", "Review"];
-export type ConnectMode = "reference" | "mcp" | "forwarder" | "connector";
 export type WizardState = {
   step: number;
-  connect: ConnectMode;
-  agentVersion: string;
+  /** The registered MCP agent that will connect — the only way into a Run. */
   existingAgentId: string | null;
   packId: string;
   scenarioId: string;
@@ -27,16 +25,14 @@ export type WizardState = {
 // The `/runs/new?packId=…&scenarioId=…` deep link the World pages hand out (`runHref` in
 // `src/ui/worlds/packView.ts`). A `packId` that matches no pack, or a `scenarioId` outside the
 // resolved pack, is never trusted — the first pack and its first Scenario are the fallback.
-function initialState(packs: WizardPack[], searchParams: URLSearchParams): WizardState {
+function initialState(packs: WizardPack[], agents: Agent[], searchParams: URLSearchParams): WizardState {
   const packIdParam = searchParams.get("packId");
   const pack = (packIdParam ? packs.find((p) => p.id === packIdParam) : undefined) ?? packs[0];
   const scenarioIdParam = searchParams.get("scenarioId");
   const scenario = scenarioIdParam ? pack?.scenarios.find((s) => s.id === scenarioIdParam) : undefined;
   return {
     step: 0,
-    connect: "reference",
-    agentVersion: pack?.agentVersions[0] ?? "",
-    existingAgentId: null,
+    existingAgentId: mcpAgents(agents)[0]?.id ?? null,
     packId: pack?.id ?? "",
     scenarioId: scenario?.id ?? pack?.scenarios[0]?.id ?? "",
     attackId: "off",
@@ -46,7 +42,7 @@ function initialState(packs: WizardPack[], searchParams: URLSearchParams): Wizar
 export function NewRunWizard({ packs, agents: initialAgents }: { packs: WizardPack[]; agents: Agent[] }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [state, setState] = useState<WizardState>(() => initialState(packs, searchParams));
+  const [state, setState] = useState<WizardState>(() => initialState(packs, initialAgents, searchParams));
   const [agents, setAgents] = useState<Agent[]>(initialAgents);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -58,19 +54,18 @@ export function NewRunWizard({ packs, agents: initialAgents }: { packs: WizardPa
   const pack = packs.find((p) => p.id === state.packId);
   const scenario = pack?.scenarios.find((s) => s.id === state.scenarioId);
   const lastStep = STEP_LABELS.length - 1;
-  const canContinue = state.step === 0 ? state.connect === "reference" || state.existingAgentId !== null : state.step === 1 ? packs.length > 0 : true;
+  const canContinue = state.step === 0 ? state.existingAgentId !== null : state.step === 1 ? packs.length > 0 : true;
 
   async function startRun() {
-    if (!pack || !scenario) return;
-    if (state.connect !== "reference" && !state.existingAgentId) return;
+    const agentId = state.existingAgentId;
+    if (!pack || !scenario || !agentId) return;
     setBusy(true);
     setError(null);
     try {
-      const agent = state.connect === "reference" ? { kind: "reference" as const, version: state.agentVersion } : { kind: "byo" as const, agentId: state.existingAgentId as string };
       const res = await fetch("/api/runs", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ packId: pack.id, scenarioId: scenario.id, agent, attackId: state.attackId === "off" ? null : state.attackId }),
+        body: JSON.stringify({ packId: pack.id, scenarioId: scenario.id, agent: { kind: "byo", agentId }, attackId: state.attackId === "off" ? null : state.attackId }),
       });
       const data = (await res.json().catch(() => ({}))) as { id?: string; error?: string };
       if (!res.ok || !data.id) {

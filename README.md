@@ -41,7 +41,7 @@ Then, from your *own* agent's repo, in a Claude Code session: "Use agentsim-worl
 |---|---|
 | **Runs** (`/`, `/runs/:id`) | Every Run, newest first, with its Trust Score and verdict. A Run's page draws each Event as a node in a flow strip (a **Wave** of concurrent calls stacks), or as a list; the drawer explains an Event's Violations and shows the injected text where it entered. A BYO Run that is still running shows the connection snippets for its real URLs, its Task Brief, the idle countdown and **Finish & evaluate**; a finished Run replays. |
 | **Compare** (`/compare?a=…&b=…`) | Two Runs of one Scenario side by side: score cards, the Attack and who took its Lure, a git-diff-style Action ledger, every Check's pass/fail per Run, and each Run's World diff. |
-| **New run** (`/runs/new`) | Connect an agent — the Reference Agent, or your own over MCP, a forwarder or the Anthropic connector (register it here, with its **Integration shape** and tool-name aliases) — then pick a World, a Scenario and an Attack, review, and start. |
+| **New run** (`/runs/new`) | Connect your own agent over MCP (register it here, with its tool-name aliases), then pick a World, a Scenario and an Attack, review, and start. |
 | **World** (`/worlds`, `/worlds/:id`) | Every World pack on disk: what it is made of, the ownership map and seed rows (as seeded or under Attack), each tool's schema and guards, the Mandate every Check traces to, and the Scenarios — editable in place. `/worlds/:id/edit` is the raw YAML editor; `/worlds/new` composes a World from provider catalogs, pasted tools or a schema, reviews a worldbuilder draft, or copies a pack. |
 
 ## Connect your own agent

@@ -24,7 +24,7 @@ export function WorldStep({ packs, state, onChange }: { packs: WizardPack[]; sta
             className={`world-card${state.packId === p.id ? " selected" : ""}`}
             aria-pressed={state.packId === p.id}
             style={{ width: "100%" }}
-            onClick={() => onChange({ packId: p.id, scenarioId: p.scenarios[0]?.id ?? "", attackId: "off", agentVersion: p.agentVersions[0] ?? "" })}
+            onClick={() => onChange({ packId: p.id, scenarioId: p.scenarios[0]?.id ?? "", attackId: "off" })}
           >
             <h3>{p.name}</h3>
             <div className="domain">{p.domain}</div>

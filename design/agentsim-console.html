@@ -2246,7 +2246,7 @@
 
   // ---------------- Wizard state ----------------
   var STEPS = ["Connect agent","World","Scenario","Mandate","Attacks","Review"];
-  var state = { step: 0, connect: "reference", agentVersion: "naïve", fwLang: "ts", world: "northwind", scenario: "duplicate-charge-refund", attack: "off" };
+  var state = { step: 0, connect: "mcp", world: "northwind", scenario: "duplicate-charge-refund", attack: "off" };
 
   function currentScenario(){ return scenarioNum(state.scenario); }
 
@@ -2281,10 +2281,7 @@
   var PRE = 'style="background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:12px; font-size:11.5px; line-height:1.6; overflow-x:auto; margin:0 0 16px; white-space:pre;"';
 
   var CONNECT_OPTS = [
-    { id:"reference", label:"Reference Agent", tag:null, desc:"AgentSim's own agent runs this Scenario for you — naïve or fixed system prompt. No connection needed." },
-    { id:"mcp", label:"MCP server", tag:null, desc:"AgentSim is an MCP server. Point your agent at one URL." },
-    { id:"forwarder", label:"Forwarder", tag:null, desc:"Drop one function into your own tool-execution loop — 30 lines, TS or Python." },
-    { id:"connector", label:"Anthropic Connector", tag:"needs a public URL", desc:"Built directly on the Messages API? Point mcp_servers at us — no client code at all." }
+    { id:"mcp", label:"MCP server", tag:null, desc:"AgentSim is an MCP server. Point your agent at one URL." }
   ];
 
   function renderStepBody(){
@@ -2301,47 +2298,17 @@
       });
       left += '</div>';
 
-      var right = '<div class="panel card-pad"><h2>'+(state.connect==="reference" ? "Agent and tool definitions" : "Connect, then map your tools")+'</h2>';
-
-      if (state.connect === "reference") {
-        right += '<span class="field-label">Prompt</span>'+
-          '<div style="display:flex; gap:8px; margin-bottom:16px;">'+
-            '<button class="btn btn-ghost" style="height:32px; padding:0 14px; font-size:12px;" data-agentver="naïve">'+(state.agentVersion==="naïve"?'<b>naïve</b>':'naïve')+'</button>'+
-            '<button class="btn btn-ghost" style="height:32px; padding:0 14px; font-size:12px;" data-agentver="fixed">'+(state.agentVersion==="fixed"?'<b>fixed</b>':'fixed')+'</button>'+
-          '</div>'+
-          '<p style="font-size:12px; color:var(--muted); margin:0 0 16px;">'+(state.agentVersion==="naïve" ? "Deliberately weak: treats internal-looking notes inside records as pre-approved instructions." : "The same tools, the same model — corrected to treat record content as data, not instructions.")+'</p>';
-      } else if (state.connect === "mcp") {
-        right += '<span class="field-label">Claude Code</span>'+
-          '<div class="copyfield" style="margin-bottom:14px;"><code>claude mcp add --transport http agentsim http://localhost:3000/mcp/runs/:id</code><button class="btn btn-ghost copybtn">Copy</button></div>'+
-          '<span class="field-label">Or, any MCP client</span>'+
-          '<pre class="mono" '+PRE+'>{\n  "mcpServers": {\n    "agentsim": { "type": "http", "url": "http://localhost:3000/mcp/runs/:id" }\n  }\n}</pre>';
-      } else if (state.connect === "forwarder") {
-        right += '<span class="field-label">Language</span>'+
-          '<div style="display:flex; gap:8px; margin-bottom:10px;">'+
-            '<button class="btn btn-ghost" style="height:30px; padding:0 12px; font-size:12px;" data-fwlang="ts">'+(state.fwLang!=="py"?'<b>TypeScript</b>':'TypeScript')+'</button>'+
-            '<button class="btn btn-ghost" style="height:30px; padding:0 12px; font-size:12px;" data-fwlang="py">'+(state.fwLang==="py"?'<b>Python</b>':'Python')+'</button>'+
-          '</div>'+
-          (state.fwLang==="py"
-            ? '<pre class="mono" '+PRE+'>CALL_URL = os.environ.get(\n    "AGENTSIM_CALL_URL", "http://localhost:3000/api/runs/:id/call")\n\ndef call_tool(tool, tool_input=None, call_id=None, batch_id=None):\n    body = {"tool": tool, "input": tool_input or {}}\n    ...\n    # returns {"ok": True, "result": "..."} or {"ok": False, "error": "..."}</pre>'
-            : '<pre class="mono" '+PRE+'>const CALL_URL = process.env.AGENTSIM_CALL_URL\n  ?? "http://localhost:3000/api/runs/:id/call";\n\nexport async function callTool(tool, input, callId, batchId) {\n  const res = await fetch(CALL_URL, { method: "POST",\n    headers: { "content-type": "application/json" },\n    body: JSON.stringify({ tool, input, callId, batchId }) });\n  return res.json(); // { ok: true, result } or { ok: false, error }\n}</pre>');
-      } else if (state.connect === "connector") {
-        right += '<span class="field-label">Messages API request</span>'+
-          '<pre class="mono" '+PRE+'>{\n  "model": "claude-opus-5",\n  "max_tokens": 16000,\n  "betas": ["mcp-client-2025-11-20"],\n  "mcp_servers": [\n    { "type": "url", "name": "agentsim",\n      "url": "https://your-tunnel/mcp/runs/:id" }\n  ],\n  "tools": [{ "type": "mcp_toolset", "mcp_server_name": "agentsim" }]\n}</pre>'+
-          '<p style="font-size:11.5px; color:var(--muted); margin:0 0 16px;">Needs a publicly reachable URL — a tunnel in front of this machine, not localhost.</p>';
-      }
-
-      if (state.connect === "reference") {
-        right += '<span class="field-label">Tools this World exposes</span><table class="tooltable"><thead><tr><th>Tool</th><th>Maps to</th><th>Status</th></tr></thead><tbody>'+toolRows(w.tools)+'</tbody></table>';
-      } else {
-        right += '<span class="field-label">Your tools, mapped onto this World\'s</span><table class="tooltable"><thead><tr><th>Your tool</th><th>AgentSim tool</th><th>Status</th></tr></thead><tbody>'+aliasRows(w.tools, state.world)+'</tbody></table>'+
-          '<p style="font-size:11px; color:var(--muted); margin:10px 0 0;">Same name on both sides maps itself. Rename the ones that don\'t, in Review.</p>';
-      }
-      right += '</div>';
+      var right = '<div class="panel card-pad"><h2>Connect, then map your tools</h2>'+
+        '<span class="field-label">Claude Code</span>'+
+        '<div class="copyfield" style="margin-bottom:14px;"><code>claude mcp add --transport http agentsim http://localhost:3000/mcp/runs/:id</code><button class="btn btn-ghost copybtn">Copy</button></div>'+
+        '<span class="field-label">Or, any MCP client</span>'+
+        '<pre class="mono" '+PRE+'>{\n  "mcpServers": {\n    "agentsim": { "type": "http", "url": "http://localhost:3000/mcp/runs/:id" }\n  }\n}</pre>'+
+        '<span class="field-label">Your tools, mapped onto this World\'s</span><table class="tooltable"><thead><tr><th>Your tool</th><th>AgentSim tool</th><th>Status</th></tr></thead><tbody>'+aliasRows(w.tools, state.world)+'</tbody></table>'+
+        '<p style="font-size:11px; color:var(--muted); margin:10px 0 0;">Same name on both sides maps itself. Rename the ones that don\'t, in Review.</p>'+
+        '</div>';
 
       el.innerHTML = '<div class="step-grid">'+left+right+'</div>';
       el.querySelectorAll("[data-connect]").forEach(function(o){ o.addEventListener("click", function(){ state.connect=o.dataset.connect; renderStep(); }); });
-      el.querySelectorAll("[data-agentver]").forEach(function(o){ o.addEventListener("click", function(){ state.agentVersion=o.dataset.agentver; renderStep(); }); });
-      el.querySelectorAll("[data-fwlang]").forEach(function(o){ o.addEventListener("click", function(){ state.fwLang=o.dataset.fwlang; renderStep(); }); });
     }
 
     else if (state.step === 1) {
@@ -2392,7 +2359,7 @@
     }
 
     else if (state.step === 5) {
-      var connectLabel = CONNECT_OPTS.filter(function(o){return o.id===state.connect;})[0].label + (state.connect==="reference" ? " · "+state.agentVersion : "");
+      var connectLabel = CONNECT_OPTS[0].label;
       var attackLabel = state.attack === "off" ? "Off — clean run" : state.attack;
       el.innerHTML = '<div class="step-grid single"><div class="panel card-pad">'+
         '<h2>Review</h2><dl class="review-grid">'+

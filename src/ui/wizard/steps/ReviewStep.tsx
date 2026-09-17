@@ -3,18 +3,8 @@ import type { Agent, WizardPack, WizardScenario } from "@/ui/types";
 import { formatLure } from "./AttackStep";
 import type { WizardState } from "../NewRunWizard";
 
-const CONNECT_LABELS: Record<WizardState["connect"], string> = {
-  reference: "Reference Agent",
-  mcp: "MCP server",
-  forwarder: "Forwarder",
-  connector: "Anthropic Connector",
-};
-
 export function ReviewStep({ state, pack, scenario, agents, busy, error, onStart }: { state: WizardState; pack: WizardPack; scenario: WizardScenario; agents: Agent[]; busy: boolean; error: string | null; onStart: () => void }) {
-  const agentLabel =
-    state.connect === "reference"
-      ? `${CONNECT_LABELS.reference} · ${state.agentVersion === "naive" ? "naïve" : state.agentVersion}`
-      : `${CONNECT_LABELS[state.connect]} · ${agents.find((a) => a.id === state.existingAgentId)?.name ?? "—"}`;
+  const agentLabel = `MCP server · ${agents.find((a) => a.id === state.existingAgentId)?.name ?? "—"}`;
   const attack = scenario.attacks.find((a) => a.id === state.attackId);
   const attackLabel = state.attackId === "off" ? "Off — clean run" : attack ? `${attack.id} (${formatLure(attack.lure)})` : state.attackId;
 

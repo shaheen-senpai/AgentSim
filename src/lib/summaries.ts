@@ -3,7 +3,6 @@
 // list-shaped call site reads packs through.
 import { listPackIds, loadPack, type Scenario, type WorldPack } from "@/engine/pack";
 import { DIMENSIONS, type Dimension } from "@/engine/dimensions";
-import { referenceVersions } from "@/runner/agents";
 
 export type ScenarioSummary = {
   id: string;
@@ -111,7 +110,6 @@ export type WizardPack = {
   entities: number;
   systems: number;
   tools: WizardTool[];
-  agentVersions: string[];
   scenarios: WizardScenario[];
 };
 
@@ -140,8 +138,6 @@ export function toWizardPack(p: WorldPack): WizardPack {
     entities: Object.keys(p.meta.entities).length,
     systems: new Set(Object.values(p.tools).map((t) => t.system)).size,
     tools: Object.values(p.tools).map((t) => ({ name: t.name, description: t.description, op: t.op, collection: t.collection })),
-    // "naive" first: the wizard defaults to the first version, and the story runs naïve before fixed.
-    agentVersions: [...referenceVersions(p)].sort((a, b) => (a === "naive" ? -1 : b === "naive" ? 1 : a.localeCompare(b))),
     scenarios: p.scenarios.map((s) => toWizardScenario(s, p.meta.id)),
   };
 }

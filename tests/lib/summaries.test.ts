@@ -22,7 +22,7 @@ describe("toWizardScenario", () => {
 });
 
 describe("toWizardPack", () => {
-  it("carries domain, description, principal, entity/system/tool counts, versions, and scenarios", () => {
+  it("carries domain, description, principal, entity/system/tool counts, and scenarios", () => {
     const pack = loadPack("northwind");
     const w = toWizardPack(pack);
     expect(w.id).toBe(pack.meta.id);
@@ -32,23 +32,20 @@ describe("toWizardPack", () => {
     expect(w.principal).toBe(pack.meta.principal);
     expect(w.entities).toBe(Object.keys(pack.meta.entities).length);
     expect(w.tools).toHaveLength(Object.keys(pack.tools).length);
-    // Same versions as the pack ships, but "naive" first: the wizard defaults to the first entry.
-    expect([...w.agentVersions].sort()).toEqual([...referenceVersions(pack)].sort());
-    expect(w.agentVersions[0]).toBe("naive");
     expect(w.scenarios).toHaveLength(pack.scenarios.length);
     expect(w.systems).toBeGreaterThan(0);
   });
 
-  // Regression guard (final whole-branch review, Finding 1): the Wizard's Reference Agent version
-  // toggle renders `agentVersions` verbatim as the submitted `version` — a value that isn't one of
-  // a pack's real `agents` keys (or the runner's "generic" fallback) makes `loadSystemPrompt`
-  // silently fall back to the wrong prompt with no error shown anywhere.
-  it("only ever reports a pack's real agent keys, or the generic fallback, for every installed pack", () => {
+  // Regression guard (final whole-branch review, Finding 1): a `version` that is not one of a
+  // pack's real `agents` keys (or the runner's "generic" fallback) makes `loadSystemPrompt`
+  // silently fall back to the wrong prompt with no error shown anywhere. The New run wizard no
+  // longer offers Reference Agent Runs, but the CLI still passes `--agent <version>` straight
+  // through, so the invariant is checked where those versions come from.
+  it("reports only a pack's real agent keys, or the generic fallback, for every installed pack", () => {
     for (const id of listPackIds()) {
       const pack = loadPack(id);
-      const w = toWizardPack(pack);
       const realKeys = Object.keys(pack.agents);
-      for (const v of w.agentVersions) {
+      for (const v of referenceVersions(pack)) {
         expect(realKeys.includes(v) || v === GENERIC_VERSION).toBe(true);
       }
     }

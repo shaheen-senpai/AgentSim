@@ -55,6 +55,10 @@ export function AgentsPage({ initialAgents, runs }: { initialAgents: Agent[]; ru
           </p>
         </div>
         <div className="animate-reveal flex flex-wrap gap-2 [animation-delay:120ms]">
+          {/* Temporary: the previous console still owns Runs, Compare and the World editor. */}
+          <LinkButton href="/runs" variant="ghost">
+            Switch to old UI <Icon name="external" className="size-4" />
+          </LinkButton>
           <LinkButton href="/agents/new?how=plugin" variant="outline">
             <Icon name="plug" className="size-4" /> Import via MCP
           </LinkButton>

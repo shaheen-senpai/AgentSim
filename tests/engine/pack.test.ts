@@ -55,7 +55,9 @@ describe("parsePackFiles validation", () => {
       "  payments: { label: Payments }\n  stripe:   { label: Stripe, kind: mcp, mode: shadowed, provider: stripe }\nentities:",
     );
     expect(packYaml).not.toBe(f["pack.yaml"]);
-    const { pack, errors } = parsePackFiles({ ...f, "pack.yaml": packYaml });
+    // Stub the provider loader: this test is about pack.yaml's systems schema round-tripping
+    // kind/mode/provider, not about resolving a real `src/providers/stripe` catalog (Task 5+).
+    const { pack, errors } = parsePackFiles({ ...f, "pack.yaml": packYaml }, () => ({}));
     expect(errors).toEqual([]);
     expect(pack!.meta.systems.stripe).toEqual({ label: "Stripe", kind: "mcp", mode: "shadowed", provider: "stripe" });
   });

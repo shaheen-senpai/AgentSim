@@ -208,6 +208,44 @@ const ToolDefSchema = z.object({
 
 const ToolsFileSchema = z.record(z.string(), ToolDefSchema);
 
+export class ProviderError extends Error {}
+
+export function providersDir(): string {
+  return process.env.AGENTSIM_PROVIDERS_DIR ?? path.join(process.cwd(), "src/providers");
+}
+
+/** Loads and validates one provider's tool catalog by id, from its `src/providers/<id>/tools.yaml`. */
+export function loadProviderTools(providerId: string): Record<string, ToolDef> {
+  const file = path.join(providersDir(), providerId, "tools.yaml");
+  if (!existsSync(file)) throw new ProviderError(`Unknown provider '${providerId}' — no ${file}`);
+  const raw = parseYAMLText(readFileSync(file, "utf8"));
+  const parsed = ToolsFileSchema.safeParse(raw);
+  if (!parsed.success) throw new ProviderError(`${file}: ${parsed.error.issues.map((i) => i.message).join("; ")}`);
+  return Object.fromEntries(Object.entries(parsed.data).map(([name, t]) => [name, { name, ...t }]));
+}
+
+/**
+ * Every `mode: "shadowed"` system's provider tools, tagged onto that system, merged into one map.
+ * Throws rather than silently overwriting on a name collision — between two shadowed sources, or
+ * between a shadowed source and a name already in the pack's own `tools.yaml` (`ownToolNames`).
+ */
+export function resolveShadowedTools(
+  systems: PackMeta["systems"],
+  ownToolNames: Set<string>,
+  loadProvider: (id: string) => Record<string, ToolDef> = loadProviderTools,
+): Record<string, ToolDef> {
+  const merged: Record<string, ToolDef> = {};
+  for (const [key, sys] of Object.entries(systems)) {
+    if (sys.mode !== "shadowed") continue;
+    if (!sys.provider) throw new ProviderError(`System '${key}' is mode: shadowed but declares no provider`);
+    for (const [name, def] of Object.entries(loadProvider(sys.provider))) {
+      if (name in merged || ownToolNames.has(name)) throw new ProviderError(`Tool '${name}' from provider '${sys.provider}' collides with an existing tool`);
+      merged[name] = { ...def, system: key };
+    }
+  }
+  return merged;
+}
+
 const DimensionSchema = z.enum(DIMENSIONS);
 
 const CheckSchema = z.discriminatedUnion("type", [
@@ -572,7 +610,10 @@ function zodIssues(file: string, error: z.ZodError): ValidationError[] {
  * Parses and validates a set of pack files (as produced by `loadPack` or an editor draft).
  * Never throws; collects every problem found across all files.
  */
-export function parsePackFiles(files: PackFiles): { pack: WorldPack | null; errors: ValidationError[] } {
+export function parsePackFiles(
+  files: PackFiles,
+  loadProvider: (id: string) => Record<string, ToolDef> = loadProviderTools,
+): { pack: WorldPack | null; errors: ValidationError[] } {
   const errors: ValidationError[] = [];
 
   // Report a file outside the pack layout rather than carrying it silently into `pack.files`, where
@@ -606,6 +647,16 @@ export function parsePackFiles(files: PackFiles): { pack: WorldPack | null; erro
     const r = ToolsFileSchema.safeParse(toolsRaw.data);
     if (!r.success) errors.push(...zodIssues("tools.yaml", r.error));
     else tools = Object.fromEntries(Object.entries(r.data).map(([name, t]) => [name, { name, ...t }]));
+  }
+
+  if (meta && tools) {
+    try {
+      const shadowed = resolveShadowedTools(meta.systems, new Set(Object.keys(tools)), loadProvider);
+      tools = { ...tools, ...shadowed };
+    } catch (e) {
+      errors.push({ file: "tools.yaml", path: "", message: e instanceof ProviderError ? e.message : String(e) });
+      tools = null;
+    }
   }
 
   const scenarioFileNames = Object.keys(files).filter((f) => f.startsWith("scenarios/") && f.endsWith(".yaml"));

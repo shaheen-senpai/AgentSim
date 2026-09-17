@@ -9,6 +9,7 @@ import { entityViews } from "@/lib/entityViews";
 import { ConsoleShell } from "@/ui/ConsoleShell";
 import { EntitiesTab } from "@/ui/worlds/EntitiesTab";
 import { OverviewTab } from "@/ui/worlds/OverviewTab";
+import { ToolsTab } from "@/ui/worlds/ToolsTab";
 import { erdLayout } from "@/ui/worlds/ownership";
 import { WorldTabs } from "@/ui/worlds/WorldTabs";
 import { parseTab, type WorldTab } from "@/ui/worlds/packView";
@@ -27,6 +28,8 @@ function Body({ pack, tab }: { pack: WorldPack; tab: WorldTab }) {
       const principalLabel = pack.meta.entities[pack.meta.principal]?.label ?? pack.meta.principal;
       return <EntitiesTab entities={v.entities} modes={v.modes} attackId={v.attackId} principalLabel={principalLabel} layout={erdLayout(pack.meta.entities)} />;
     }
+    case "tools":
+      return <ToolsTab tools={Object.values(pack.tools)} entities={pack.meta.entities} scenarios={pack.scenarios} systems={Object.keys(pack.meta.systems)} />;
     default:
       return <p className="hint" style={{ margin: 0 }}>This tab is being rebuilt.</p>;
   }

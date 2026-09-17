@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Agent, PackSummary } from "@/ui/types";
-import { buildWorldDraftScript, nextDraftWorld, worldViews } from "@/workspace/worlds";
+import { buildWorldDraftScript, worldViews } from "@/workspace/worlds";
 
 const agent = (over: Partial<Agent>): Agent => ({
   id: "agt_a", name: "Jira State Updater", version: "1", shape: "mcp", toolAliases: {}, url: "", authHeaderEnv: "", notes: "", createdAt: "2026-09-01T00:00:00Z",
@@ -22,18 +22,6 @@ describe("worldViews", () => {
     expect(views[2].href).toBe("/agents/agt_a/worlds/northwind");
     expect(views[2].consoleHref).toBe("/worlds/northwind");
     expect(views[0].href).toBe("/agents/agt_a/worlds/wld_2");
-  });
-});
-
-describe("nextDraftWorld", () => {
-  it("names a new world the agent does not already have, sized from its tools", () => {
-    const a = agent({ tools: ["a", "b", "c", "d"] });
-    const first = nextDraftWorld(a);
-    expect(first.name).toBeTruthy();
-    expect(first.tools).toBe(4);
-    expect(first.scenarios).toBeGreaterThan(0);
-    const second = nextDraftWorld(agent({ worlds: [{ ...first, id: "wld_x", createdAt: "2026-09-01T00:00:00Z" }] }));
-    expect(second.name).not.toBe(first.name);
   });
 });
 

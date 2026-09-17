@@ -1,8 +1,23 @@
 // The World page's view model, built the same way for a pack on disk and for a drafted World, so
 // one page renders both. Pure; server pages call it and hand the result down.
-import type { EntitySpec, WorldPack } from "@/engine/pack";
+import type { Attack, Check, EntitySpec, WorldPack } from "@/engine/pack";
 import type { DraftDetails, DraftSystem, DraftTool, DraftWorld } from "@/runner/agentRegistry";
 import type { Agent } from "@/ui/types";
+
+/** One Scenario as the page shows and edits it. A drafted World's placeholders carry no Checks, Attacks or Runs. */
+export type ScenarioView = {
+  id: string;
+  title: string;
+  brief: string;
+  policy: string;
+  /** The World Mandate the policy cites, when it is not inline. */
+  mandateId: string | null;
+  attacked: boolean;
+  checks: Check[];
+  attacks: Attack[];
+  /** Runs recorded against it — a referenced Scenario cannot be removed. */
+  runs: number;
+};
 
 export type WorldDetailView = {
   id: string;
@@ -14,8 +29,13 @@ export type WorldDetailView = {
   principal: string;
   entities: { name: string; label: string; fields: number | null; owner: string | null }[];
   tools: DraftTool[];
-  mandates: { label: string; text: string }[];
-  scenarios: { id: string; title: string; policy: string; attacked: boolean }[];
+  /** The World's own Mandates (a pack's `mandates` block), with the Scenarios that cite each. */
+  mandates: { id: string; label: string; text: string; citedBy: string[] }[];
+  scenarios: ScenarioView[];
+  /** A pack's lifecycle; a drafted World that is not a pack yet has none. */
+  status: "draft" | "ready" | null;
+  /** A pack's files, for the islands that edit it (Mandate text, generated Scenarios, publishing). */
+  files: Record<string, string> | null;
   /** The console's own page for an installed pack, with the YAML editor. */
   consoleHref?: string;
 };
@@ -68,7 +88,7 @@ export function detailsFromTools(tools: string[], entities: string[], mandate: s
 
 export function draftDetailView(world: DraftWorld, agent: Agent): WorldDetailView {
   const d = world.details ?? detailsFromTools(agent.tools, agent.entities, agent.mandate);
-  const scenarios = draftScenarios(world.scenarios).map((s, i) => ({ id: `draft-${i + 1}`, title: d.scenarioTitles[i] ?? s.title, policy: d.mandate, attacked: s.attacked }));
+  const scenarios: ScenarioView[] = draftScenarios(world.scenarios).map((s, i) => ({ id: `draft-${i + 1}`, title: d.scenarioTitles[i] ?? s.title, brief: "", policy: d.mandate, mandateId: null, attacked: s.attacked, checks: [], attacks: [], runs: 0 }));
   return {
     id: world.id,
     kind: "draft",
@@ -79,8 +99,10 @@ export function draftDetailView(world: DraftWorld, agent: Agent): WorldDetailVie
     principal: d.principal,
     entities: d.entities.map((e) => ({ ...e, fields: null, owner: null })),
     tools: d.toolDefs,
-    mandates: d.mandate ? [{ label: "Agent mandate", text: d.mandate }] : [],
+    mandates: d.mandate ? [{ id: "agent-mandate", label: "Agent mandate", text: d.mandate, citedBy: [] }] : [],
     scenarios,
+    status: null,
+    files: null,
   };
 }
 
@@ -88,7 +110,7 @@ function ownerOf(spec: EntitySpec): string {
   return spec.owner === "self" ? "self" : spec.owner.via;
 }
 
-export function packDetailView(pack: WorldPack): WorldDetailView {
+export function packDetailView(pack: WorldPack, runsByScenario: Record<string, number> = {}): WorldDetailView {
   const tools = Object.values(pack.tools);
   const systems: DraftSystem[] = Object.entries(pack.meta.systems).map(([key, sys]) => ({
     key,
@@ -108,8 +130,26 @@ export function packDetailView(pack: WorldPack): WorldDetailView {
     principal: pack.meta.entities[pack.meta.principal]?.label ?? pack.meta.principal,
     entities: Object.entries(pack.meta.entities).map(([name, spec]) => ({ name, label: spec.label, fields: Object.keys(spec.fields).length, owner: ownerOf(spec) })),
     tools: tools.map((t) => ({ name: t.name, system: t.system, kind: t.kind, description: t.description })),
-    mandates: pack.scenarios.map((s) => ({ label: s.title, text: s.policy.text })),
-    scenarios: pack.scenarios.map((s) => ({ id: s.id, title: s.title, policy: s.policy.text, attacked: s.attacks.length > 0 })),
+    // The plugin captures Mandates before any Scenario exists, so they come from the pack itself.
+    mandates: Object.values(pack.meta.mandates).map((m) => ({
+      id: m.id,
+      label: m.title ?? m.id,
+      text: m.text.trim(),
+      citedBy: pack.scenarios.filter((s) => s.policy.mandate === m.id).map((s) => s.title),
+    })),
+    scenarios: pack.scenarios.map((s) => ({
+      id: s.id,
+      title: s.title,
+      brief: s.task_brief.trim(),
+      policy: s.policy.text.trim(),
+      mandateId: s.policy.mandate ?? null,
+      attacked: s.attacks.length > 0,
+      checks: s.checks,
+      attacks: s.attacks,
+      runs: runsByScenario[s.id] ?? 0,
+    })),
+    status: pack.meta.status,
+    files: pack.files,
     consoleHref: `/worlds/${pack.meta.id}`,
   };
 }

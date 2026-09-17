@@ -8,6 +8,7 @@ import { Icon } from "@/marketing/icons";
 import type { Agent, PackSummary } from "@/ui/types";
 import { SourceTag } from "./AgentCard";
 import { updateAgent } from "./api";
+import { Clamp } from "./Clamp";
 import { EmptyState } from "./EmptyState";
 import { Toast, type ToastMessage } from "./Toast";
 import { container, enter, eyebrow } from "./ui";
@@ -64,7 +65,7 @@ export function AgentDetail({ agent: initial, packs, trust, runs, freshId: initi
             </span>
           </div>
           <h1 className="mt-3 font-heading text-display font-semibold">{agent.name}</h1>
-          {agent.description && <p className="mt-2 max-w-2xl text-lead text-muted-foreground">{agent.description}</p>}
+          {agent.description && <Clamp text={agent.description} lines={4} className="mt-2 max-w-2xl text-lead text-muted-foreground" />}
         </header>
       </div>
 

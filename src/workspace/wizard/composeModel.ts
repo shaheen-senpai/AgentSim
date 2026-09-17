@@ -11,7 +11,7 @@ export type { PackPick, ProviderInfo, Source } from "@/ui/worlds/newWorld/source
 export { FORMAT_LABEL, SRC_KIND, srcLabel, srcMode, srcToolCount } from "@/ui/worlds/newWorld/sources";
 
 export type Target = "agent" | "world";
-export type How = "plugin" | "compose" | "attach" | "draft";
+export type How = "plugin" | "compose" | "attach";
 
 /** The middle step is what the chosen path does: the plugin generates, everything else composes. */
 export function stepLabels(how: How | null): readonly string[] {
@@ -30,7 +30,6 @@ export const HOW_OPTIONS: Record<Target, HowOption[]> = {
   ],
   world: [
     { id: "plugin", title: "Generate with the worldbuilder plugin", body: "Run the plugin from the agent's own repo. It reads the tools, schema and policies there and drafts the World's structure here for review.", badge: "Recommended" },
-    { id: "draft", title: "Draft from the agent's tools", body: "AgentSim seeds a company around the tools the agent already has and writes clean and poisoned scenarios.", badge: "Fastest" },
     { id: "compose", title: "Compose from sources", body: "Several third-party MCPs, your own tool definitions, a database. One sandbox with one ownership graph." },
     { id: "attach", title: "Attach an installed World", body: "Use one of the packs already on disk as this agent's exam room." },
   ],

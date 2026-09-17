@@ -1,10 +1,16 @@
 // `/agents/[id]/worlds/[worldId]` — one World, on the same five tabs as the console's World page,
-// in the workspace theme. Server-rendered: tabs are links (`?tab=`), nothing here needs state.
+// in the workspace theme. Server-rendered: tabs are links (`?tab=`). The parts that edit a pack —
+// the draft bar, the Mandate text, generating Scenarios — are client islands fed the pack's files.
 import Link from "next/link";
 import { Icon } from "@/marketing/icons";
 import { systemColor } from "@/ui/systemColor";
 import { tabLabel, WORLD_TABS, type WorldTab } from "@/ui/worlds/packView";
+import { Clamp } from "./Clamp";
 import { card, container, eyebrow, tag } from "./ui";
+import { DraftBar } from "./world/DraftBar";
+import { MandateList } from "./world/MandateList";
+import { ScenarioEditor } from "./world/ScenarioEditor";
+import { ScenariosPanel } from "./world/ScenariosPanel";
 import type { WorldDetailView } from "./worldDetail";
 
 const KIND_LABEL: Record<WorldDetailView["systems"][number]["kind"], string> = { mcp: "MCP", tools: "Own tools", db: "Database", s3: "Object store" };
@@ -73,7 +79,7 @@ function Table({ head, rows }: { head: string[]; rows: React.ReactNode[][] }) {
   );
 }
 
-function Body({ view, tab }: { view: WorldDetailView; tab: WorldTab }) {
+function Body({ view, tab, base, scenario }: { view: WorldDetailView; tab: WorldTab; base: string; scenario: string | null }) {
   switch (tab) {
     case "overview":
       return <Overview view={view} />;
@@ -110,42 +116,62 @@ function Body({ view, tab }: { view: WorldDetailView; tab: WorldTab }) {
     case "mandate":
       return (
         <>
-          <h2 className="font-heading text-h3 font-semibold">Mandate</h2>
-          <p className="mt-2 text-body text-muted-foreground">The authority boundary a Run is graded against. Violations name the check, the tool call and the record.</p>
-          <ul className="mt-4 flex flex-col gap-3">
-            {view.mandates.map((m) => (
-              <li key={m.label} className="rounded-panel border border-border border-l-2 border-l-primary bg-background px-5 py-4">
-                <p className={eyebrow}>{m.label}</p>
-                <p className="mt-2 font-label text-body leading-relaxed">“{m.text}”</p>
-              </li>
-            ))}
-            {view.mandates.length === 0 && <li className="text-caption text-muted-foreground">No mandate recorded. Add one to the agent so violations have something to be graded against.</li>}
-          </ul>
+          <h2 className="font-heading text-h3 font-semibold">Mandate{view.mandates.length > 1 ? "s" : ""} · {view.mandates.length}</h2>
+          <p className="mt-2 text-body text-muted-foreground">
+            The authority boundary a Run is graded against. Violations name the check, the tool call and the record.
+            {view.files && " A Scenario cites a Mandate instead of copying it, so editing one here moves every Scenario that cites it."}
+          </p>
+          {view.mandates.length === 0 ? (
+            <p className="mt-4 text-caption text-muted-foreground">
+              {view.kind === "pack"
+                ? "No Mandates captured yet — the worldbuilder plugin reads them from the agent's own system prompt and policy docs, and a Scenario can always carry its own inline text instead."
+                : "No mandate recorded. Add one to the agent so violations have something to be graded against."}
+            </p>
+          ) : view.files ? (
+            <MandateList worldId={view.id} files={view.files} mandates={view.mandates} />
+          ) : (
+            <ul className="mt-4 flex flex-col gap-3">
+              {view.mandates.map((m) => (
+                <li key={m.id} className="rounded-panel border border-border border-l-2 border-l-primary bg-background px-5 py-4">
+                  <p className={eyebrow}>{m.label}</p>
+                  <p className="mt-2 font-label text-body leading-relaxed">“{m.text}”</p>
+                </li>
+              ))}
+            </ul>
+          )}
         </>
       );
-    case "scenarios":
+    case "scenarios": {
+      const open = scenario && view.files ? view.scenarios.find((sc) => sc.id === scenario) : undefined;
+      if (open && view.files) return <ScenarioEditor worldId={view.id} files={view.files} scenario={open} backHref={`${base}?tab=scenarios`} />;
       return (
         <>
           <h2 className="font-heading text-h3 font-semibold">Scenarios · {view.scenarios.length}</h2>
           <p className="mt-2 text-body text-muted-foreground">Each shift runs clean, then again with one poisoned record. An attacked Scenario carries the lure.</p>
-          <ul className="mt-4 grid gap-3 md:grid-cols-2">
-            {view.scenarios.map((s, i) => (
-              <li key={s.id} className="animate-reveal rounded-panel border border-border bg-background p-4" style={{ animationDelay: `${i * 50}ms` }}>
-                <div className="flex items-center justify-between gap-3">
-                  <span className="font-label text-label-sm uppercase text-muted-foreground">{s.id}</span>
-                  <span className={`font-label text-label-sm uppercase ${s.attacked ? "text-danger" : "text-safe"}`}>{s.attacked ? "Attacked" : "Clean"}</span>
-                </div>
-                <h3 className="mt-2 font-heading text-body font-semibold">{s.title}</h3>
-                {s.policy && <p className="mt-1 line-clamp-2 text-caption text-muted-foreground">{s.policy}</p>}
-              </li>
-            ))}
-          </ul>
+          {view.files ? (
+            <ScenariosPanel worldId={view.id} files={view.files} scenarios={view.scenarios} principal={view.principal} base={base} />
+          ) : (
+            <ul className="mt-4 grid gap-3 md:grid-cols-2">
+              {view.scenarios.map((s, i) => (
+                <li key={s.id} className="animate-reveal rounded-panel border border-border bg-background p-4" style={{ animationDelay: `${i * 50}ms` }}>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="font-label text-label-sm uppercase text-muted-foreground">{s.id}</span>
+                    <span className={`font-label text-label-sm uppercase ${s.attacked ? "text-danger" : "text-safe"}`}>{s.attacked ? "Attacked" : "Clean"}</span>
+                  </div>
+                  <h3 className="mt-2 font-heading text-body font-semibold">{s.title}</h3>
+                  {s.policy && <p className="mt-1 line-clamp-2 text-caption text-muted-foreground">{s.policy}</p>}
+                </li>
+              ))}
+              {view.scenarios.length === 0 && <li className="text-caption text-muted-foreground">No Scenarios yet.</li>}
+            </ul>
+          )}
         </>
       );
+    }
   }
 }
 
-export function WorldPage({ view, agent, tab }: { view: WorldDetailView; agent: { id: string; name: string }; tab: WorldTab }) {
+export function WorldPage({ view, agent, tab, scenario = null }: { view: WorldDetailView; agent: { id: string; name: string }; tab: WorldTab; scenario?: string | null }) {
   const base = `/agents/${agent.id}/worlds/${view.id}`;
   return (
     <main id="main" className={`${container} pb-20 pt-8`}>
@@ -159,9 +185,10 @@ export function WorldPage({ view, agent, tab }: { view: WorldDetailView; agent: 
       </nav>
       <div className="mt-3 flex flex-wrap items-center gap-3">
         <h1 className="font-heading text-display font-semibold">{view.name}</h1>
-        <span className={tag}>{view.kind === "pack" ? "Installed pack" : "Drafted"} · {view.domain}</span>
+        <span className={tag}>{view.kind === "pack" ? (view.status === "draft" ? "Draft pack" : "Installed pack") : "Drafted"} · {view.domain}</span>
       </div>
-      <p className="mt-3 max-w-3xl text-lead text-muted-foreground">{view.description}</p>
+      <Clamp text={view.description} lines={4} className="mt-3 max-w-3xl text-lead text-muted-foreground" />
+      {view.status === "draft" && view.files && <DraftBar worldId={view.id} agentId={agent.id} files={view.files} scenarioCount={view.scenarios.length} />}
 
       <div className="mt-7 flex gap-1 overflow-x-auto border-b border-border [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="tablist" aria-label="World">
         {WORLD_TABS.map((t) => (
@@ -177,8 +204,8 @@ export function WorldPage({ view, agent, tab }: { view: WorldDetailView; agent: 
         ))}
       </div>
 
-      <section className={`${card} animate-fade-in mt-6 p-6 sm:p-8`} key={tab}>
-        <Body view={view} tab={tab} />
+      <section className={`${card} animate-fade-in mt-6 p-6 sm:p-8`} key={`${tab}:${scenario ?? ""}`}>
+        <Body view={view} tab={tab} base={base} scenario={scenario} />
       </section>
 
       <p className="mt-5 text-caption text-muted-foreground">

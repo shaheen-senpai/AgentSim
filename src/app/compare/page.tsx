@@ -6,6 +6,7 @@ import { ConsoleShell } from "@/ui/ConsoleShell";
 import { CompareRunColumn } from "@/ui/CompareRunColumn";
 import { RunPicker } from "@/ui/compare/RunPicker";
 import { AttackPanel } from "@/ui/compare/AttackPanel";
+import { ChecksTable } from "@/ui/compare/ChecksTable";
 import { WorldDiffCompare } from "@/ui/compare/WorldDiffCompare";
 // Imported from its own plain module, not from `@/ui/RunsListPage` (a "use client" component that
 // re-exports the same function for its own use) — this file is a Server Component and calls
@@ -68,6 +69,18 @@ export default async function Compare({ searchParams }: { searchParams: Promise<
   if (!ra || !rb) notFound();
   const va = packViewFor(ra), vb = packViewFor(rb);
 
+  const sameScenario = ra.scenarioId === rb.scenarioId;
+  let sharedChecks: import("@/engine/pack").Check[] = [];
+  if (sameScenario) {
+    try {
+      const pack = loadPack(ra.packId);
+      const scenario = pack.scenarios.find((s) => s.id === ra.scenarioId);
+      sharedChecks = scenario?.checks ?? [];
+    } catch {
+      sharedChecks = [];
+    }
+  }
+
   return (
     <ConsoleShell>
       <div className="p-4 flex flex-col gap-4">
@@ -79,7 +92,7 @@ export default async function Compare({ searchParams }: { searchParams: Promise<
         </div>
         <AttackPanel runA={ra} runB={rb} />
         {/* ActionLedger — added by Task 5 */}
-        {/* ChecksTable — added by Task 4 */}
+        {sharedChecks.length > 0 && <ChecksTable checks={sharedChecks} violationsA={ra.violations} violationsB={rb.violations} />}
         <WorldDiffCompare runA={ra} runB={rb} />
       </div>
     </ConsoleShell>

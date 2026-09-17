@@ -92,6 +92,8 @@ const FNS: Record<string, (args: unknown[]) => unknown> = {
   contains: ([s, sub]) => typeof s === "string" && s.includes(String(sub)),
   lower: ([s]) => String(s ?? "").toLowerCase(),
   concat: ([a, c]) => `${a ?? ""}${c ?? ""}`,
+  coalesce: (args) => args.find((a) => a !== undefined && a !== null),
+  appendIfSet: ([list, item]) => (item === undefined || item === null ? list : [...(Array.isArray(list) ? list : []), item]),
 };
 
 function run(n: Node, b: Bindings): unknown {

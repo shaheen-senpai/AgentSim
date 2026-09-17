@@ -87,7 +87,12 @@ export default async function Compare({ searchParams }: { searchParams: Promise<
       <div className="p-4 flex flex-col gap-4">
         <h1 className={`${serif} text-[28px] font-medium tracking-tight`}>Compare runs</h1>
         <RunPicker runs={runs} a={ra.id} b={rb.id} />
-        <div className="grid grid-cols-2 gap-4">
+        {/* Stacks to one column below `md`, like every other side-by-side section on this page
+            (`AttackPanel`, `ActionLedger`, `WorldDiffCompare`). The flow's own bounded height lives
+            inside `CompareRunColumn` now — see the comment there — because `CompareColumn`'s natural
+            height varies a lot with how much a Run's score header wraps, so a single fixed height
+            shared across the whole row (header + flow) doesn't hold up across Runs or breakpoints. */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <CompareRunColumn run={ra} tools={va.tools} packError={va.error} injectedLabel={va.injectedLabel} />
           <CompareRunColumn run={rb} tools={vb.tools} packError={vb.error} injectedLabel={vb.injectedLabel} />
         </div>

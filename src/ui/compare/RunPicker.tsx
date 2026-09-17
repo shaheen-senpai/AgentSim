@@ -27,9 +27,14 @@ export function RunPicker({ runs, a, b }: { runs: RunSummary[]; a: string; b: st
     return <p className="text-[13px] text-[#6E6B60]">At least two completed Runs are needed to compare — this app has {completed.length} so far.</p>;
   }
 
+  // `minmax(0,1fr)`, not a bare `1fr` (which is `minmax(auto,1fr)`): a bare `1fr` track won't shrink
+  // below its content's min-content width, and a <select>'s min-content width is set by its longest
+  // <option> text — on a narrow viewport that forced the whole grid, and the whole page, into
+  // horizontal scroll. `min-w-0` on each column lets the <select> itself shrink and truncate long
+  // option text instead of forcing its track wider.
   return (
-    <div className="grid grid-cols-[1fr_auto_1fr] gap-3 items-end max-w-[720px]">
-      <div className="flex flex-col gap-1">
+    <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] gap-3 items-end max-w-[720px]">
+      <div className="flex flex-col gap-1 min-w-0">
         <span className={labelClass}>Run A</span>
         <select
           value={a}
@@ -38,7 +43,7 @@ export function RunPicker({ runs, a, b }: { runs: RunSummary[]; a: string; b: st
             const nextPeers = peersOf(nextA);
             go(nextA, nextPeers[0]?.id ?? "");
           }}
-          className={field}
+          className={`${field} w-full min-w-0`}
         >
           {completed.map((r) => (
             <option key={r.id} value={r.id}>
@@ -57,9 +62,9 @@ export function RunPicker({ runs, a, b }: { runs: RunSummary[]; a: string; b: st
       >
         ⇄
       </button>
-      <div className="flex flex-col gap-1">
+      <div className="flex flex-col gap-1 min-w-0">
         <span className={labelClass}>Run B</span>
-        <select value={b} onChange={(e) => go(a, e.target.value)} className={field} disabled={peers.length === 0}>
+        <select value={b} onChange={(e) => go(a, e.target.value)} className={`${field} w-full min-w-0`} disabled={peers.length === 0}>
           {peers.length === 0 && <option value="">No other Run of this Scenario yet</option>}
           {peers.map((r) => (
             <option key={r.id} value={r.id}>

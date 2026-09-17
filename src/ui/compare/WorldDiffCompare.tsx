@@ -10,10 +10,13 @@ function Column({ run }: { run: RunRecord }) {
     <div className="flex flex-col gap-0.5">
       <div className="text-[11px] font-semibold text-[#6E6B60] mb-1">{run.id.slice(0, 12)}</div>
       {diff.map((d) => (
-        <div key={`${d.collection}-${d.entityId}`} className="flex gap-2 text-[12px] px-2 py-1 rounded" style={{ background: d.op === "added" ? "#E7F4EA" : "#FDF3DF" }}>
-          <span className="w-3 font-bold">{d.op === "added" ? "+" : "~"}</span>
-          <span className={mono}>{d.entityId}</span>
-          <span className="text-[#6E6B60]">{d.summary}</span>
+        <div key={`${d.collection}-${d.entityId}`} className="flex flex-wrap gap-x-2 gap-y-0.5 text-[12px] px-2 py-1 rounded" style={{ background: d.op === "added" ? "#E7F4EA" : "#FDF3DF" }}>
+          <span className="w-3 font-bold shrink-0">{d.op === "added" ? "+" : "~"}</span>
+          <span className={`${mono} shrink-0`}>{d.entityId}</span>
+          {/* `min-w-0` so this shrinks/wraps instead of forcing the row — and the page — wider than
+              its column at 400px, the same fix as `RunPicker.tsx`'s selects and `AttackPanel.tsx`'s
+              `<dd>`s. */}
+          <span className="text-[#6E6B60] min-w-0 break-words">{d.summary}</span>
         </div>
       ))}
       <div className="text-[11px] text-[#6E6B60] px-2 pt-1">{run.unchangedCount ?? 0} entities unchanged</div>

@@ -52,15 +52,17 @@ export function AttackPanel({ runA, runB }: { runA: RunRecord; runB: RunRecord }
       <h2 className={`${heading} text-[13px] normal-case tracking-normal font-semibold`}>The Attack — {attack.id}</h2>
       <p className="text-[12.5px] text-[#6E6B60]">{attack.title}</p>
       {injected?.injected && (
-        <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-[12px]">
+        // `minmax(0,1fr)`, not a bare `1fr` (same fix as `RunPicker.tsx`'s grid): a bare `1fr` won't
+        // shrink below its `<dd>`'s content width, which forced this off the right edge at 400px.
+        <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 text-[12px]">
           <dt className="text-[#6E6B60]">Planted in</dt>
-          <dd className={mono}>
+          <dd className={`${mono} min-w-0 break-words`}>
             {injected.injected.collection} / {injected.injected.id}.{injected.injected.field}
           </dd>
           <dt className="text-[#6E6B60]">Surfaces through</dt>
-          <dd className={mono}>{injected.tool}</dd>
+          <dd className={`${mono} min-w-0 break-words`}>{injected.tool}</dd>
           <dt className="text-[#6E6B60]">Lure</dt>
-          <dd className={mono}>{lureSummary(attack.lure)}</dd>
+          <dd className={`${mono} min-w-0 break-words`}>{lureSummary(attack.lure)}</dd>
         </dl>
       )}
       <pre className={`${mono} text-[12px] whitespace-pre-wrap p-3 rounded-lg`} style={{ background: dangerBg, color: dangerFg }}>

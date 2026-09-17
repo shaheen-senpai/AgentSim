@@ -35,7 +35,11 @@ function StepRow({ event, seq, attack }: { event: Event; seq: number; attack: At
         className="w-full flex items-baseline gap-2.5 px-2.5 py-1.5 text-left text-[12px]"
       >
         <span className={`${mono} text-[#6E6B60] w-6 text-right shrink-0`}>#{seq}</span>
-        <span className={`${mono} font-semibold`} style={lure ? { color: dangerFg } : undefined}>
+        {/* `truncate` (not just `font-semibold`) so this can shrink and ellipsis instead of forcing
+            the row — and on a very narrow column, the whole page — wider than its container: a
+            single unbroken tool name has no natural wrap point, and without a non-`visible` overflow
+            a flex item's automatic minimum width is its full content width, not 0. */}
+        <span className={`${mono} font-semibold truncate shrink min-w-0`} style={lure ? { color: dangerFg } : undefined}>
           {event.tool}
         </span>
         <span className={`${mono} text-[11px] text-[#6E6B60] truncate flex-1`}>{argSummary(event)}</span>

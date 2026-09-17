@@ -19,9 +19,17 @@ export type GenerateResult = { files: PackFiles; errors: ValidationError[]; atte
 /** A refinement of a draft that already exists: the change asked for, over the files it has now. */
 export type Refinement = { note: string; previousFiles: PackFiles };
 
+/** How hard the model works on one stage. `high` is the API default; a refinement needs less. */
+export type Effort = "low" | "medium" | "high" | "xhigh" | "max";
+
 export type Stage<T> = {
   /** The forced tool. Its name is what the reply is searched for. */
   tool: BetaTool;
+  /**
+   * Overrides the default `high`. A refinement re-emits files it was just shown, against a note
+   * that usually touches a few lines — it does not need a cold draft's budget.
+   */
+  effort?: Effort;
   /** The tool's arguments, or a throw explaining what came back instead. */
   parse: (input: unknown) => T;
   /** The proposal as pack files, laid over the files the stage was given to build on. */
@@ -98,10 +106,17 @@ export async function generate<T>(
       model: MODEL,
       max_tokens: MAX_TOKENS,
       thinking: { type: "adaptive" },
-      output_config: { effort: "high" },
+      output_config: { effort: stage.effort ?? "high" },
       betas: ["server-side-fallback-2026-07-01"],
       fallbacks: "default",
-      system,
+      // One cache breakpoint, at the end of the only part that never varies. The render order is
+      // `tools` -> `system` -> `messages`, and for a given stage the tool schema and this whole
+      // system prompt (~7.6k tokens, almost all of it the format doc) are byte-identical on every
+      // call; every varying thing — the agent's manifest, a refinement note, the retry's error
+      // list — is in the user message, after the breakpoint. So the retry below and every
+      // `refine_world` read the prefix from cache instead of paying for it again. The 1h TTL is
+      // deliberate: refinements arrive minutes apart, past the 5-minute default.
+      system: [{ type: "text", text: system, cache_control: { type: "ephemeral", ttl: "1h" } }],
       messages: [{ role: "user", content: user }],
       tools: [stage.tool],
       tool_choice: { type: "tool", name: stage.tool.name },

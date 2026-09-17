@@ -31,6 +31,9 @@ export function AgentsPage({ initialAgents, runs }: { initialAgents: Agent[]; ru
 
   return (
     <main id="main" className={`${container} pb-20 pt-8`}>
+      <Link href="/" className={`${eyebrow} mb-6 inline-flex items-center gap-2 hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring`}>
+        <Icon name="arrow-left" className="size-3.5" /> Home
+      </Link>
       <header className="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-end">
         <div className="animate-reveal">
           <p className={eyebrow}>Workspace</p>

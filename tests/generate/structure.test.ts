@@ -7,14 +7,18 @@ import { POST as generateRoute } from "@/app/api/worlds/generate/route";
 import { loadPack, parsePackFiles, type PackFiles, type ValidationError } from "@/engine/pack";
 import { MAX_ATTEMPTS } from "@/generate/call";
 import { examplePackFiles, loadFormatDoc } from "@/generate/formatDoc";
-import { buildPrompt, generateStructure, mandateSection, matchProvider, mcpServerSection, PROPOSE_TOOL, TOOL_NAME, toolsToText, type StructureInput } from "@/generate/structure";
+import { buildPrompt, emptySeed, generateStructure, mandateSection, matchProvider, mcpServerSection, PROPOSE_TOOL, TOOL_NAME, toolsToText, type StructureInput } from "@/generate/structure";
+import { parse } from "yaml";
 import { withPackStatus } from "@/ui/worlds/packEdits";
 import { usePacksDir } from "../helpers/packs";
 
 // ───────────────────────────── the fake client ─────────────────────────────
 
+type SystemBlock = { type: string; text: string; cache_control?: { type: string; ttl?: string } };
+
 type StreamParams = {
-  system: string;
+  system: SystemBlock[];
+  output_config: { effort: string };
   messages: { role: string; content: string }[];
   tools: { name: string }[];
   tool_choice: { type: string; name?: string };
@@ -22,7 +26,12 @@ type StreamParams = {
 
 type FakeMessage = { stop_reason: string; content: { type: string; name?: string; input?: unknown }[] };
 
-const proposal = (files: PackFiles) => ({ pack_yaml: files["pack.yaml"], seed_yaml: files["seed.yaml"], tools_yaml: files["tools.yaml"] });
+const settings = (files: PackFiles) => parse(files["seed.yaml"]) as { now: string; currency: string };
+
+const proposal = (files: PackFiles) => {
+  const { now, currency } = settings(files);
+  return { pack_yaml: files["pack.yaml"], tools_yaml: files["tools.yaml"], now, currency };
+};
 
 const PROVIDERS = ["google-workspace", "okta", "slack", "stripe", "zendesk"];
 
@@ -57,10 +66,16 @@ const INPUT: StructureInput = {
 
 /**
  * What stage one really returns: the three structural files, and nothing else — with `status: draft`
- * stamped on, because a World with no Scenarios is only valid as a draft.
+ * stamped on, because a World with no Scenarios is only valid as a draft, and with a `seed.yaml`
+ * built here rather than echoed back, since the model no longer writes one.
  */
 function structureOf(files: PackFiles): PackFiles {
-  return { "pack.yaml": withPackStatus(files["pack.yaml"], "draft"), "seed.yaml": files["seed.yaml"], "tools.yaml": files["tools.yaml"] };
+  const { now, currency } = settings(files);
+  return {
+    "pack.yaml": withPackStatus(files["pack.yaml"], "draft"),
+    "seed.yaml": emptySeed(files["pack.yaml"], now, currency),
+    "tools.yaml": files["tools.yaml"],
+  };
 }
 
 let northwind: PackFiles;
@@ -96,6 +111,41 @@ describe("docs/worldpack-format.md", () => {
     // And that the Mandate citation the doc recommends is the one it demonstrates.
     const cited = pack!.scenarios[0].policy.mandate!;
     expect(pack!.meta.mandates[cited].text).toBe(pack!.scenarios[0].policy.text);
+  });
+
+  it("titles every example Scenario as a plain phrase — the model copies the doc's form, arrows included", () => {
+    const titles = formatDoc.split("\n").filter((l) => /^\s*title:/.test(l));
+    expect(titles.length).toBeGreaterThan(0);
+    for (const t of titles) expect(t).not.toContain("→");
+  });
+});
+
+// The seed the plugin is now *incapable* of filling: the rows are the platform's, and before this
+// the only thing stopping a model from inventing them was a sentence in the prompt.
+describe("emptySeed", () => {
+  it("gives every declared entity an empty array, and carries the World's settings", () => {
+    const pack = "principal: customers\nentities:\n  customers: { label: Customer }\n  orders: { label: Order }\n";
+    const seed = parse(emptySeed(pack, "2026-03-11T09:00:00Z", "GBP")) as { now: string; currency: string; rows: Record<string, unknown[]> };
+
+    expect(seed.now).toBe("2026-03-11T09:00:00Z");
+    expect(seed.currency).toBe("GBP");
+    expect(seed.rows).toEqual({ customers: [], orders: [] });
+  });
+
+  it("declares rows for every entity of a real pack, so validateSeed cannot reject it", () => {
+    const seed = emptySeed(northwind["pack.yaml"], "2026-03-11T09:00:00Z", "USD");
+    const { errors } = parsePackFiles({ ...northwind, "seed.yaml": seed, "pack.yaml": withPackStatus(northwind["pack.yaml"], "draft") });
+    // A pack with no rows fails its Scenario's Checks, never its seed.
+    expect(errors.filter((e) => e.file === "seed.yaml")).toEqual([]);
+  });
+
+  it("does not throw on a pack.yaml that is not YAML — that is parsePackFiles' to report", () => {
+    expect(() => emptySeed("entities: { unclosed", "2026-01-01T00:00:00Z", "USD")).not.toThrow();
+    expect(parse(emptySeed("entities: { unclosed", "2026-01-01T00:00:00Z", "USD"))).toEqual({
+      now: "2026-01-01T00:00:00Z",
+      currency: "USD",
+      rows: {},
+    });
   });
 });
 
@@ -170,7 +220,7 @@ describe("buildPrompt", () => {
 
   it("tells the model this stage writes no rows, Scenarios or prompts", () => {
     const { system } = buildPrompt(INPUT, formatDoc, PROVIDERS);
-    expect(system).toContain("empty array for every declared entity");
+    expect(system).toContain("You do not write `seed.yaml`");
     expect(system).toContain("Write no Scenarios, no Attacks and no agent prompts");
     expect(system).not.toContain("Seed at least three principals"); // that rule belongs to stage two
   });
@@ -267,6 +317,30 @@ describe("generateStructure", () => {
     expect(result.errors.length).toBeGreaterThan(0);
     expect(result.errors.every((e) => e.file === "tools.yaml")).toBe(true);
     expect(result.files["tools.yaml"]).toBe(broken.tools_yaml); // the draft is still handed back for a human to fix
+  });
+
+  it("caches the stable prefix, so the retry and every refinement stop paying for the format doc", async () => {
+    const calls: StreamParams[] = [];
+    const client = fakeClient([toolUse(proposal(northwind)), toolUse(proposal(northwind))], calls);
+    await generateStructure(INPUT, { client, formatDoc, providerIds: PROVIDERS });
+
+    // One breakpoint, on the one block that is byte-identical across calls.
+    expect(calls[0].system).toHaveLength(1);
+    expect(calls[0].system[0].cache_control).toEqual({ type: "ephemeral", ttl: "1h" });
+    expect(calls[0].system[0].text).toContain(formatDoc.trim());
+    // Nothing that varies may sit inside it, or the prefix changes and the cache never hits.
+    expect(calls[0].system[0].text).not.toContain(INPUT.schema!);
+    expect(calls[0].messages[0].content).toContain(INPUT.schema!);
+  });
+
+  it("spends a cold draft's budget on a draft, and less on a refinement", async () => {
+    const cold: StreamParams[] = [];
+    await generateStructure(INPUT, { client: fakeClient([toolUse(proposal(northwind))], cold), formatDoc, providerIds: PROVIDERS });
+    expect(cold[0].output_config.effort).toBe("high");
+
+    const refine: StreamParams[] = [];
+    await generateStructure(INPUT, { client: fakeClient([toolUse(proposal(northwind))], refine), formatDoc, providerIds: PROVIDERS }, { note: "n", previousFiles: northwind });
+    expect(refine[0].output_config.effort).toBe("medium");
   });
 
   it("stops on the first call when the first draft validates", async () => {

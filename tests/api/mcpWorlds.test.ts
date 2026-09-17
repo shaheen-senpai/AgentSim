@@ -7,10 +7,11 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { PUT as updateWorld } from "@/app/api/worlds/[id]/route";
-import { clientLabel, freeWorldId, POST as mcpWorldsRoute, renderRepo } from "@/app/mcp/worlds/route";
+import { clientLabel, draftSummary, freeWorldId, POST as mcpWorldsRoute, renderRepo } from "@/app/mcp/worlds/route";
 import type { McpServer } from "@modelcontextprotocol/server";
 import { loadPack, packsDir, type PackFiles } from "@/engine/pack";
 import { issueToken } from "@/generate/buildTokens";
+import { bindToken, issueToken as issueBuildToken } from "@/generate/buildTokens";
 import { createDraft } from "@/generate/draftRegistry";
 import { withPackStatus } from "@/ui/worlds/packEdits";
 import { usePacksDir } from "../helpers/packs";
@@ -47,14 +48,14 @@ afterEach(() => {
 });
 
 describe("/mcp/worlds", () => {
-  it("hands the client instructions naming register_agent, and lists exactly the 4 tools", async () => {
+  it("hands the client instructions naming register_agent, and lists exactly the 5 tools", async () => {
     const init = await initialize();
     expect(init.status).toBe(200);
     expect(init.result.instructions as string).toContain("register_agent");
 
     const listed = await rpc({ jsonrpc: "2.0", id: 2, method: "tools/list", params: {} }, init.sessionId);
     const names = (listed.result.tools as { name: string }[]).map((t) => t.name);
-    expect(names).toEqual(["register_agent", "refine_world", "get_world_draft", "create_world"]);
+    expect(names).toEqual(["register_agent", "refine_world", "validate_world_files", "get_world_draft", "create_world"]);
   });
 
   it("register_agent refuses to spend anything when ANTHROPIC_API_KEY is unset", async () => {
@@ -146,6 +147,24 @@ describe("/mcp/worlds", () => {
       expect(redraft.result.isError).toBe(true);
       expect(textOf(redraft.result)).toContain("rotated");
     });
+  });
+
+  // Validation on demand: no token, no draft, no write. The same `parsePackFiles` the platform
+  // writes through, so a caller can check an edit before it commits to one.
+  it("validate_world_files reports a valid pack, and every problem in a broken one", async () => {
+    const init = await initialize();
+
+    const good = await call(init.sessionId, "validate_world_files", { files: northwindFiles });
+    expect(JSON.parse(textOf(good.result))).toMatchObject({ valid: true, errorCount: 0 });
+
+    const broken = { ...northwindFiles, "tools.yaml": `${northwindFiles["tools.yaml"]}\nbroken:\n  system: nope\n` };
+    const bad = await call(init.sessionId, "validate_world_files", { files: broken });
+    const body = JSON.parse(textOf(bad.result)) as { valid: boolean; errorCount: number; errors: string[] };
+    expect(body.valid).toBe(false);
+    expect(body.errorCount).toBeGreaterThan(0);
+    expect(body.errors.join(" ")).toContain("tools.yaml");
+    // It writes nothing, so the World it was handed is untouched on disk.
+    expect(existsSync(path.join(packsDir(), "broken"))).toBe(false);
   });
 
   it("get_world_draft renders a seeded draft's files and its validation state", async () => {
@@ -263,6 +282,44 @@ describe("renderRepo", () => {
     expect(renderRepo(undefined)).toBeUndefined();
     expect(renderRepo({ commit: "a1b2c3d" })).toBeUndefined();
     expect(renderRepo({ remote: "   " })).toBeUndefined();
+  });
+});
+
+// What `register_agent` and `refine_world` hand back. A count alone made the caller choose between
+// another round trip and reporting a dead end, so the errors themselves travel with it.
+describe("draftSummary", () => {
+  const seed = (errors: { file: string; path: string; message: string }[], token = "wb_x") =>
+    createDraft({ name: "N", domain: "d", description: "x" }, { token }, { files: {}, errors, attempts: 1 });
+
+  it("carries the errors, not just how many", () => {
+    const draft = seed([{ file: "tools.yaml", path: "tools.a.set.status", message: "'pending' is not a declared value" }]);
+    const body = JSON.parse(draftSummary(draft, [])) as { valid: boolean; errorCount: number; errors: string[]; fix: string };
+
+    expect(body.valid).toBe(false);
+    expect(body.errorCount).toBe(1);
+    expect(body.errors).toEqual(["tools.yaml · tools.a.set.status: 'pending' is not a declared value"]);
+    expect(body.fix).toContain("refine_world");
+  });
+
+  it("says nothing about errors when there are none", () => {
+    const body = JSON.parse(draftSummary(seed([]), [])) as Record<string, unknown>;
+    expect(body).toMatchObject({ valid: true, errorCount: 0 });
+    expect(body).not.toHaveProperty("errors");
+    expect(body).not.toHaveProperty("fix");
+  });
+
+  // Both of these notes used to be keyed `note`, and object spread let the second overwrite the
+  // first — so the warning that a create would *overwrite* a World vanished in exactly the case it
+  // mattered: a re-run against a repo that already has one.
+  it("keeps the ownership warning when the repo also has existing Worlds", () => {
+    const token = issueBuildToken().token;
+    const draft = seed([], token);
+    bindToken(token, "nw-owned");
+
+    const body = JSON.parse(draftSummary(draft, [{ id: "nw-owned", status: "draft" }])) as Record<string, string>;
+    expect(body.updatesWorld).toBe("nw-owned");
+    expect(body.updatesNote).toContain("writes this draft over it");
+    expect(body.existingNote).toContain("already built a World");
   });
 });
 

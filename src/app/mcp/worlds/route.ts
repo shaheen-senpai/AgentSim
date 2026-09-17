@@ -19,7 +19,7 @@ import { POST as createWorldRoute } from "@/app/api/worlds/route";
 import { bindToken, boundWorldId, CLAIM_MESSAGE, claimToken, releaseToken, tokenStatus } from "@/generate/buildTokens";
 import { createDraft, getDraft, updateDraft, type Draft } from "@/generate/draftRegistry";
 import { generateStructure, toolsToText, type StructureInput } from "@/generate/structure";
-import { listPackIds, loadPack, type BuildInfo } from "@/engine/pack";
+import { listPackIds, loadPack, parsePackFiles, type BuildInfo } from "@/engine/pack";
 import { guardMcpRequest } from "@/lib/mcpAccess";
 import { loadPacks } from "@/lib/summaries";
 import { freeWorldId, isValidWorldId, withPackId } from "@/ui/worlds/editorLogic";
@@ -27,7 +27,10 @@ import { withBuiltBy, withPackStatus } from "@/ui/worlds/packEdits";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 300; // generation is a long Opus call with a retry, same as /api/worlds/generate
+// Generation is a long Opus call with a retry. Kept at or above the plugin's own timeout
+// (`claude-plugin/.mcp.json`, 600_000ms): a shorter budget here means the platform kills the
+// request while the client is still waiting, and the caller learns nothing about why.
+export const maxDuration = 600;
 
 const MAX_TOOLS = 200;
 const MAX_INPUT_SCHEMA_JSON_CHARS = 5_000;
@@ -74,6 +77,7 @@ const RegisterInput = {
   repo: RepoSchema.optional(),
 };
 const RefineInput = { draftId: z.string().min(1), note: z.string().min(1).max(4000) };
+const ValidateInput = { files: z.record(z.string().min(1).max(200), z.string().max(200_000)) };
 const GetDraftInput = { draftId: z.string().min(1) };
 const CreateWorldInput = { draftId: z.string().min(1), worldId: z.string().min(1) };
 
@@ -136,19 +140,33 @@ export { freeWorldId } from "@/ui/worlds/editorLogic";
 
 // ───────────────────────────── replies ─────────────────────────────
 
-function draftSummary(draft: Draft, existingWorlds: { id: string; status: string }[]): string {
+/** At most this many errors are returned inline; the rest are read with `get_world_draft`. */
+const MAX_INLINE_ERRORS = 20;
+
+export function draftSummary(draft: Draft, existingWorlds: { id: string; status: string }[]): string {
   const owned = boundWorldId(draft.meta.token);
   return JSON.stringify({
     draftId: draft.id,
     valid: draft.errors.length === 0,
     errorCount: draft.errors.length,
-    ...(owned
-      ? { updatesWorld: owned, note: `This token already built World '${owned}', so create_world writes this draft over it rather than creating another.` }
+    // The errors themselves, not just how many. A count alone told the caller its draft was broken
+    // and nothing about how, so the only way forward was another round trip — or, worse, reporting
+    // a dead end to the operator when the fix was one `refine_world` away.
+    ...(draft.errors.length > 0
+      ? {
+          errors: draft.errors.slice(0, MAX_INLINE_ERRORS).map((e) => `${e.file}${e.path ? ` · ${e.path}` : ""}: ${e.message}`),
+          ...(draft.errors.length > MAX_INLINE_ERRORS ? { moreErrors: draft.errors.length - MAX_INLINE_ERRORS } : {}),
+          fix: "Call refine_world with a note naming these, or read the whole draft with get_world_draft. create_world refuses a draft that still has errors.",
+        }
       : {}),
+    // Distinct keys: both of these used to be `note`, and object spread let the second silently
+    // overwrite the first — so the "this updates World X" warning vanished in exactly the case it
+    // mattered, a re-run against a repo that already has Worlds.
+    ...(owned ? { updatesWorld: owned, updatesNote: `This token already built World '${owned}', so create_world writes this draft over it rather than creating another.` } : {}),
     ...(existingWorlds.length > 0
       ? {
           existingWorlds,
-          note: "This repo already built a World. A draft one can be refined and re-created; a published one must not be replaced — create a second World instead.",
+          existingNote: "This repo already built a World. A draft one can be refined and re-created; a published one must not be replaced — create a second World instead.",
         }
       : {}),
   });
@@ -245,6 +263,28 @@ const handler = createMcpHandler(
         const updated = updateDraft(draft.id, result);
         if (!updated) return text(`Draft ${draft.id} expired while refining — start over with register_agent.`, true);
         return text(draftSummary(updated, []));
+      },
+    );
+
+    server.registerTool(
+      "validate_world_files",
+      {
+        description:
+          "Checks a set of World pack files against the same validator the platform writes through, and returns every problem found. Writes nothing and needs no token. Use it to check an edit before create_world, or to confirm a fix.",
+        inputSchema: ValidateInput,
+      },
+      async (args) => {
+        // `parsePackFiles` directly rather than POST /api/worlds/validate: same function, no
+        // self-fetch. It never throws — an unparseable file comes back as an error with its line.
+        const { pack, errors } = parsePackFiles(args.files);
+        return text(
+          JSON.stringify({
+            valid: pack !== null && errors.length === 0,
+            errorCount: errors.length,
+            errors: errors.slice(0, MAX_INLINE_ERRORS).map((e) => `${e.file}${e.path ? ` · ${e.path}` : ""}: ${e.message}`),
+            ...(errors.length > MAX_INLINE_ERRORS ? { moreErrors: errors.length - MAX_INLINE_ERRORS } : {}),
+          }),
+        );
       },
     );
 

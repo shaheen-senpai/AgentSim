@@ -2,6 +2,20 @@
 /* xyflow ships its own stylesheet; removed with the dependency in the cleanup task. */
 @import "@xyflow/react/dist/style.css";
 
+/* The mock was authored against browser defaults; Tailwind's preflight (also @layer base) zeroes
+   these. Restoring them here — same layer, later, so it wins over preflight but still yields to any
+   utility class and to every rule from the mock below. */
+@layer base {
+  main p { margin-block: 1em; }
+  main h2 { font-size: 1.5em; font-weight: bold; margin-block: 0.83em; }
+  main h3 { font-size: 1.17em; font-weight: bold; margin-block: 1em; }
+  main dl { margin-block: 1em; }
+  main dd { margin-inline-start: 40px; }
+  main pre { margin-block: 1em; }
+  main ul, main ol { margin-block: 1em; padding-inline-start: 40px; }
+  main figure { margin: 1em 40px; }
+}
+
 /* ---- Ported from design/agentsim-console.html <style> (lines 6-493). Fonts come from next/font; the
    runs-table rule definitions the mock repeats (lines 152-159) are kept once, both media blocks stay. ---- */
   :root{
@@ -340,7 +354,7 @@
   .drawer-field .val{font-family:var(--mono); font-size:12px; background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:9px 11px;}
 
   /* ---------- Runs list: scrollable with a sticky header ---------- */
-  .runs-scroll{max-height:460px; overflow-y:auto; overflow-x:hidden;}
+  .runs-scroll{max-height:max(460px, calc(100vh - 440px)); overflow-y:auto; overflow-x:hidden;}
   table.runs thead th{position:sticky; top:0; background:var(--surface); z-index:2; box-shadow:inset 0 -1px 0 var(--border);}
   table.runs thead th::after{content:none;}
   .list-meta{display:flex; align-items:center; gap:8px; font-size:11px; color:var(--muted); padding:8px 14px 0;}

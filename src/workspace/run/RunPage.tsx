@@ -6,8 +6,6 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/marketing/icons";
 import { agentLabel } from "@/runner/agentRef";
-import type { Snapshot } from "@/engine/types";
-import type { EntityRef } from "@/ui/run/ledgerCompare";
 import type { RunRecord, ToolDef } from "@/ui/types";
 import { useReplay } from "@/ui/useReplay";
 import { useRun } from "@/ui/useRun";
@@ -35,15 +33,13 @@ export type RunPageProps = {
   injectedLabel: string;
   /** A golden Run is recorded demo data: never narrated, never written. */
   golden: boolean;
-  /** The pack's pristine Seed — the ledger before the Attack — for the comparison; null when the pack is gone. */
-  seedSnapshot: Snapshot | null;
-  /** The pack's entities in declaration order, for the comparison's table order and labels. */
-  entities: EntityRef[];
+  /** Whether the Run's pack still loads — the ledger comparison needs it for its Seed ledger. */
+  hasSeed: boolean;
 };
 
 type View = "flow" | "list";
 
-export function RunPage({ id, initialRun, agent, tools, systems, principalLabel, injectedLabel, golden, seedSnapshot, entities }: RunPageProps) {
+export function RunPage({ id, initialRun, agent, tools, systems, principalLabel, injectedLabel, golden, hasSeed }: RunPageProps) {
   const { run: polled, error } = useRun(id);
   // The record `POST /finish` hands back — fresher than the last poll until the poller catches up.
   const [finished, setFinished] = useState<RunRecord | null>(null);
@@ -78,6 +74,8 @@ export function RunPage({ id, initialRun, agent, tools, systems, principalLabel,
 
   const selectedEvent = selected === null ? null : (shown.find((e) => e.seq === selected) ?? null);
   const isByo = run.agent.kind === "byo";
+  // Seed → Start needs the pack; Start → End needs a finished Run. Either one is enough to compare.
+  const compareHref = hasSeed || run.endSnapshot !== null ? `/runs/${run.id}/compare` : null;
   const nav = runNav(run, agent);
   const status = runStatusTag(run.status);
 
@@ -153,7 +151,7 @@ export function RunPage({ id, initialRun, agent, tools, systems, principalLabel,
         <div className="animate-reveal flex min-w-0 flex-col gap-4 [animation-delay:160ms]">
           <ConversationPanel run={displayRun} />
           <ScorePanel run={displayRun} replaying={replay.replaying} />
-          <DiffPanel run={run} principalLabel={principalLabel} seedSnapshot={seedSnapshot} entities={entities} />
+          <DiffPanel run={run} principalLabel={principalLabel} compareHref={compareHref} />
         </div>
       </div>
 

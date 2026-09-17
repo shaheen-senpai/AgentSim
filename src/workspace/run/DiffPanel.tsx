@@ -1,42 +1,38 @@
-"use client";
 // The World diff card: one row per added or changed entity, red when a violating Event changed it,
-// then the unchanged count and how many reads left the Run's principal. Its header opens the ledger
-// comparison — the same three ledgers, field by field.
-import { useState } from "react";
-import type { Snapshot } from "@/engine/types";
+// then the unchanged count and how many reads left the Run's principal. Its header links to the
+// ledger comparison page — the same World, field by field, before and after.
+import Link from "next/link";
 import { Icon } from "@/marketing/icons";
 import { countReadsOutside, readsOutsideLabel } from "@/ui/diffSummary";
 import { flaggedEntityIds } from "@/ui/run/eventFlags";
-import { availableModes, type EntityRef } from "@/ui/run/ledgerCompare";
 import type { RunRecord } from "@/ui/types";
 import { card, eyebrow } from "../ui";
-import { LedgerCompare } from "./LedgerCompare";
 
 export type DiffPanelProps = {
   run: RunRecord;
   principalLabel: string;
-  /** The pack's pristine Seed, for the Seed → Start and Seed → End comparisons; null when the pack is gone. */
-  seedSnapshot: Snapshot | null;
-  entities: EntityRef[];
+  /** Where "Compare ledgers" goes; null when the Run has nothing to compare yet (no end Snapshot and no pack). */
+  compareHref: string | null;
 };
 
-export function DiffPanel({ run, principalLabel, seedSnapshot, entities }: DiffPanelProps) {
+const compareLink = "ml-auto inline-flex items-center gap-1.5 rounded-control border border-border px-2.5 py-1 font-label text-[11px] transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-ring";
+
+export function DiffPanel({ run, principalLabel, compareHref }: DiffPanelProps) {
   const diff = run.diff ?? [];
   const flagged = flaggedEntityIds(run);
-  const [comparing, setComparing] = useState(false);
-  const canCompare = availableModes({ seed: seedSnapshot, start: run.startSnapshot, end: run.endSnapshot }).length > 0;
   return (
     <section className={`${card} min-w-0 overflow-hidden`} aria-labelledby="run-diff-title">
       <div className="flex items-center gap-2 px-5 pt-5">
         <h2 id="run-diff-title" className={eyebrow}>World diff · start → end</h2>
-        <button
-          type="button"
-          onClick={() => setComparing(true)}
-          disabled={!canCompare}
-          className="ml-auto inline-flex cursor-pointer items-center gap-1.5 rounded-control border border-border px-2.5 py-1 font-label text-[11px] text-muted-foreground transition-colors duration-200 hover:border-primary/60 hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          <Icon name="compare" className="size-3.5" /> Compare ledgers
-        </button>
+        {compareHref ? (
+          <Link href={compareHref} className={`${compareLink} text-muted-foreground hover:border-primary/60 hover:text-foreground`}>
+            <Icon name="compare" className="size-3.5" /> Compare ledgers
+          </Link>
+        ) : (
+          <span className={`${compareLink} cursor-not-allowed text-muted-foreground opacity-50`} aria-disabled="true" title="Available once the Run has an end Snapshot">
+            <Icon name="compare" className="size-3.5" /> Compare ledgers
+          </span>
+        )}
       </div>
       <ul className="mt-3 divide-y divide-border border-t border-border text-caption">
         {run.status === "running" ? (
@@ -61,7 +57,6 @@ export function DiffPanel({ run, principalLabel, seedSnapshot, entities }: DiffP
           </>
         )}
       </ul>
-      {comparing && <LedgerCompare open onClose={() => setComparing(false)} run={run} seedSnapshot={seedSnapshot} entities={entities} />}
     </section>
   );
 }

@@ -567,3 +567,49 @@ When the work is done, record what you did in the loan's desk note and stop.
 - Ids carry their entity's `id_prefix`; every id named by a Check, an Attack or a Task Brief exists
   in the Seed.
 - No real data: every name, address, amount and timestamp is invented.
+
+---
+
+## 9. Writing these files so they parse and validate
+
+Every rule below is enforced by `parsePackFiles`, and every one of them has been the sole reason a
+generated pack was thrown away. They apply to whoever is writing the YAML — a human, the
+world-builder plugin, or the Scenario generator.
+
+**Valid YAML on the first read.** A file that does not parse tells a reviewer nothing about the
+World, and a `pack.yaml` that does not parse cannot even be stamped with its status. Quote any
+scalar that contains `: ` or ` #`, or that starts with `{`, `[`, `&`, `*`, `!` or `%`. Write
+multi-line prose — a Mandate `text`, a Task Brief, an Attack's planted text — as a `|` block
+scalar. These are the two shapes that break most often:
+
+```yaml
+# wrong — a colon-space inside a plain scalar ends the key
+error: "Transfer of 500000 exceeds the limit: escalate"   # quoted: fine
+text: Refunds over 5000: escalate to a human                # unquoted: parse error
+
+# right — prose is a block scalar
+text: |
+  Refunds over 5000 escalate to a human. Never refund more than the payment.
+```
+
+**Every literal must satisfy the field it is written to.** An `enum` field accepts only the values
+its entity declares; an `int` field with `min`/`max` accepts only what is in range. This applies to
+a tool's `set`, to a seed row, and to a Check's expected value. Never write a placeholder, a `TODO`,
+or an invented status to stand in for a value you are unsure of — it validates as a string, and then
+every call to that tool fails at run time with a rejection the reviewer cannot explain:
+
+```yaml
+# entity: status: { type: enum, values: [open, approved, denied] }
+set: { status: pending_review }   # wrong: not a declared value, fails every call
+set: { status: open }             # right
+```
+
+**One tool is one `op` against one `collection`.** There is no way to write two collections in a
+single call. When the real tool being modelled does two things — files a dispute *and* flips the
+transaction to `disputed`, records a transfer *and* debits the balance — write the write that
+matters and enforce the other half as a `guard` where you can: a prior-row `lookup` with
+`count(...) > 0` reproduces a "cannot happen twice" rule without the second write. Never write a
+`returns` field or a description that implies a collection the tool did not write actually changed.
+
+**A `create` sets every field its entity requires**, and never `id` — that comes from `new_id`.
+A `seed.yaml` carries a `rows:` key for **every** declared entity, even when the array is empty.

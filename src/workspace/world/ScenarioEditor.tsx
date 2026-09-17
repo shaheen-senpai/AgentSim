@@ -59,7 +59,7 @@ export function ScenarioEditor({ worldId, files, scenario: sc, backHref }: { wor
   const key = scenarioFileKey(sc.id);
 
   /** Rewrite this Scenario's file and save the whole pack. */
-  const rewrite = (edit: (file: string) => string) => save({ ...files, [key]: edit(files[key] ?? "") });
+  const rewrite = async (edit: (file: string) => string) => (await save({ ...files, [key]: edit(files[key] ?? "") })) !== null;
 
   async function addSnippet(list: "attacks" | "checks", text: string): Promise<string | null> {
     const result = appendListItems(files[key] ?? "", list, text);

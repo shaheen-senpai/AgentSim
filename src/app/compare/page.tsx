@@ -5,6 +5,8 @@ import { entityLabel } from "@/engine/world";
 import { ConsoleShell } from "@/ui/ConsoleShell";
 import { CompareRunColumn } from "@/ui/CompareRunColumn";
 import { RunPicker } from "@/ui/compare/RunPicker";
+import { AttackPanel } from "@/ui/compare/AttackPanel";
+import { WorldDiffCompare } from "@/ui/compare/WorldDiffCompare";
 // Imported from its own plain module, not from `@/ui/RunsListPage` (a "use client" component that
 // re-exports the same function for its own use) — this file is a Server Component and calls
 // `latestComparablePair` during render, which Next's server/client boundary only allows when the
@@ -75,10 +77,10 @@ export default async function Compare({ searchParams }: { searchParams: Promise<
           <CompareRunColumn run={ra} tools={va.tools} packError={va.error} injectedLabel={va.injectedLabel} />
           <CompareRunColumn run={rb} tools={vb.tools} packError={vb.error} injectedLabel={vb.injectedLabel} />
         </div>
-        {/* AttackPanel — added by Task 3 */}
+        <AttackPanel runA={ra} runB={rb} />
         {/* ActionLedger — added by Task 5 */}
         {/* ChecksTable — added by Task 4 */}
-        {/* WorldDiffCompare — added by Task 3 */}
+        <WorldDiffCompare runA={ra} runB={rb} />
       </div>
     </ConsoleShell>
   );

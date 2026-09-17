@@ -1,10 +1,12 @@
 "use client";
 // "Sources in this World/Agent": what has been added, the ways to add more, and the panel for the
 // kind being added — provider tiles with a live tool surface, pasted tools, a schema, a pack.
+import Image from "next/image";
 import { useId, useState } from "react";
 import { Button } from "@/marketing/Button";
 import { Icon } from "@/marketing/icons";
 import { eyebrow, fieldLabel, hint, input, tag } from "../ui";
+import { PROVIDER_LOGOS } from "./brandLogos";
 import { FORMAT_LABEL, SRC_KIND, srcLabel, srcMode, srcToolCount, toolLines, type PackPick, type ProviderInfo, type Source, type ToolFormat } from "./composeModel";
 
 type Adding = "mcp" | "tools" | "db" | "pack";
@@ -17,6 +19,23 @@ const ADD_BUTTONS: { kind: Adding | "s3"; label: string; roadmap?: boolean }[] =
   { kind: "s3", label: "Object storage", roadmap: true },
 ];
 
+/** The brand mark on a white tile (the marks are drawn for light backgrounds); initials when we have none. */
+export function ProviderMark({ provider }: { provider: ProviderInfo }) {
+  const logo = PROVIDER_LOGOS[provider.id];
+  if (!logo) {
+    return (
+      <span className="grid size-10 shrink-0 place-items-center rounded-control font-label text-[11px] font-semibold uppercase text-white" style={{ background: provider.hue }} aria-hidden>
+        {provider.label.slice(0, 2)}
+      </span>
+    );
+  }
+  return (
+    <span className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-control bg-white p-1.5" aria-hidden>
+      <Image src={logo.src} alt="" width={logo.wide ? 28 : 24} height={logo.wide ? 12 : 24} unoptimized className={logo.wide ? "h-3 w-7 object-contain" : "size-6 object-contain"} />
+    </span>
+  );
+}
+
 export function ProviderTile({ provider, selected, onSelect }: { provider: ProviderInfo; selected: boolean; onSelect: () => void }) {
   return (
     <button
@@ -25,9 +44,7 @@ export function ProviderTile({ provider, selected, onSelect }: { provider: Provi
       aria-pressed={selected}
       className={`flex w-full cursor-pointer items-start gap-3 rounded-panel border p-4 text-left transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ${selected ? "border-primary/70 bg-primary/10" : "border-border bg-background hover:border-primary/40"}`}
     >
-      <span className="grid size-10 shrink-0 place-items-center rounded-control font-label text-[11px] font-semibold uppercase text-white" style={{ background: provider.hue }} aria-hidden>
-        {provider.label.slice(0, 2)}
-      </span>
+      <ProviderMark provider={provider} />
       <span className="min-w-0">
         <span className="block truncate font-heading text-body font-semibold">{provider.label}</span>
         <span className="mt-0.5 block text-caption text-muted-foreground">{provider.kind} · {provider.tools.length} tools</span>

@@ -8,19 +8,31 @@ import type { Violation } from "@/engine/evaluator";
 import type { Check } from "@/engine/pack";
 import type { Event } from "@/engine/types";
 
+/** JSON.stringify with every plain object's own keys sorted — so two structurally-equal objects
+ * produce the same string regardless of property insertion order. */
+function stableStringify(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(stableStringify).join(",")}]`;
+  if (value !== null && typeof value === "object") {
+    const keys = Object.keys(value as Record<string, unknown>).sort();
+    return `{${keys.map((k) => `${JSON.stringify(k)}:${stableStringify((value as Record<string, unknown>)[k])}`).join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+
 /**
  * A stable, content-based identity for a Check: exactly how `runCheck` (`src/engine/checks.ts`)
  * builds a Violation's own key (`const { type, dimension, ...params } = check`) — matching
  * `packView.ts`'s existing `checkParams()` cast convention rather than inventing a new one.
+ * Key order within `params` doesn't matter — `stableStringify` sorts every object's own keys.
  */
 function checkKey(c: Check): string {
   const obj = c as unknown as Record<string, unknown>;
   const { type, dimension, ...params } = obj;
-  return JSON.stringify({ type, dimension, params });
+  return stableStringify({ type, dimension, params });
 }
 
 function violationKey(v: Violation): string {
-  return JSON.stringify({ type: v.checkType, dimension: v.dimension, params: v.params });
+  return stableStringify({ type: v.checkType, dimension: v.dimension, params: v.params });
 }
 
 /** How many of two Runs' event ledgers agree from the start, comparing each step's tool + input. */

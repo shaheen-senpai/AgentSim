@@ -52,6 +52,11 @@ describe("checkOutcomes", () => {
     const v = violation("arg_lte", "policy_compliance", { tool: "other_tool", arg: "amount_pence", max: 4999 });
     expect(checkOutcomes([c], [v], [])).toEqual([{ check: c, passA: true, passB: true }]);
   });
+  it("matches a Violation whose params are structurally equal but declared in a different key order", () => {
+    const c = check("arg_lte", "policy_compliance", { tool: "t", arg: "a", max: 1 });
+    const v = violation("arg_lte", "policy_compliance", { max: 1, arg: "a", tool: "t" });
+    expect(checkOutcomes([c], [v], [])).toEqual([{ check: c, passA: false, passB: true }]);
+  });
 });
 
 describe("groupOutcomesByDimension", () => {

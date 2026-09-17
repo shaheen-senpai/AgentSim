@@ -6,9 +6,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { listPackIds, loadPack, PACK_ID_RE, type WorldPack } from "@/engine/pack";
 import { entityViews } from "@/lib/entityViews";
+import { listRuns } from "@/runner/store";
 import { ConsoleShell } from "@/ui/ConsoleShell";
 import { EntitiesTab } from "@/ui/worlds/EntitiesTab";
+import { MandateTab } from "@/ui/worlds/MandateTab";
 import { OverviewTab } from "@/ui/worlds/OverviewTab";
+import { ScenariosTab } from "@/ui/worlds/ScenariosTab";
 import { ToolsTab } from "@/ui/worlds/ToolsTab";
 import { erdLayout } from "@/ui/worlds/ownership";
 import { WorldTabs } from "@/ui/worlds/WorldTabs";
@@ -19,7 +22,14 @@ export const dynamic = "force-dynamic";
 type Params = Promise<{ id: string }>;
 type Search = Promise<{ tab?: string | string[]; scenario?: string | string[] }>;
 
-function Body({ pack, tab }: { pack: WorldPack; tab: WorldTab }) {
+/** How many Runs reference each Scenario — a referenced Scenario cannot be removed. */
+function runsByScenario(packId: string): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const r of listRuns()) if (!r.packId || r.packId === packId) out[r.scenarioId] = (out[r.scenarioId] ?? 0) + 1;
+  return out;
+}
+
+function Body({ pack, tab, scenario }: { pack: WorldPack; tab: WorldTab; scenario: string | null }) {
   switch (tab) {
     case "overview":
       return <OverviewTab meta={pack.meta} tools={pack.tools} />;
@@ -30,8 +40,10 @@ function Body({ pack, tab }: { pack: WorldPack; tab: WorldTab }) {
     }
     case "tools":
       return <ToolsTab tools={Object.values(pack.tools)} entities={pack.meta.entities} scenarios={pack.scenarios} systems={Object.keys(pack.meta.systems)} />;
-    default:
-      return <p className="hint" style={{ margin: 0 }}>This tab is being rebuilt.</p>;
+    case "mandate":
+      return <MandateTab worldId={pack.meta.id} files={pack.files} scenarios={pack.scenarios} />;
+    case "scenarios":
+      return <ScenariosTab worldId={pack.meta.id} files={pack.files} scenarios={pack.scenarios} principal={pack.meta.principal} runsByScenario={runsByScenario(pack.meta.id)} selected={scenario} />;
   }
 }
 
@@ -56,7 +68,9 @@ function Frame({ id, name, children }: { id: string; name: string; children: Rea
 
 export default async function WorldPage({ params, searchParams }: { params: Params; searchParams: Search }) {
   const { id } = await params;
-  const tab = parseTab((await searchParams).tab);
+  const search = await searchParams;
+  const tab = parseTab(search.tab);
+  const scenario = Array.isArray(search.scenario) ? (search.scenario[0] ?? null) : (search.scenario ?? null);
 
   // The id reaches the filesystem via `path.join` inside `loadPack`, so it is checked first.
   if (!PACK_ID_RE.test(id) || !listPackIds().includes(id)) notFound();
@@ -80,7 +94,7 @@ export default async function WorldPage({ params, searchParams }: { params: Para
       <p className="sub">{pack.meta.description}</p>
       <WorldTabs packId={id} current={tab} />
       <div className="panel card-pad" style={{ maxWidth: tab === "overview" ? 760 : 1040 }}>
-        <Body pack={pack} tab={tab} />
+        <Body pack={pack} tab={tab} scenario={scenario} />
       </div>
     </Frame>
   );

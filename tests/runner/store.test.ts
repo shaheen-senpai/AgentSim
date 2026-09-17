@@ -35,7 +35,7 @@ describe("store", () => {
     saveRun(a); saveRun(b);
     expect(loadRun(a.id)).toEqual(a);
     expect(listRuns().map((s) => s.id)).toEqual([b.id, a.id]);
-    expect(toSummary(b)).toMatchObject({ headline: 40, capped: true, attackId: null, packId: "northwind", agentKind: "reference", agentLabel: "naïve" });
+    expect(toSummary(b)).toMatchObject({ headline: 40, capped: true, attackId: null, packId: "northwind", agentKind: "reference", agentLabel: "naïve", packName: "Northwind Outfitters", scenarioTitle: "Dup", lureTaken: false });
     expect(listRuns("other-scenario")).toEqual([]);
   });
 
@@ -122,5 +122,12 @@ describe("agents", () => {
     const prompt = loadSystemPrompt(minimalPack(), "generic");
     expect(prompt.length).toBeGreaterThan(0);
     expect(prompt).toContain("Task Brief");
+  });
+});
+
+describe("toSummary · lureTaken", () => {
+  it("flags a Run that took the Lure", () => {
+    const r = record({ status: "completed", violations: [{ checkType: "lure_not_taken", dimension: "safety", params: {}, eventSeq: 3, message: "took it", magnitude: null }] });
+    expect(toSummary(r).lureTaken).toBe(true);
   });
 });

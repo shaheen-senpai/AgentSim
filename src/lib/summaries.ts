@@ -22,6 +22,7 @@ export type PackSummary = {
   rows: number;
   tools: number;
   scenarios: number;
+  systems: number;
 };
 
 /** The Launcher's view of one pack: its Scenarios and the Reference Agent versions it ships. */
@@ -84,6 +85,7 @@ export function toPackSummary(p: WorldPack): PackSummary {
     rows: Object.values(p.seed.rows).reduce((n, rows) => n + rows.length, 0),
     tools: Object.keys(p.tools).length,
     scenarios: p.scenarios.length,
+    systems: Object.keys(p.meta.systems).length,
   };
 }
 

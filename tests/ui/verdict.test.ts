@@ -15,6 +15,9 @@ function summary(over: Partial<RunSummary> & Pick<RunSummary, "id" | "createdAt"
     passed: true,
     golden: false,
     dimensions: [],
+    packName: "Pack",
+    scenarioTitle: "Title",
+    lureTaken: false,
     ...over,
   };
 }

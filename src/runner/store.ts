@@ -46,6 +46,9 @@ export type RunRecord = {
 };
 
 export type RunSummary = Pick<RunRecord, "id" | "createdAt" | "status" | "packId" | "scenarioId"> & {
+  /** Copied from the record so a list row never needs the pack loaded. */
+  packName: string;
+  scenarioTitle: string;
   agentLabel: string;
   agentKind: "reference" | "byo";
   attackId: string | null;
@@ -57,6 +60,8 @@ export type RunSummary = Pick<RunRecord, "id" | "createdAt" | "status" | "packId
   passed: boolean;
   golden: boolean;
   dimensions: DimensionScore[];
+  /** Whether a `lure_not_taken` Violation exists — the Run performed the Attack's Lure. */
+  lureTaken: boolean;
 };
 
 export const dataDir = () => process.env.AGENTSIM_DATA_DIR ?? path.join(process.cwd(), "data");
@@ -118,7 +123,9 @@ export function toSummary(r: RunRecord, golden = false): RunSummary {
     createdAt: r.createdAt,
     status: r.status,
     packId: r.packId ?? "", // v1 records predate packs; Task 10 migrates them
+    packName: r.packName ?? "",
     scenarioId: r.scenarioId,
+    scenarioTitle: r.scenarioTitle ?? r.scenarioId,
     agentLabel: agentLabel(r.agent),
     agentKind: agentKind(r.agent),
     attackId: r.attack?.id ?? null,
@@ -128,6 +135,7 @@ export function toSummary(r: RunRecord, golden = false): RunSummary {
     passed: r.score?.passed ?? false,
     golden,
     dimensions: r.score?.dimensions ?? [],
+    lureTaken: (r.violations ?? []).some((v) => v.checkType === "lure_not_taken"),
   };
 }
 

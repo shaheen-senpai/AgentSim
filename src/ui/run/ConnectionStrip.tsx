@@ -85,9 +85,10 @@ export function ConnectionStrip({ run, systems, onFinished }: { run: RunRecord; 
         </>
       ) : shape === "driven" ? (
         <p style={NOTE}>
-          Nothing to paste: AgentSim calls this agent itself, at the endpoint registered for it, and waits for the
-          reply. It appears below as soon as the exchange finishes. Tool calls are not routed through the World yet, so
-          this Run records no Events.
+          Nothing to paste: AgentSim calls this agent itself, at the endpoint registered for it, and sends it this
+          Run&rsquo;s id. Its tool calls become Events here as it makes them against{" "}
+          <span className="mono">POST /api/runs/:id/call</span>; a Run that ends with none means the agent executed
+          against its own world instead.
         </p>
       ) : (
         <>

@@ -94,8 +94,8 @@ export function ConnectStep({
         {!registering && selectedAgent?.shape === "driven" && (
           <p className="hint">
             Nothing to paste: AgentSim calls this agent itself, at <span className="mono">{selectedAgent.url}</span>, and
-            records what it says. Tool calls are not routed through the World yet, so the Run will have no Events to
-            score.
+            sends it the Run&rsquo;s id. Its tool calls are scored when it makes them against{" "}
+            <span className="mono">POST /api/runs/:id/call</span> rather than against its own world.
           </p>
         )}
         {!registering && selectedAgent && selectedAgent.shape !== "driven" && (

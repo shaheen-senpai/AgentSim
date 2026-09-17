@@ -47,5 +47,9 @@ export default async function AgentWorldRoute({ params, searchParams }: { params
   const r = resolve(id, worldId);
   if (!r) notFound();
   const selected = Array.isArray(scenario) ? (scenario[0] ?? null) : (scenario ?? null);
-  return <WorldPage view={r.view} agent={r.agent} tab={parseTab(tab)} scenario={selected} />;
+  // Shifts already run against this World, so one can be reopened after you navigate away.
+  const runs = listRuns().filter((run) => run.packId === worldId);
+  // eslint-disable-next-line react-hooks/purity -- a Server Component renders once per request; one clock reading keeps every shift's age consistent
+  const now = Date.now();
+  return <WorldPage view={r.view} agent={r.agent} tab={parseTab(tab)} runs={runs} now={now} scenario={selected} />;
 }

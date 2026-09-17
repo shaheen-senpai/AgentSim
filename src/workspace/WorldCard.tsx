@@ -28,7 +28,7 @@ export function WorldCard({ world, onRemove, fresh = false, style }: { world: Wo
       <div className="relative z-10 mt-5 flex flex-wrap items-center gap-3 text-caption">
         <span className="inline-flex items-center gap-1 text-primary">Open world <Icon name="arrow-right" className="size-3.5" /></span>
         {world.kind === "pack" && world.status !== "draft" ? (
-          <Link href="/runs/new" className="text-muted-foreground underline-offset-4 hover:text-foreground hover:underline focus-visible:outline-2 focus-visible:outline-ring">Run a shift</Link>
+          <Link href={`${world.href}/run`} className="text-muted-foreground underline-offset-4 hover:text-foreground hover:underline focus-visible:outline-2 focus-visible:outline-ring">Run a shift</Link>
         ) : (
           <span className="text-muted-foreground">{world.kind === "pack" ? "Publish to run shifts" : "Draft"}</span>
         )}

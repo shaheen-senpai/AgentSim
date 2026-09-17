@@ -5,9 +5,11 @@
 // staging agent cannot have its tool URLs repointed just for a Run. This inverts that: the team
 // exposes one HTTP entry point, and AgentSim drives it.
 //
-// Deliberately not wired to the gateway yet: this carries the Task Brief out and the reply back, so
-// the round trip is real, and nothing is scored from it. Tool interception is the next step, and it
-// is what turns a reply into Events.
+// This call carries the Task Brief and the `runId` out, and the reply back. It deliberately does not
+// carry the tool calls: the agent makes those itself, against `GET /api/runs/:id/tools` and
+// `POST /api/runs/:id/call`, which is what turns them into Events on this Run. The `runId` we send
+// is the whole handshake — an agent that keeps executing against its own world instead answers in
+// prose and scores as if it had done nothing, which is exactly what it did *here*.
 import { assertAgentUrl } from "@/lib/agentEndpoint";
 import type { ConversationTurn } from "./counterpart";
 

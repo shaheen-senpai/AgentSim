@@ -17,7 +17,7 @@ import { FailureNote, SaveNote } from "./SaveNote";
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
-export function ScenariosPanel({ worldId, files, scenarios, principal, base }: { worldId: string; files: Record<string, string>; scenarios: ScenarioView[]; principal: string; base: string }) {
+export function ScenariosPanel({ worldId, files, scenarios, principal, base, runHref }: { worldId: string; files: Record<string, string>; scenarios: ScenarioView[]; principal: string; base: string; /** Where a shift starts, or null while the pack is still a draft. */ runHref: string | null }) {
   const router = useRouter();
   const { save, pending, errors } = useSavePack(worldId);
   const [creating, setCreating] = useState(false);
@@ -98,6 +98,7 @@ export function ScenariosPanel({ worldId, files, scenarios, principal, base }: {
             <p className="mt-2 font-label text-[11px] text-muted-foreground">{plural(s.checks.length, "Check")} · {plural(s.attacks.length, "Attack")} · {plural(s.runs, "run")}</p>
             <div className="mt-3 flex items-center gap-3 text-caption">
               <Link href={href(s.id)} className="inline-flex items-center gap-1 text-primary underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-ring">Open &amp; edit <Icon name="arrow-right" className="size-3.5" /></Link>
+              {runHref && <Link href={`${runHref}?scenario=${encodeURIComponent(s.id)}`} className="inline-flex items-center gap-1 text-muted-foreground underline-offset-4 hover:text-foreground hover:underline focus-visible:outline-2 focus-visible:outline-ring">Run this Scenario <Icon name="play" className="size-3.5" /></Link>}
               {s.runs === 0 ? (
                 <button type="button" onClick={() => void remove(s.id)} disabled={pending} className="ml-auto cursor-pointer text-muted-foreground underline-offset-4 hover:text-danger hover:underline focus-visible:outline-2 focus-visible:outline-ring disabled:opacity-50">Remove</button>
               ) : (

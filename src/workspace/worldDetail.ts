@@ -36,6 +36,8 @@ export type WorldDetailView = {
   status: "draft" | "ready" | null;
   /** A pack's files, for the islands that edit it (Mandate text, generated Scenarios, publishing). */
   files: Record<string, string> | null;
+  /** Whether a shift can be started against it: a pack on disk that has been published. */
+  runnable: boolean;
   /** The console's own page for an installed pack, with the YAML editor. */
   consoleHref?: string;
 };
@@ -103,6 +105,7 @@ export function draftDetailView(world: DraftWorld, agent: Agent): WorldDetailVie
     scenarios,
     status: null,
     files: null,
+    runnable: false,
   };
 }
 
@@ -150,6 +153,7 @@ export function packDetailView(pack: WorldPack, runsByScenario: Record<string, n
     })),
     status: pack.meta.status,
     files: pack.files,
+    runnable: pack.meta.status !== "draft",
     consoleHref: `/worlds/${pack.meta.id}`,
   };
 }

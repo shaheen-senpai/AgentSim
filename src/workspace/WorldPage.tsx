@@ -2,9 +2,13 @@
 // in the workspace theme. Server-rendered: tabs are links (`?tab=`). The parts that edit a pack —
 // the draft bar, the Mandate text, generating Scenarios — are client islands fed the pack's files.
 import Link from "next/link";
+import { LinkButton } from "@/marketing/Button";
 import { Icon } from "@/marketing/icons";
+import type { RunSummary } from "@/ui/types";
 import { systemColor } from "@/ui/systemColor";
+import { runVerdict } from "@/ui/verdict";
 import { tabLabel, WORLD_TABS, type WorldTab } from "@/ui/worlds/packView";
+import { relativeTime } from "@/ui/relativeTime";
 import { Clamp } from "./Clamp";
 import { card, container, eyebrow, tag } from "./ui";
 import { DraftBar } from "./world/DraftBar";
@@ -12,6 +16,8 @@ import { MandateList } from "./world/MandateList";
 import { ScenarioEditor } from "./world/ScenarioEditor";
 import { ScenariosPanel } from "./world/ScenariosPanel";
 import type { WorldDetailView } from "./worldDetail";
+
+const VERDICT_TEXT = { danger: "text-danger", warning: "text-warning", success: "text-safe", muted: "text-muted-foreground" } as const;
 
 const KIND_LABEL: Record<WorldDetailView["systems"][number]["kind"], string> = { mcp: "MCP", tools: "Own tools", db: "Database", s3: "Object store" };
 
@@ -79,7 +85,7 @@ function Table({ head, rows }: { head: string[]; rows: React.ReactNode[][] }) {
   );
 }
 
-function Body({ view, tab, base, scenario }: { view: WorldDetailView; tab: WorldTab; base: string; scenario: string | null }) {
+function Body({ view, tab, base, scenario, runHref }: { view: WorldDetailView; tab: WorldTab; base: string; scenario: string | null; runHref: string }) {
   switch (tab) {
     case "overview":
       return <Overview view={view} />;
@@ -149,7 +155,7 @@ function Body({ view, tab, base, scenario }: { view: WorldDetailView; tab: World
           <h2 className="font-heading text-h3 font-semibold">Scenarios · {view.scenarios.length}</h2>
           <p className="mt-2 text-body text-muted-foreground">Each shift runs clean, then again with one poisoned record. An attacked Scenario carries the lure.</p>
           {view.files ? (
-            <ScenariosPanel worldId={view.id} files={view.files} scenarios={view.scenarios} principal={view.principal} base={base} />
+            <ScenariosPanel worldId={view.id} files={view.files} scenarios={view.scenarios} principal={view.principal} base={base} runHref={view.runnable ? runHref : null} />
           ) : (
             <ul className="mt-4 grid gap-3 md:grid-cols-2">
               {view.scenarios.map((s, i) => (
@@ -171,8 +177,9 @@ function Body({ view, tab, base, scenario }: { view: WorldDetailView; tab: World
   }
 }
 
-export function WorldPage({ view, agent, tab, scenario = null }: { view: WorldDetailView; agent: { id: string; name: string }; tab: WorldTab; scenario?: string | null }) {
+export function WorldPage({ view, agent, tab, runs, now, scenario = null }: { view: WorldDetailView; agent: { id: string; name: string }; tab: WorldTab; runs: RunSummary[]; now: number; scenario?: string | null }) {
   const base = `/agents/${agent.id}/worlds/${view.id}`;
+  const runHref = `${base}/run`;
   return (
     <main id="main" className={`${container} pb-20 pt-8`}>
       <Link href={`/agents/${agent.id}`} className={`${eyebrow} inline-flex items-center gap-2 hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring`}>
@@ -186,6 +193,13 @@ export function WorldPage({ view, agent, tab, scenario = null }: { view: WorldDe
       <div className="mt-3 flex flex-wrap items-center gap-3">
         <h1 className="font-heading text-display font-semibold">{view.name}</h1>
         <span className={tag}>{view.kind === "pack" ? (view.status === "draft" ? "Draft pack" : "Installed pack") : "Drafted"} · {view.domain}</span>
+        <span className="ml-auto">
+          {view.runnable ? (
+            <LinkButton href={runHref}><Icon name="play" className="size-4" /> Run a shift</LinkButton>
+          ) : (
+            <span className="font-label text-label uppercase text-muted-foreground">{view.kind === "pack" ? "Publish to run shifts" : "Promote to a pack to run shifts"}</span>
+          )}
+        </span>
       </div>
       <Clamp text={view.description} lines={4} className="mt-3 max-w-3xl text-lead text-muted-foreground" />
       {view.status === "draft" && view.files && <DraftBar worldId={view.id} agentId={agent.id} files={view.files} scenarioCount={view.scenarios.length} />}
@@ -205,8 +219,30 @@ export function WorldPage({ view, agent, tab, scenario = null }: { view: WorldDe
       </div>
 
       <section className={`${card} animate-fade-in mt-6 p-6 sm:p-8`} key={`${tab}:${scenario ?? ""}`}>
-        <Body view={view} tab={tab} base={base} scenario={scenario} />
+        <Body view={view} tab={tab} base={base} scenario={scenario} runHref={runHref} />
       </section>
+
+      {runs.length > 0 && (
+        <section className="mt-8" aria-labelledby="shifts-title">
+          <h2 id="shifts-title" className={eyebrow}>Recent shifts</h2>
+          <ul className="mt-3 flex flex-col gap-2">
+            {runs.slice(0, 6).map((r) => {
+              const verdict = runVerdict(r);
+              return (
+                <li key={r.id}>
+                  <Link href={`${base}/runs/${r.id}`} className="flex flex-wrap items-center gap-3 rounded-panel border border-border bg-background px-4 py-3 transition-colors duration-200 hover:border-primary/40 focus-visible:outline-2 focus-visible:outline-ring">
+                    <span className="min-w-0 flex-1 truncate text-body text-foreground">{r.scenarioTitle}</span>
+                    <span className={tag}>{r.agentLabel}</span>
+                    <span className={`${tag} ${r.attackId ? "text-danger" : ""}`}>{r.attackId ? "attacked" : "clean"}</span>
+                    <span className={`font-label text-label-sm uppercase ${VERDICT_TEXT[verdict.tone]}`}>{verdict.text}</span>
+                    <span className="w-20 shrink-0 text-right text-caption text-muted-foreground">{relativeTime(r.createdAt, now)}</span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
 
       <p className="mt-5 text-caption text-muted-foreground">
         {view.consoleHref ? (

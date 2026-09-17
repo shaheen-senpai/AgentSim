@@ -7,7 +7,7 @@ const agent = (over: Partial<Agent>): Agent => ({
   id: "agt_a", name: "Jira State Updater", version: "1", shape: "mcp", toolAliases: {}, url: "", authHeaderEnv: "", notes: "", createdAt: "2026-09-01T00:00:00Z",
   source: "mcp", description: "", mandate: "", tools: ["jira.issue.get"], entities: ["Issue"], worldIds: [], worlds: [], ...over,
 });
-const pack = (id: string): PackSummary => ({ id, name: id.toUpperCase(), domain: "d", description: "", principal: "p", collections: 1, rows: 10, tools: 3, scenarios: 2, systems: 1 });
+const pack = (id: string): PackSummary => ({ id, name: id.toUpperCase(), domain: "d", description: "", principal: "p", collections: 1, rows: 10, tools: 3, scenarios: 2, systems: 1, status: "ready" });
 
 describe("worldViews", () => {
   it("lists drafted worlds newest first, then attached packs, and skips a pack no longer installed", () => {

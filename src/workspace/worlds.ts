@@ -20,6 +20,8 @@ export type WorldView = {
   href: string;
   /** The console's own page, for an installed pack. */
   consoleHref?: string;
+  /** A pack created as a draft cannot run shifts until it is published. */
+  status?: "draft" | "ready";
 };
 
 /** Drafts newest first, then attached packs in attachment order; a pack no longer on disk is skipped. */
@@ -31,7 +33,7 @@ export function worldViews(agent: Agent, packs: PackSummary[]): WorldView[] {
   const attached: WorldView[] = agent.worldIds
     .map((id) => byId.get(id))
     .filter((p): p is PackSummary => !!p)
-    .map((p) => ({ id: p.id, kind: "pack", name: p.name, domain: p.domain, description: p.description, scenarios: p.scenarios, tools: p.tools, rows: p.rows, href: `/agents/${agent.id}/worlds/${p.id}`, consoleHref: `/worlds/${p.id}` }));
+    .map((p) => ({ id: p.id, kind: "pack", name: p.name, domain: p.domain, description: p.description, scenarios: p.scenarios, tools: p.tools, rows: p.rows, href: `/agents/${agent.id}/worlds/${p.id}`, consoleHref: `/worlds/${p.id}`, status: p.status }));
   return [...drafts, ...attached];
 }
 

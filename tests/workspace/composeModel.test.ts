@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { PackPick, ProviderInfo, Source } from "@/ui/worlds/newWorld/sources";
-import { canContinue, composedEntities, composedTools, ddlTables, domainOf, toolLines, worldDraftFromComposition } from "@/workspace/wizard/composeModel";
+import { canContinue, composedEntities, composedTools, ddlTables, domainOf, stepLabels, toolLines, worldDraftFromComposition } from "@/workspace/wizard/composeModel";
 
 const providers: ProviderInfo[] = [
   { id: "stripe", label: "Stripe", kind: "payments", hue: "#7a4fa3", tools: [{ name: "list_payment_intents", description: "" }, { name: "create_refund", description: "" }] },
@@ -53,5 +53,9 @@ describe("canContinue", () => {
     expect(canContinue(1, "compose", { name: "X", sources: [], packId: null })).toBe(false);
     expect(canContinue(1, "compose", { name: "X", sources: [{ kind: "mcp", provider: "stripe" }], packId: null })).toBe(true);
     expect(canContinue(1, "attach", { name: "", sources: [], packId: "northwind" })).toBe(true);
+    expect(canContinue(1, "plugin", { name: "", sources: [], packId: null })).toBe(false);
+    expect(canContinue(1, "plugin", { name: "", sources: [], packId: null, hasDraft: true })).toBe(true);
+    expect(stepLabels("plugin")).toEqual(["How", "Generate", "Review"]);
+    expect(stepLabels("compose")).toEqual(["How", "Compose", "Review"]);
   });
 });

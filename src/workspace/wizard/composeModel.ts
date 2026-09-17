@@ -12,6 +12,11 @@ export { FORMAT_LABEL, SRC_KIND, srcLabel, srcMode, srcToolCount } from "@/ui/wo
 
 export type Target = "agent" | "world";
 export type How = "plugin" | "compose" | "attach" | "draft";
+
+/** The middle step is what the chosen path does: the plugin generates, everything else composes. */
+export function stepLabels(how: How | null): readonly string[] {
+  return how === "plugin" ? ["How", "Generate", "Review"] : STEPS;
+}
 export type ToolFormat = Extract<Source, { kind: "tools" }>["format"];
 
 export const STEPS = ["How", "Compose", "Review"] as const;
@@ -24,6 +29,7 @@ export const HOW_OPTIONS: Record<Target, HowOption[]> = {
     { id: "compose", title: "Compose it yourself", body: "Pick the third-party MCPs and tools the agent can reach, and write its mandate." },
   ],
   world: [
+    { id: "plugin", title: "Generate with the worldbuilder plugin", body: "Run the plugin from the agent's own repo. It reads the tools, schema and policies there and drafts the World's structure here for review.", badge: "Recommended" },
     { id: "draft", title: "Draft from the agent's tools", body: "AgentSim seeds a company around the tools the agent already has and writes clean and poisoned scenarios.", badge: "Fastest" },
     { id: "compose", title: "Compose from sources", body: "Several third-party MCPs, your own tool definitions, a database. One sandbox with one ownership graph." },
     { id: "attach", title: "Attach an installed World", body: "Use one of the packs already on disk as this agent's exam room." },
@@ -130,11 +136,12 @@ export function worldDraftFromComposition(name: string, description: string, sou
   };
 }
 
-export function canContinue(step: number, how: How | null, s: { name: string; sources: Source[]; packId: string | null }): boolean {
+export function canContinue(step: number, how: How | null, s: { name: string; sources: Source[]; packId: string | null; hasDraft?: boolean }): boolean {
   if (step === 0) return how !== null;
   if (step === 1) {
     if (how === "attach") return s.packId !== null;
     if (how === "compose") return s.name.trim() !== "" && s.sources.length > 0;
+    if (how === "plugin") return s.hasDraft === true;
     return true;
   }
   return true;

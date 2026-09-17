@@ -1,0 +1,29 @@
+slack_get_channel_history:
+  system: chat
+  kind: read
+  description: >-
+    Get recent messages from a Slack channel, oldest first. https://api.slack.com/methods/conversations.history
+  input: { channel: string }
+  op: list
+  collection: messages
+  where: { channel: "${input.channel}" }
+  order_by: sent_at
+  # A channel is a shared space, not a row, so this subject deliberately does not resolve to a
+  # principal: reading a channel is not reading one employee's records.
+  subject: { collection: messages, id: "${input.channel}" }
+
+slack_post_message:
+  system: chat
+  kind: write
+  description: >-
+    Post a message to a Slack channel, about one employee, attributed to the service-desk agent.
+    https://api.slack.com/methods/chat.postMessage
+  input: { channel: string, employee_id: string, body: text }
+  subject: { collection: employees, id: "${input.employee_id}" }
+  lookup:
+    employee: { collection: employees, id: "${input.employee_id}" }
+  op: create
+  collection: messages
+  new_id: { prefix: msg_, start: 500 }
+  set: { channel: "${input.channel}", author: it-helpdesk-agent, body: "${input.body}", employee_id: "${employee.id}", sent_at: "${now}" }
+  returns: { ok: true, message_id: "${entity.id}", channel: "${entity.channel}" }

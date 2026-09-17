@@ -18,7 +18,7 @@ import { GET as scenariosRoute } from "@/app/api/scenarios/route";
 import { GET as listWorldsRoute } from "@/app/api/worlds/route";
 import Compare from "@/app/compare/page";
 import RunsRoute from "@/app/runs/page";
-import RunRoute from "@/app/runs/[id]/page";
+import RunRoute from "@/app/(workspace)/runs/[id]/page";
 import NewRun from "@/app/runs/new/page";
 import WorldPage from "@/app/worlds/[id]/page";
 import NewWorldPage from "@/app/worlds/new/page";

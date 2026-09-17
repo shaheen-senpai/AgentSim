@@ -130,4 +130,5 @@
   --text-lead--line-height: 1.55;
   --text-metric: 2.25rem;
   --spacing-section: 3rem;
+  --container-page: 1600px;                 /* a dashboard reads wider than a landing page */
 }

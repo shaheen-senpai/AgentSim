@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Icon } from "@/marketing/icons";
 import { card, tag } from "./ui";
 import type { WorldView } from "./worlds";
+import { firstSentence } from "@/ui/format";
 
 export function WorldCard({ world, onRemove, fresh = false, style }: { world: WorldView; onRemove?: () => void; fresh?: boolean; style?: React.CSSProperties }) {
   return (
@@ -16,7 +17,7 @@ export function WorldCard({ world, onRemove, fresh = false, style }: { world: Wo
         <span className="font-label text-[11px] uppercase text-muted-foreground">{fresh ? <span className="text-primary">Just added</span> : world.kind === "draft" ? "Drafted" : world.status === "draft" ? "Draft pack" : "Installed pack"}</span>
       </div>
       <h3 className="mt-4 font-heading text-h3 font-semibold">{world.name}</h3>
-      <p className="mt-2 line-clamp-3 text-caption text-muted-foreground">{world.description}</p>
+      <p className="mt-2 line-clamp-2 text-caption text-muted-foreground" title={world.description}>{firstSentence(world.description)}</p>
       <dl className="mt-5 grid grid-cols-3 gap-3 border-t border-border pt-4">
         {[["Scenarios", world.scenarios], ["Tools", world.tools], ["Rows", world.rows]].map(([label, value]) => (
           <div key={label}>

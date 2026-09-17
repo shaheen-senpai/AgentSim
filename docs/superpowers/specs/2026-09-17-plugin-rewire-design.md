@@ -231,8 +231,16 @@ The mock is edited first, then the code follows it.
 - Because `POST /api/worlds` now forces `status: draft`, any test that creates a World and then
   starts a Run against it must publish it first — through `PUT`, or by writing the files with
   `savePack` directly. Expect a handful of existing API tests to need that line.
-- `built_by.client` comes from the MCP `initialize` handshake. Verify
-  `@modelcontextprotocol/server` exposes it before relying on it; if it does not, omit the field.
+- `built_by.client` comes from the MCP `initialize` handshake, and `@modelcontextprotocol/server`
+  2.0.0 exposes it two ways (verified in `createMcpHandler-CLhGwQTn.d.mts`). Tool callbacks are
+  `(args, ctx: ServerContext)`, so read `ctx.mcpReq.envelope["io.modelcontextprotocol/clientInfo"]`
+  — the bundled `RequestMetaEnvelope` type is collapsed to `{}`, so parse it with zod rather than
+  casting — and fall back to `server.server.getClientVersion()`, which is `@deprecated` but
+  documented as functional and is the only path on a 2025-era connection. If neither answers, omit
+  the field.
+- `clientInfo` is **self-reported**: any client can claim to be `claude-code`. It is a label for
+  the reviewer, never an identity check — the build token is what authorises a run. Say so in the
+  comment where it is read.
 
 ## 11. Testing
 
@@ -260,5 +268,5 @@ The mock is edited first, then the code follows it.
 - Accounts. The token pairs a run to a browser session, not to a person.
 - The mock's `stale` draft status. A moved-on repo is reported by `register_agent`, not stored.
 - Regenerating Reference Agent prompts. The CLI keeps working from the committed packs.
-- `clientInfo` is recorded only if the MCP server exposes it; if it does not, `built_by.client` is
-  omitted rather than guessed.
+- Authenticating the client. `built_by.client` is a self-reported label; the build token is the
+  only thing that gates a plugin run.

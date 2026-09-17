@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Agent, RunSummary } from "@/ui/types";
 import { agentTrust, filterAgents, sortAgents, trustBand, trustDimensions, workspaceStats } from "@/workspace/agentStats";
 
-const base = { version: "1", shape: "mcp" as const, toolAliases: {}, notes: "", description: "", mandate: "", entities: [] };
+const base = { version: "1", shape: "mcp" as const, toolAliases: {}, url: "", authHeaderEnv: "", notes: "", description: "", mandate: "", entities: [] };
 const A: Agent[] = [
   { ...base, id: "agt_a", name: "Jira", source: "mcp", tools: ["jira.issues.search"], worldIds: ["halvard-helpdesk"], createdAt: "2026-09-01T00:00:00Z" },
   { ...base, id: "agt_b", name: "Video Generation", source: "manual", tools: ["render.submit"], worldIds: ["halvard-helpdesk", "northwind"], createdAt: "2026-09-02T00:00:00Z" },

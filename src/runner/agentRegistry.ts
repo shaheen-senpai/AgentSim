@@ -18,6 +18,13 @@ export type Agent = {
   version: string;
   shape: AgentShape;
   toolAliases: Record<string, string>;
+  /** Shape "driven" only: the URL AgentSim POSTs the Task Brief to. Empty for every other shape. */
+  url: string;
+  /**
+   * Shape "driven" only: the NAME of an environment variable holding the Authorization header to
+   * send. The name, never the value — a registry file on disk must not become a place secrets live.
+   */
+  authHeaderEnv: string;
   notes: string;
   createdAt: string;
   // Workspace fields (the `/agents` pages). All default, so records written before they existed
@@ -36,7 +43,8 @@ export type Agent = {
 type WorkspaceField = "source" | "description" | "mandate" | "tools" | "entities" | "worldIds";
 
 /** What `saveAgent` accepts: a new agent (no id, no createdAt) or an existing one being replaced. */
-export type AgentInput = Omit<Agent, "id" | "createdAt" | WorkspaceField> & Partial<Pick<Agent, "id" | "createdAt" | WorkspaceField>>;
+type OptionalField = "id" | "createdAt" | "url" | "authHeaderEnv" | WorkspaceField;
+export type AgentInput = Omit<Agent, OptionalField> & Partial<Pick<Agent, OptionalField>>;
 
 const AGENT_ID_RE = /^agt_[a-z0-9]+$/;
 
@@ -48,8 +56,13 @@ export const AgentInputSchema = z.object({
   id: z.string().regex(AGENT_ID_RE).optional(),
   name: z.string().min(1),
   version: z.string().min(1),
-  shape: z.enum(["mcp", "forwarder", "connector"]),
+  shape: z.enum(["mcp", "forwarder", "connector", "driven"]),
   toolAliases: z.record(z.string().min(1), z.string().min(1)).default({}),
+  // Refined on the field rather than the object so this stays a ZodObject — `/api/agents/[id]`
+  // calls `.omit({ id: true })` on it. The host allowlist is deliberately NOT checked here: it is
+  // enforced when the call is actually made, so an agent can be registered before its host is named.
+  url: z.string().refine((v) => v === "" || isHttpUrl(v), "must be an http or https URL").default(""),
+  authHeaderEnv: z.string().default(""),
   notes: z.string().default(""),
   source: z.enum(["mcp", "manual"]).default("manual"),
   description: z.string().max(4000).default(""),
@@ -59,11 +72,22 @@ export const AgentInputSchema = z.object({
   worldIds: z.array(z.string().min(1).max(200)).max(50).default([]),
 });
 
-/** A record as written before the workspace fields existed, brought up to the current shape. */
+function isHttpUrl(raw: string): boolean {
+  try {
+    const u = new URL(raw);
+    return u.protocol === "http:" || u.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+/** A record written before the driven-shape or workspace fields existed, brought up to the current shape. */
 function normalize(a: Partial<Agent> & Pick<Agent, "id" | "name" | "version" | "shape" | "createdAt">): Agent {
   return {
     ...a,
     toolAliases: a.toolAliases ?? {},
+    url: a.url ?? "",
+    authHeaderEnv: a.authHeaderEnv ?? "",
     notes: a.notes ?? "",
     source: a.source ?? "manual",
     description: a.description ?? "",
@@ -125,6 +149,8 @@ export function saveAgent(input: AgentInput): Agent {
     version: input.version,
     shape: input.shape,
     toolAliases: input.toolAliases,
+    url: input.url ?? "",
+    authHeaderEnv: input.authHeaderEnv ?? "",
     notes: input.notes,
     createdAt: existing?.createdAt ?? input.createdAt ?? new Date().toISOString(),
     source: input.source ?? "manual",

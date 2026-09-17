@@ -83,6 +83,12 @@ export function ConnectionStrip({ run, systems, onFinished }: { run: RunRecord; 
             <CopyButton text={curlTools(toolsUrl(callUrl))} what="Command" />
           </div>
         </>
+      ) : shape === "driven" ? (
+        <p style={NOTE}>
+          Nothing to paste: AgentSim calls this agent itself, at the endpoint registered for it, and waits for the
+          reply. It appears below as soon as the exchange finishes. Tool calls are not routed through the World yet, so
+          this Run records no Events.
+        </p>
       ) : (
         <>
           <span className="field-label">Messages API request</span>

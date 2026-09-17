@@ -39,6 +39,8 @@ export function CreateAgentForm() {
     version: "1.0",
     shape,
     toolAliases: {},
+    url: "",
+    authHeaderEnv: "",
     notes: "",
     createdAt: "",
     source: "manual",

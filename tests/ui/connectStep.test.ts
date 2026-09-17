@@ -11,6 +11,8 @@ function agent(over: Partial<Agent> & Pick<Agent, "id" | "shape">): Agent {
     name: "Acme Bot",
     version: "1.0",
     toolAliases: {},
+  url: "",
+  authHeaderEnv: "",
     notes: "",
     createdAt: "2026-01-01T00:00:00Z",
     source: "manual",
@@ -36,5 +38,14 @@ describe("mcpAgents", () => {
 
   it("returns an empty list when there are no agents at all", () => {
     expect(mcpAgents([])).toEqual([]);
+  });
+});
+
+describe("mcpAgents — driven", () => {
+  it("offers a driven agent alongside an MCP one, and still drops the older shapes", () => {
+    const driven = agent({ id: "agt_d", name: "Acme", shape: "driven", url: "http://localhost:4000" });
+    const mcp = agent({ id: "agt_m", name: "Other", shape: "mcp" });
+    const legacy = agent({ id: "agt_f", name: "Old", shape: "forwarder" });
+    expect(mcpAgents([driven, mcp, legacy]).map((a: Agent) => a.id)).toEqual(["agt_d", "agt_m"]);
   });
 });

@@ -20,7 +20,7 @@ export function workspaceStats(agents: Agent[], runs: RunSummary[]): WorkspaceSt
   return {
     agents: agents.length,
     viaMcp: agents.filter((a) => a.source === "mcp").length,
-    worlds: new Set(agents.flatMap((a) => a.worldIds)).size,
+    worlds: new Set(agents.flatMap((a) => a.worldIds)).size + agents.reduce((n, a) => n + a.worlds.length, 0),
     shifts: scored.length,
     avgTrust: mean(scored.map((r) => r.headline as number)),
   };

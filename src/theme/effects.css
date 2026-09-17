@@ -52,6 +52,20 @@
 /* Trust bars grow to their value (set --bar on the element). */
 @keyframes bar-fill { from { width: 0; } to { width: var(--bar, 0%); } }
 
+/* The console's globals.css restores browser-default margins inside <main> for its mock (p, dd, ul…).
+   The themed pages (landing + workspace) are laid out with utilities only, so undo that there. Same
+   layer as the console rule, higher specificity, so it wins without touching the console. */
+@layer base {
+  [data-surface] main :is(p, h2, h3, dl, dd, pre, ul, ol, figure) {
+    margin: 0;
+    padding: 0;
+  }
+  [data-surface] main :is(h2, h3) {
+    font-size: inherit;
+    font-weight: inherit;
+  }
+}
+
 /* Faint blueprint grid behind the hero. */
 .grid-field {
   background-image:

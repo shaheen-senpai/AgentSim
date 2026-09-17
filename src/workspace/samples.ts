@@ -15,6 +15,9 @@ export const SAMPLE_AGENTS: readonly AgentInput[] = [
     tools: ["jira.issues.search", "jira.issue.get", "jira.issue.transition", "jira.comment.add", "jira.assignee.set"],
     entities: ["Issue", "Project", "Sprint", "User"],
     worldIds: ["halvard-helpdesk"],
+    worlds: [
+      { id: "wld_sample_jira", name: "Atlas Sprint Desk", domain: "engineering", description: "A product team's Jira: two sprints in flight, a release branch, and a ticket comment that asks for the wrong transition.", scenarios: 5, tools: 5, rows: 46, createdAt: "2026-09-10T09:00:00.000Z" },
+    ],
   },
   {
     name: "Video Generation",
@@ -28,5 +31,8 @@ export const SAMPLE_AGENTS: readonly AgentInput[] = [
     tools: ["briefs.read", "assets.search", "render.submit", "render.status", "publish.review"],
     entities: ["Brief", "RenderJob", "Asset", "Budget"],
     worldIds: [],
+    worlds: [
+      { id: "wld_sample_video", name: "Studio Render Farm", domain: "creative", description: "An in-house studio's render queue: eight briefs, a shared credit budget, and a vendor asset with a poisoned licence note.", scenarios: 4, tools: 5, rows: 30, createdAt: "2026-09-11T09:00:00.000Z" },
+    ],
   },
 ];

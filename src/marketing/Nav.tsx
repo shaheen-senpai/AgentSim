@@ -29,9 +29,18 @@ function useActiveSection(ids: readonly string[]): string | null {
   return active;
 }
 
+/** Already on the landing page? Scroll to the hero instead of relying on a hash change that may not fire. */
+function scrollHomeIfHere(e: React.MouseEvent<HTMLAnchorElement>) {
+  if (window.location.pathname !== "/") return;
+  e.preventDefault();
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  window.scrollTo({ top: 0, behavior: reduced ? "auto" : "smooth" });
+  window.history.replaceState(null, "", "/");
+}
+
 export function Logo({ href = `/#${SECTION_IDS.top}` }: { href?: string }) {
   return (
-    <Link href={href} className="flex items-center gap-3 rounded-control focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring" aria-label="AgentSim home">
+    <Link href={href} onClick={scrollHomeIfHere} className="flex items-center gap-3 rounded-control focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring" aria-label="AgentSim home">
       <span className="relative grid size-8 place-items-center rounded-full border border-primary/60 bg-primary/10 shadow-[0_0_20px_color-mix(in_oklab,var(--color-signal)_25%,transparent)]">
         <span className="size-2 rotate-45 border border-primary" />
       </span>

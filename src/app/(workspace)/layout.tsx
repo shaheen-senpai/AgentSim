@@ -5,7 +5,7 @@ import { AppNav } from "@/workspace/AppNav";
 
 export default function WorkspaceLayout({ children }: { children: React.ReactNode }) {
   return (
-    <ThemeRoot>
+    <ThemeRoot variant="app">
       <AppNav />
       {children}
     </ThemeRoot>

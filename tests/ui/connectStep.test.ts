@@ -21,6 +21,7 @@ function agent(over: Partial<Agent> & Pick<Agent, "id" | "shape">): Agent {
     tools: [],
     entities: [],
     worldIds: [],
+    worlds: [],
     ...over,
   };
 }

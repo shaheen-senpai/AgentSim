@@ -6,7 +6,7 @@ import { loadPacks, toPackSummary } from "@/lib/summaries";
 import { getAgent } from "@/runner/agentRegistry";
 import { listRuns } from "@/runner/store";
 import { AgentDetail } from "@/workspace/AgentDetail";
-import { agentTrust, trustDimensions } from "@/workspace/agentStats";
+import { agentTrust } from "@/workspace/agentStats";
 
 export const dynamic = "force-dynamic";
 
@@ -16,15 +16,16 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   return { title: agent ? `${agent.name} · AgentSim` : "Agent · AgentSim" };
 }
 
-export default async function AgentRoute({ params }: { params: Promise<{ id: string }> }) {
+export default async function AgentRoute({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ fresh?: string | string[] }> }) {
   const { id } = await params;
+  const { fresh } = await searchParams;
   const agent = getAgent(id);
   if (!agent) notFound();
   const runs = listRuns();
   const { trust, runs: runCount } = agentTrust(agent.id, runs);
-  // A pack hand-edited into an invalid state is skipped here; `/worlds` reports it. So is a draft
-  // World: `POST /api/runs` refuses one, so attaching it to an agent would promise a Run it cannot
-  // start — it becomes attachable the moment someone publishes it.
-  const packs = loadPacks().packs.filter((p) => p.meta.status !== "draft").map(toPackSummary);
-  return <AgentDetail agent={agent} packs={packs} trust={trust} runs={runCount} dimensions={trustDimensions(agent.id, runs)} />;
+  // A pack hand-edited into an invalid state is skipped here; `/worlds` reports it. Draft packs are
+  // listed (a plugin-built World starts as one) and say so on their card; `POST /api/runs` refuses
+  // them until they are published.
+  const packs = loadPacks().packs.map(toPackSummary);
+  return <AgentDetail agent={agent} packs={packs} trust={trust} runs={runCount} freshId={Array.isArray(fresh) ? fresh[0] : fresh ?? null} />;
 }

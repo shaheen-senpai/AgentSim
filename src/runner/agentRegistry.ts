@@ -12,6 +12,35 @@ import { dataDir } from "./store";
 /** How an Agent entered the workspace: through the AgentSim MCP plugin, or typed in by hand. */
 export type AgentSource = "mcp" | "manual";
 
+/**
+ * A World drafted for one agent (by the MCP plugin from its tools, or from the agent page) that has
+ * not been promoted to a pack on disk. Numbers are the draft's shape, not a pack's counts.
+ */
+export type DraftSystem = { key: string; label: string; kind: "mcp" | "tools" | "db" | "s3"; mode: "shadowed" | "pasted" | "mocked" | "copied"; provider?: string; tools: number };
+export type DraftTool = { name: string; system: string; kind: "read" | "write"; description: string };
+/** What the World page shows for a draft: its sources, its ownership, its tools and its policies. */
+export type DraftDetails = {
+  systems: DraftSystem[];
+  principal: string;
+  entities: { name: string; label: string }[];
+  toolDefs: DraftTool[];
+  mandate: string;
+  scenarioTitles: string[];
+};
+
+export type DraftWorld = {
+  id: string;
+  name: string;
+  domain: string;
+  description: string;
+  scenarios: number;
+  tools: number;
+  rows: number;
+  createdAt: string;
+  /** Absent on drafts written before the World page existed; the page then derives them from the agent. */
+  details?: DraftDetails;
+};
+
 export type Agent = {
   id: string;
   name: string;
@@ -38,9 +67,11 @@ export type Agent = {
   entities: string[];
   /** World packs attached to this agent — the controlled companies it is examined in. */
   worldIds: string[];
+  /** Worlds drafted for this agent that are not (yet) packs on disk. */
+  worlds: DraftWorld[];
 };
 
-type WorkspaceField = "source" | "description" | "mandate" | "tools" | "entities" | "worldIds";
+type WorkspaceField = "source" | "description" | "mandate" | "tools" | "entities" | "worldIds" | "worlds";
 
 /** What `saveAgent` accepts: a new agent (no id, no createdAt) or an existing one being replaced. */
 type OptionalField = "id" | "createdAt" | "url" | "authHeaderEnv" | WorkspaceField;
@@ -70,6 +101,31 @@ export const AgentInputSchema = z.object({
   tools: z.array(z.string().min(1).max(200)).max(200).default([]),
   entities: z.array(z.string().min(1).max(200)).max(200).default([]),
   worldIds: z.array(z.string().min(1).max(200)).max(50).default([]),
+  worlds: z
+    .array(
+      z.object({
+        id: z.string().min(1).max(64),
+        name: z.string().min(1).max(200),
+        domain: z.string().max(200).default(""),
+        description: z.string().max(2000).default(""),
+        scenarios: z.number().int().min(0),
+        tools: z.number().int().min(0),
+        rows: z.number().int().min(0),
+        createdAt: z.string().min(1),
+        details: z
+          .object({
+            systems: z.array(z.object({ key: z.string(), label: z.string(), kind: z.enum(["mcp", "tools", "db", "s3"]), mode: z.enum(["shadowed", "pasted", "mocked", "copied"]), provider: z.string().optional(), tools: z.number().int().min(0) })).max(50),
+            principal: z.string(),
+            entities: z.array(z.object({ name: z.string(), label: z.string() })).max(200),
+            toolDefs: z.array(z.object({ name: z.string(), system: z.string(), kind: z.enum(["read", "write"]), description: z.string() })).max(400),
+            mandate: z.string(),
+            scenarioTitles: z.array(z.string()).max(50),
+          })
+          .optional(),
+      }),
+    )
+    .max(50)
+    .default([]),
 });
 
 function isHttpUrl(raw: string): boolean {
@@ -95,6 +151,7 @@ function normalize(a: Partial<Agent> & Pick<Agent, "id" | "name" | "version" | "
     tools: a.tools ?? [],
     entities: a.entities ?? [],
     worldIds: a.worldIds ?? [],
+    worlds: a.worlds ?? [],
   };
 }
 
@@ -159,6 +216,7 @@ export function saveAgent(input: AgentInput): Agent {
     tools: input.tools ?? [],
     entities: input.entities ?? [],
     worldIds: input.worldIds ?? [],
+    worlds: input.worlds ?? [],
   };
   const next = existing ? agents.map((a) => (a.id === id ? agent : a)) : [...agents, agent];
   writeAll(next);

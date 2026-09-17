@@ -563,6 +563,48 @@ function validateSeed(meta: PackMeta, seed: SeedFile, errors: ValidationError[])
   }
 }
 
+/**
+ * A write tool's `set` map, against the collection it writes.
+ *
+ * Literal values are checked against the field's own spec, so an enum value the entity never
+ * declares is caught at authoring time rather than on the first call. That is the generator's most
+ * damaging failure mode: a placeholder like `status: pending_review` reads as plausible, validates
+ * structurally, and then rejects every call the tool is ever given. Templated values (`"${...}"`)
+ * are only checked for parseability, by `checkTemplatesDeep`.
+ */
+function checkSetFields(entities: Record<string, EntitySpec>, tool: ToolDef, file: string, path_: string, errors: ValidationError[]): void {
+  const entity = entities[tool.collection];
+  if (!entity || !tool.set) return; // an undeclared collection, or a missing `set`, is reported by the caller
+
+  for (const [key, value] of Object.entries(tool.set)) {
+    const spec = entity.fields[key];
+    if (!spec) {
+      errors.push({ file, path: `${path_}.${key}`, message: `field '${key}' is not declared on '${tool.collection}'` });
+      continue;
+    }
+    if (typeof value === "string" && isTemplate(value)) continue;
+    const parsed = fieldZod(spec).safeParse(value);
+    if (!parsed.success) {
+      errors.push({
+        file,
+        path: `${path_}.${key}`,
+        message: `field '${key}' on '${tool.collection}': ${JSON.stringify(value)} ${parsed.error.issues[0]?.message ?? "is invalid"}`,
+      });
+    }
+  }
+
+  // A created row is validated in full at run time, so a required field `set` omits is a tool that
+  // cannot succeed at all. `id` is minted from `new_id`, never set.
+  if (tool.op === "create") {
+    for (const [fk, spec] of Object.entries(entity.fields)) {
+      if (fk === "id" || spec.optional || spec.default !== undefined) continue;
+      if (!(fk in tool.set)) {
+        errors.push({ file, path: path_, message: `op 'create' on '${tool.collection}' omits required field '${fk}'` });
+      }
+    }
+  }
+}
+
 function validateTools(meta: PackMeta, tools: Record<string, ToolDef>, errors: ValidationError[]): void {
   const entities = meta.entities;
   for (const [tname, tool] of Object.entries(tools)) {
@@ -601,6 +643,8 @@ function validateTools(meta: PackMeta, tools: Record<string, ToolDef>, errors: V
     if (tool.op === "create" && (!tool.new_id || !tool.set)) {
       errors.push({ file: "tools.yaml", path: tpath, message: "op 'create' requires 'new_id' and 'set'" });
     }
+
+    if (tool.set) checkSetFields(entities, tool, "tools.yaml", `${tpath}.set`, errors);
 
     checkTemplatesDeep("tools.yaml", tpath, tool, errors);
   }

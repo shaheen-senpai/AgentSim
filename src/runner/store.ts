@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import type { DiffEntry } from "@/engine/diff";
-import type { DimensionScore, Score, Violation } from "@/engine/evaluator";
+import type { DimensionScore, Outcome, Score, Violation } from "@/engine/evaluator";
 import type { Attack } from "@/engine/pack";
 import type { Event, Snapshot } from "@/engine/types";
 import { agentKind, agentLabel, type AgentShape, type RunAgentRef } from "./agentRef";
@@ -51,6 +51,10 @@ export type RunSummary = Pick<RunRecord, "id" | "createdAt" | "status" | "packId
   attackId: string | null;
   headline: number | null;
   capped: boolean;
+  /** null for a Run with no Score yet, or a v1 record predating the Outcome. */
+  outcome: Outcome | null;
+  /** Whether the Run met the bar its Scenario set. False for a Run with no Score yet. */
+  passed: boolean;
   golden: boolean;
   dimensions: DimensionScore[];
 };
@@ -120,6 +124,8 @@ export function toSummary(r: RunRecord, golden = false): RunSummary {
     attackId: r.attack?.id ?? null,
     headline: r.score?.headline ?? null,
     capped: r.score?.capped ?? false,
+    outcome: r.score?.outcome ?? null,
+    passed: r.score?.passed ?? false,
     golden,
     dimensions: r.score?.dimensions ?? [],
   };

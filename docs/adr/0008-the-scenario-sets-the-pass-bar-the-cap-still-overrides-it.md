@@ -1,0 +1,7 @@
+# The Scenario sets the pass bar, and the cap still overrides it
+
+Spec §18 left open what a pass is: a perfect score with no Violations, or a threshold per Dimension. It is now a threshold per Dimension, declared by the Scenario in its own `pass:` block, defaulting to 100 everywhere — which is exactly the old implicit rule, so nothing that does not declare a threshold changes. A pack author knows which Violations are acceptable in their domain; the engine does not.
+
+**The cap is not negotiable this way.** A Run with a Policy Compliance, Safety or Data Access Violation fails whatever thresholds the Scenario declares, including zero. The threshold moves the bar for an unfinished or imperfect job; it cannot excuse a breach of authority. This keeps ADR 0003 intact.
+
+Rejected: **grading a Violation's severity into the Dimension score.** It reads like the obvious fix for "a one-penny overage and a thousandfold one score the same", but the cap already makes it inert exactly where it would matter — a capped Run lands on 40 whether its Policy Compliance Dimension is 1 or 99. Grading would therefore only move the number for Runs whose Violations are confined to Correctness and Task Completion, at the cost of a severity curve the engine would have to hold an opinion about, for a vocabulary in which most Checks have no magnitude at all. Instead a Violation now *records* its magnitude (`{ actual, limit }`) for the Checks that have a numeric bound, so severity is data a caller can sort, chart and gate on, and no calibration opinion enters the score.

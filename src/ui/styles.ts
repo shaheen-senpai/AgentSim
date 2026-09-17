@@ -18,6 +18,8 @@ export const warningBg = "#FDF3DF";
 export const warningFg = "#8A5A12";
 /** The shared shape/color classes for a small status badge — pair with the site's own padding/text size. */
 export const dangerPill = "rounded-full bg-[#FBEAE7] text-[#B23A22]";
+export const warningPill = "rounded-full bg-[#FDF3DF] text-[#8A5A12]";
+export const successPill = "rounded-full bg-[#E7F4EA] text-[#1E7A43]";
 
 // The form vocabulary the Worlds and Connect pages share: one dark primary button, one field
 // treatment, one label, one hint. Every interactive element carries the same focus ring, so a

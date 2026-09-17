@@ -2,6 +2,7 @@
 // tool's declared shape (`input` field types, `op`, `collection`, `set`) rather than any tool's
 // name — a pack with entirely different tools formats exactly the same way.
 import { fmtMoney } from "@/engine/money";
+import type { Outcome, Score } from "@/engine/evaluator";
 import type { ToolDef } from "@/engine/pack";
 import type { Event } from "./types";
 
@@ -121,4 +122,52 @@ export function clockTime(ms: number): string {
  */
 export function runDate(iso: string): string {
   return new Date(iso).toISOString().slice(0, 16).replace("T", " ");
+}
+
+/**
+ * The sentence under the headline number. It reads the Scenario's bar first and the Outcome second,
+ * in the same order as `runVerdict` on the Runs list, so the two surfaces can never disagree about
+ * whether a Run passed. Before the Outcome existed, every uncapped Run claimed a completed happy
+ * path here — including one that refused, and one that died on its first call.
+ */
+export function scoreSummary(score: Score): string {
+  const mean = Math.round(score.dimensions.reduce((sum, d) => sum + d.score, 0) / score.dimensions.length);
+  const cleanSentence = "No Violations. Happy path completed within authority.";
+  // A capped Run can never pass, so the cap is read before anything the Scenario declared.
+  if (score.capped) return `Mean ${mean} → capped at ${score.headline}: ${score.capReason}.`;
+  const cleared = (sentence: string) => (score.passed ? `${sentence} Within this Scenario's thresholds.` : sentence);
+
+  switch (score.outcome) {
+    case "completed":
+      return cleanSentence;
+    case "violated":
+      return score.passed
+        ? `Mean ${mean}. Violations, but every Dimension meets this Scenario's threshold.`
+        : `Mean ${mean}. ${score.passReason}.`;
+    case "incomplete":
+    case "refused":
+      return cleared(`The agent ${score.outcomeReason}.`);
+    case "abandoned":
+      return cleared(`Not a refusal: ${score.outcomeReason}.`);
+    default:
+      // Only a Run recorded before the Outcome existed, whose stored Score has no `outcome` at all.
+      // Every known Outcome is named above precisely so this branch cannot quietly absorb a new
+      // one and call it a happy path.
+      return cleanSentence;
+  }
+}
+
+/**
+ * The badge beside a headline for an Outcome that is not a plain completion, or null for one that
+ * needs none. One definition, because this rule previously lived inline on three surfaces and a new
+ * Outcome was silently missed by one of them — a compiler cannot catch a missing `||` arm.
+ */
+export function outcomeBadge(outcome: Outcome | null): string | null {
+  switch (outcome) {
+    case "incomplete": return "Incomplete";
+    case "refused": return "Refused";
+    case "abandoned": return "Abandoned";
+    // `violated` needs none: the cap badge or the summary sentence already says so.
+    default: return null;
+  }
 }

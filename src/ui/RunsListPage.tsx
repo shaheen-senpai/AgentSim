@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { PackOption, RunSummary } from "./types";
 import { runDate } from "./format";
-import { dangerPill, heading, mono, panel, primaryButton, serif } from "./styles";
+import { dangerPill, heading, mono, panel, primaryButton, serif, successPill, warningPill } from "./styles";
 import type { Dimension } from "@/engine/dimensions";
 // Re-exported so existing imports of `latestComparablePair` from this module keep working. The
 // function itself now lives in a plain (non-"use client") module — see that file's header comment
@@ -29,6 +29,34 @@ function Num({ value }: { value: number | null }) {
   if (value === null) return <span className={`${mono} text-[#6E6B60]`}>—</span>;
   return <span className={`${mono} ${value < 100 ? "text-[#B23A22] font-bold" : ""}`}>{value}</span>;
 }
+
+export type Verdict = { text: string; tone: "danger" | "warning" | "success" | "muted" };
+
+/**
+ * The badge in a Run row's last column. It reads the Scenario's own bar and then the Outcome, not
+ * just the cap: every completed, uncapped Run used to fall through to a green "Pass", including a
+ * refusal, an abandoned Run and one whose only Violations happened to miss a capping Dimension.
+ */
+export function runVerdict(r: RunSummary): Verdict {
+  if (r.status === "running") return { text: "running…", tone: "muted" };
+  if (r.status === "failed") return { text: "Error", tone: "danger" };
+  if (r.capped) return { text: "Capped", tone: "danger" };
+  // A Scenario sets its own bar, so a Run with Violations can still pass — that is the point of a
+  // threshold. It can never pass capped, which is checked first.
+  if (r.passed) return { text: "Pass", tone: "success" };
+  if (r.outcome === "incomplete") return { text: "Incomplete", tone: "warning" };
+  if (r.outcome === "refused") return { text: "Refused", tone: "warning" };
+  if (r.outcome === "abandoned") return { text: "Abandoned", tone: "warning" };
+  if (r.outcome === "violated") return { text: "Violations", tone: "warning" };
+  return { text: "Pass", tone: "success" };
+}
+
+const VERDICT_PILL: Record<Verdict["tone"], string> = {
+  danger: dangerPill,
+  warning: warningPill,
+  success: successPill,
+  muted: "",
+};
 
 function InsightCard({ label, value, detail }: { label: string; value: string; detail: string }) {
   return (
@@ -106,15 +134,14 @@ export function RunsListPage({ runs, packs }: { runs: RunSummary[]; packs: PackO
                 <td className="px-3.5 py-3 border-b border-[#E3E0D5]"><Num value={dim(r, "data_access")} /></td>
                 <td className="text-[13px] px-3.5 py-3 border-b border-[#E3E0D5]">{packName(packs, r.packId)}</td>
                 <td className="px-3.5 py-3 border-b border-[#E3E0D5]">
-                  {r.status === "running" ? (
-                    <span className="text-[11px] text-[#6E6B60]">running…</span>
-                  ) : r.status === "failed" ? (
-                    <span className={`px-2 py-0.5 text-[11px] font-bold uppercase ${dangerPill}`}>Error</span>
-                  ) : r.capped ? (
-                    <span className={`px-2 py-0.5 text-[11px] font-bold uppercase ${dangerPill}`}>Capped</span>
-                  ) : (
-                    <span className="px-2 py-0.5 text-[11px] font-bold uppercase rounded-full bg-[#E7F4EA] text-[#1E7A43]">Pass</span>
-                  )}
+                  {(() => {
+                    const v = runVerdict(r);
+                    return v.tone === "muted" ? (
+                      <span className="text-[11px] text-[#6E6B60]">{v.text}</span>
+                    ) : (
+                      <span className={`px-2 py-0.5 text-[11px] font-bold uppercase ${VERDICT_PILL[v.tone]}`}>{v.text}</span>
+                    );
+                  })()}
                 </td>
                 <td className="text-[12px] text-[#6E6B60] px-3.5 py-3 border-b border-[#E3E0D5]">{runDate(r.createdAt)}</td>
               </tr>

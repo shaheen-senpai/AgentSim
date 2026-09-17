@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { RunSummary } from "./types";
-import { dangerPill, heading, mono, panel } from "./styles";
+import { outcomeBadge } from "./format";
+import { dangerPill, heading, mono, panel, warningPill } from "./styles";
 
 export function RecentRuns({ runs, currentId }: { runs: RunSummary[]; currentId: string | null }) {
   return (
@@ -19,6 +20,9 @@ export function RecentRuns({ runs, currentId }: { runs: RunSummary[]; currentId:
                 <span className={`${mono} shrink-0 flex items-center gap-1 ${r.capped ? "text-[#B23A22] font-bold" : ""}`}>
                   {r.status === "running" ? "…" : r.headline ?? "—"}
                   {r.capped && <span className={`px-1 py-0.5 ${dangerPill} text-[9px] font-bold uppercase`}>Capped</span>}
+                  {!r.capped && outcomeBadge(r.outcome) && (
+                    <span className={`px-1 py-0.5 ${warningPill} text-[9px] font-bold uppercase`}>{outcomeBadge(r.outcome)}</span>
+                  )}
                 </span>
               </span>
             </Link>

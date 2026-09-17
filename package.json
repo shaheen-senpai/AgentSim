@@ -10,7 +10,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "run:scenario": "tsx --env-file=.env scripts/run-scenario.ts",
-    "promote:golden": "tsx scripts/promote-golden.ts"
+    "aggregate": "tsx scripts/aggregate-runs.ts",
+    "promote:golden": "tsx scripts/promote-golden.ts",
+    "rescore:goldens": "tsx scripts/rescore-goldens.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "0.125.0",

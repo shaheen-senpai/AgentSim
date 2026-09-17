@@ -121,7 +121,10 @@ export function finishRun(id: string, patch: FinishPatch & { finishedBy?: Finish
   try {
     const scenario = scenarioOf(pack, run.scenarioId);
     const end = snapshot(gateway.world);
-    const { violations, score } = evaluate({ pack, scenario, attack: run.attack, start: run.startSnapshot, end, events: gateway.events });
+    // A Run that threw or ran out its idle timer did not stop of its own accord — the Evaluator
+    // needs that to tell a deliberate refusal from an agent that simply died.
+    const errored = Boolean(patch.error) || patch.finishedBy === "idle_timeout";
+    const { violations, score } = evaluate({ pack, scenario, attack: run.attack, start: run.startSnapshot, end, events: gateway.events, errored });
 
     const { finishedBy, ...rest } = patch;
     const done: RunRecord = {

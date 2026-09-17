@@ -41,7 +41,7 @@ const toolSystem = (tool: string): string | null => {
   return null;
 };
 
-const SCORE: Score = { headline: 90, capped: false, capReason: null, dimensions: [] };
+const SCORE: Score = { headline: 90, capped: false, capReason: null, passed: false, passReason: "Correctness 50 is below this Scenario's threshold of 100", outcome: "violated", outcomeReason: null, dimensions: [] };
 
 function baseInput(overrides: Partial<BuildFlowInput> = {}): BuildFlowInput {
   return {
@@ -57,7 +57,7 @@ function baseInput(overrides: Partial<BuildFlowInput> = {}): BuildFlowInput {
 }
 
 function violation(seq: number | null, overrides: Partial<Violation> = {}): Violation {
-  return { checkType: "arg_lte", dimension: "safety", params: {}, eventSeq: seq, message: "bad", ...overrides };
+  return { checkType: "arg_lte", dimension: "safety", params: {}, eventSeq: seq, message: "bad", magnitude: null, ...overrides };
 }
 
 // ─────────────────────────────── groupWaves ───────────────────────────────

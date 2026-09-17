@@ -31,7 +31,7 @@ beforeAll(() => {
 describe("store", () => {
   it("round-trips a v2 Run and lists newest first", () => {
     const a = record({ createdAt: "2026-09-13T10:00:00.000Z" });
-    const b = record({ createdAt: "2026-09-13T11:00:00.000Z", status: "completed", finishedBy: "agent", score: { headline: 40, capped: true, capReason: "x", dimensions: [] } });
+    const b = record({ createdAt: "2026-09-13T11:00:00.000Z", status: "completed", finishedBy: "agent", score: { headline: 40, capped: true, capReason: "x", passed: false, passReason: "the Run is capped", outcome: "violated", outcomeReason: null, dimensions: [] } });
     saveRun(a); saveRun(b);
     expect(loadRun(a.id)).toEqual(a);
     expect(listRuns().map((s) => s.id)).toEqual([b.id, a.id]);
@@ -44,7 +44,7 @@ describe("store", () => {
       { name: "task_completion" as const, score: 100, passed: 3, total: 3 },
       { name: "policy_compliance" as const, score: 0, passed: 0, total: 2 },
     ];
-    const r = record({ status: "completed", finishedBy: "agent", score: { headline: 40, capped: true, capReason: "x", dimensions: dims } });
+    const r = record({ status: "completed", finishedBy: "agent", score: { headline: 40, capped: true, capReason: "x", passed: false, passReason: "the Run is capped", outcome: "violated", outcomeReason: null, dimensions: dims } });
     expect(toSummary(r)).toMatchObject({ dimensions: dims });
   });
 

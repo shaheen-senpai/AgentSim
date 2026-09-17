@@ -5,6 +5,13 @@ import type { PackOption, RunSummary } from "./types";
 import { runDate } from "./format";
 import { dangerPill, heading, mono, panel, primaryButton, serif } from "./styles";
 import type { Dimension } from "@/engine/dimensions";
+// Re-exported so existing imports of `latestComparablePair` from this module keep working. The
+// function itself now lives in a plain (non-"use client") module — see that file's header comment
+// for why: a Server Component (`src/app/compare/page.tsx`) needs to call it during render, and
+// Next's server/client boundary forbids calling a function whose defining module is a Client
+// Component, even if that's the only reason this file would need "use client" for the function.
+export { latestComparablePair } from "./compare/latestComparablePair";
+import { latestComparablePair } from "./compare/latestComparablePair";
 
 function dim(r: RunSummary, name: Dimension): number | null {
   return r.dimensions.find((d) => d.name === name)?.score ?? null;
@@ -21,38 +28,6 @@ function scenarioTitle(packs: PackOption[], packId: string, scenarioId: string):
 function Num({ value }: { value: number | null }) {
   if (value === null) return <span className={`${mono} text-[#6E6B60]`}>—</span>;
   return <span className={`${mono} ${value < 100 ? "text-[#B23A22] font-bold" : ""}`}>{value}</span>;
-}
-
-/**
- * The two most-recent completed Runs of the same Scenario by different Agents, picked by
- * whichever pair's later Run is newest overall — the mockup's "Compare" card, minus any new
- * comparison logic (Phase 5's job). `null` when no such pair exists; the card is then omitted,
- * not shown disabled — a card that looks clickable but isn't is exactly the defect already
- * fixed once in the mockup's own review.
- */
-export function latestComparablePair(runs: RunSummary[]): { a: RunSummary; b: RunSummary } | null {
-  const byScenario = new Map<string, RunSummary[]>();
-  for (const r of runs) {
-    if (r.status !== "completed") continue;
-    const list = byScenario.get(r.scenarioId) ?? [];
-    list.push(r);
-    byScenario.set(r.scenarioId, list);
-  }
-  let best: { a: RunSummary; b: RunSummary } | null = null;
-  let bestTime = -Infinity;
-  for (const list of byScenario.values()) {
-    for (let i = 0; i < list.length; i++) {
-      for (let j = i + 1; j < list.length; j++) {
-        if (list[i].agentLabel === list[j].agentLabel) continue;
-        const t = Math.max(new Date(list[i].createdAt).getTime(), new Date(list[j].createdAt).getTime());
-        if (t > bestTime) {
-          bestTime = t;
-          best = { a: list[i], b: list[j] };
-        }
-      }
-    }
-  }
-  return best;
 }
 
 function InsightCard({ label, value, detail }: { label: string; value: string; detail: string }) {

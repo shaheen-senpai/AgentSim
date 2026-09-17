@@ -1,9 +1,16 @@
 import { notFound } from "next/navigation";
 import { listPackIds, loadPack, type ToolDef } from "@/engine/pack";
+import { listRuns, loadRun, type RunRecord } from "@/runner/store";
 import { entityLabel } from "@/engine/world";
-import { loadRun, type RunRecord } from "@/runner/store";
-import { Header } from "@/ui/Header";
+import { ConsoleShell } from "@/ui/ConsoleShell";
 import { CompareRunColumn } from "@/ui/CompareRunColumn";
+import { RunPicker } from "@/ui/compare/RunPicker";
+// Imported from its own plain module, not from `@/ui/RunsListPage` (a "use client" component that
+// re-exports the same function for its own use) — this file is a Server Component and calls
+// `latestComparablePair` during render, which Next's server/client boundary only allows when the
+// function's defining module carries no "use client" directive.
+import { latestComparablePair } from "@/ui/compare/latestComparablePair";
+import { serif } from "@/ui/styles";
 
 export const dynamic = "force-dynamic";
 
@@ -31,16 +38,48 @@ function packViewFor(run: RunRecord): ColumnView {
 
 export default async function Compare({ searchParams }: { searchParams: Promise<{ a?: string; b?: string }> }) {
   const { a, b } = await searchParams;
-  const ra = a ? loadRun(a) : null, rb = b ? loadRun(b) : null;
+  const runs = listRuns();
+
+  let aId = a, bId = b;
+  if (!aId || !bId) {
+    const pair = latestComparablePair(runs);
+    if (pair) {
+      aId = pair.a.id;
+      bId = pair.b.id;
+    }
+  }
+
+  if (!aId || !bId) {
+    return (
+      <ConsoleShell>
+        <div className="p-4 flex flex-col gap-4 max-w-[720px]">
+          <h1 className={`${serif} text-[34px] font-medium tracking-tight`}>Compare runs</h1>
+          <p className="text-[13px] text-[#6E6B60]">Pick two Runs of the same Scenario to compare.</p>
+          <RunPicker runs={runs} a={runs.find((r) => r.status === "completed")?.id ?? ""} b="" />
+        </div>
+      </ConsoleShell>
+    );
+  }
+
+  const ra = loadRun(aId);
+  const rb = loadRun(bId);
   if (!ra || !rb) notFound();
   const va = packViewFor(ra), vb = packViewFor(rb);
+
   return (
-    <div className="min-h-screen text-sm overflow-x-hidden">
-      <Header run={ra} />
-      <div className="grid grid-cols-2 gap-4 p-4 h-[calc(100vh-48px)]">
-        <CompareRunColumn run={ra} tools={va.tools} packError={va.error} injectedLabel={va.injectedLabel} />
-        <CompareRunColumn run={rb} tools={vb.tools} packError={vb.error} injectedLabel={vb.injectedLabel} />
+    <ConsoleShell>
+      <div className="p-4 flex flex-col gap-4">
+        <h1 className={`${serif} text-[28px] font-medium tracking-tight`}>Compare runs</h1>
+        <RunPicker runs={runs} a={ra.id} b={rb.id} />
+        <div className="grid grid-cols-2 gap-4">
+          <CompareRunColumn run={ra} tools={va.tools} packError={va.error} injectedLabel={va.injectedLabel} />
+          <CompareRunColumn run={rb} tools={vb.tools} packError={vb.error} injectedLabel={vb.injectedLabel} />
+        </div>
+        {/* AttackPanel — added by Task 3 */}
+        {/* ActionLedger — added by Task 5 */}
+        {/* ChecksTable — added by Task 4 */}
+        {/* WorldDiffCompare — added by Task 3 */}
       </div>
-    </div>
+    </ConsoleShell>
   );
 }

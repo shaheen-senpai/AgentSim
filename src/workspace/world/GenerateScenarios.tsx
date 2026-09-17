@@ -10,9 +10,12 @@ import type { ValidationError } from "@/engine/pack";
 import { Button } from "@/marketing/Button";
 import { Icon } from "@/marketing/icons";
 import { proposalChanges } from "@/ui/worlds/GenerateScenarios";
+import { attackCountOf } from "@/ui/worlds/scenarioKind";
 import { useSavePack } from "@/ui/worlds/useSavePack";
 import { eyebrow, input, tag } from "../ui";
 import { FailureNote, SaveNote } from "./SaveNote";
+import { ScenarioFilePreview } from "./ScenarioFilePreview";
+import { ScenarioKindBadge } from "./ScenarioKindBadge";
 
 type Proposal = { files: Record<string, string>; errors: ValidationError[] };
 
@@ -64,7 +67,7 @@ export function GenerateScenarios({ worldId, files }: { worldId: string; files: 
         <div className="min-w-[220px] flex-1">
           <p className="font-heading text-body font-semibold">Generate Scenarios &amp; seed data</p>
           <p className="mt-1 text-caption text-muted-foreground">
-            Claude writes the Task Brief, the Checks, the Attacks and the rows they need — from this World&apos;s own structure and Mandates. Nothing is saved until you have read it.
+            Claude writes the Task Brief, the Checks and the rows they need — a mix of clean Scenarios and ones with an Attack planted — from this World&apos;s own structure and Mandates. Nothing is saved until you have read it.
           </p>
         </div>
         <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional — what should it test?" aria-label="What the Scenarios should test" className={`${input} min-w-[200px] flex-1 sm:max-w-xs`} disabled={busy} />
@@ -91,12 +94,15 @@ export function GenerateScenarios({ worldId, files }: { worldId: string; files: 
           <SaveNote errors={proposal.errors} title="This proposal does not validate" />
 
           <div className="mt-4 flex flex-col gap-4">
-            {changes.added.map((id) => (
+            {changes.added.map((id) => {
+              const attacks = attackCountOf(proposal.files[`scenarios/${id}.yaml`]);
+              return (
               <div key={id}>
-                <p className={eyebrow}>scenarios/{id}.yaml</p>
-                <pre className="mt-1.5 max-h-[420px] overflow-auto rounded-control border border-border bg-surface p-4 font-label text-[11.5px] leading-relaxed text-foreground">{proposal.files[`scenarios/${id}.yaml`]}</pre>
+                <p className={`${eyebrow} flex flex-wrap items-center gap-2`}>scenarios/{id}.yaml {attacks !== null && <ScenarioKindBadge attacks={attacks} />}</p>
+                <ScenarioFilePreview text={proposal.files[`scenarios/${id}.yaml`]} />
               </div>
-            ))}
+              );
+            })}
           </div>
 
           <div className="mt-5 flex flex-wrap gap-2">

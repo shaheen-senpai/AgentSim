@@ -3,13 +3,21 @@ import Link from "next/link";
 import type { WizardPack } from "@/ui/types";
 import type { WizardState } from "../NewRunWizard";
 
-export function WorldStep({ packs, state, onChange }: { packs: WizardPack[]; state: WizardState; onChange: (patch: Partial<WizardState>) => void }) {
+export function WorldStep({ packs, state, onChange, inReview }: { packs: WizardPack[]; state: WizardState; onChange: (patch: Partial<WizardState>) => void; inReview: number }) {
+  const reviewNote = inReview > 0 && (
+    <p style={{ fontSize: 11.5, color: "var(--muted)", margin: "12px 0 0" }}>
+      {inReview} World{inReview === 1 ? " is" : "s are"} still in review, so {inReview === 1 ? "it is" : "they are"} not offered here —{" "}
+      <Link href="/worlds" className="linkish" style={{ fontFamily: "var(--sans)", fontSize: 11.5 }}>publish {inReview === 1 ? "it" : "them"} first</Link>.
+    </p>
+  );
   if (packs.length === 0) {
     return (
       <div className="step-grid single">
         <div className="panel card-pad" style={{ textAlign: "center" }}>
-          <p style={{ margin: "0 0 8px", fontSize: 13, color: "var(--muted)" }}>No Worlds installed yet.</p>
-          <Link href="/worlds/new" className="linkish" style={{ fontFamily: "var(--sans)", fontSize: 13 }}>Create a World →</Link>
+          <p style={{ margin: "0 0 8px", fontSize: 13, color: "var(--muted)" }}>{inReview > 0 ? "No published Worlds yet." : "No Worlds installed yet."}</p>
+          <Link href={inReview > 0 ? "/worlds" : "/worlds/new"} className="linkish" style={{ fontFamily: "var(--sans)", fontSize: 13 }}>
+            {inReview > 0 ? "Review the drafts →" : "Create a World →"}
+          </Link>
         </div>
       </div>
     );
@@ -37,6 +45,7 @@ export function WorldStep({ packs, state, onChange }: { packs: WizardPack[]; sta
           </button>
         ))}
       </div>
+      {reviewNote}
     </div>
   );
 }

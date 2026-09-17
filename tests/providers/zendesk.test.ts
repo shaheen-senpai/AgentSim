@@ -33,7 +33,7 @@ function zendeskFixturePack(ticketRow: Row): WorldPack {
 
   return {
     meta: {
-      id: "zendesk-fixture", name: "Zendesk Fixture", domain: "test", description: "test pack", principal: "tickets",
+      id: "zendesk-fixture", name: "Zendesk Fixture", domain: "test", description: "test pack", principal: "tickets", status: "ready", mandates: {},
       systems: { support: { label: "Support" } },
       entities: { tickets },
     },

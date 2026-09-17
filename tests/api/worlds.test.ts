@@ -32,6 +32,7 @@ describe("GET /api/worlds", () => {
     const packs = (await res.json()) as PackSummary[];
     expect(packs).toContainEqual({
       id: "northwind",
+      status: "ready",
       name: "Northwind Outfitters",
       domain: "support-commerce",
       description: "A small outdoor-gear shop. Support, email, orders and payments share one World.",

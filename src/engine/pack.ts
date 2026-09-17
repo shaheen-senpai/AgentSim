@@ -1,7 +1,8 @@
 // World pack format: zod schemas, semantic validation, loading and saving.
 //
 // A World pack lives under `worldpacks/<packId>/` (or `AGENTSIM_PACKS_DIR`):
-//   pack.yaml            id, name, domain, description, principal, systems, entities
+//   pack.yaml            id, name, domain, description, principal, systems, entities,
+//                        status (draft|ready), mandates, built_by
 //   seed.yaml            now, currency, rows: { <collection>: Row[] }
 //   tools.yaml           <toolName>: ToolDef
 //   scenarios/<id>.yaml  Scenario
@@ -40,6 +41,18 @@ export type EntitySpec = {
   fields: Record<string, FieldSpec>;
 };
 
+/** A rule the World's agent is held to, captured once and cited by the Scenarios that grade it. */
+export type Mandate = { id: string; title?: string; text: string };
+
+/** Who built this World, and from what — the plugin run, or the console. `client` is self-reported. */
+export type BuildInfo = { source: "plugin" | "console"; run?: string; token?: string; client?: string; repo?: string; at: string };
+
+/**
+ * A World is a draft until a human reviews it and publishes it; only a `ready` World can be run.
+ * Absent means `ready`, so a pack written before this existed stays runnable.
+ */
+export type PackStatus = "draft" | "ready";
+
 export type PackMeta = {
   id: string;
   name: string;
@@ -48,6 +61,9 @@ export type PackMeta = {
   principal: string;
   systems: Record<string, { label: string; kind?: "mcp" | "db" | "s3" | "tools"; mode?: "shadowed" | "mocked" | "pasted" | "localstack"; provider?: string }>;
   entities: Record<string, EntitySpec>;
+  status: PackStatus;
+  mandates: Record<string, Mandate>;
+  built_by?: BuildInfo;
 };
 
 // ───────────────────────────── Types (seed.yaml) ─────────────────────────────
@@ -111,7 +127,12 @@ export type Attack = { id: string; title: string; mutation: Mutation; lure: Lure
  */
 export type PassThreshold = Partial<Record<Dimension, number>>;
 
-export type Scenario = { id: string; title: string; task_brief: string; policy: { text: string }; checks: Check[]; attacks: Attack[]; pass?: PassThreshold };
+/**
+ * `policy.text` is always the resolved text, whether the file wrote it inline or cited a Mandate —
+ * so every consumer (the Task Brief, the Mandate tab, the wizard) reads one field. `policy.mandate`
+ * is the id it was resolved from, when it came from one.
+ */
+export type Scenario = { id: string; title: string; task_brief: string; policy: { text: string; mandate?: string }; checks: Check[]; attacks: Attack[]; pass?: PassThreshold };
 
 // ───────────────────────────── Top-level pack ─────────────────────────────
 
@@ -156,6 +177,17 @@ const EntitySpecSchema = z.object({
   fields: z.record(z.string(), FieldSpecSchema),
 }).strict();
 
+const MandateSchema = z.object({ title: z.string().optional(), text: z.string() }).strict();
+
+const BuildInfoSchema = z.object({
+  source: z.enum(["plugin", "console"]),
+  run: z.string().optional(),
+  token: z.string().optional(),
+  client: z.string().optional(),
+  repo: z.string().optional(),
+  at: z.string(),
+}).strict();
+
 const PackMetaSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -169,6 +201,9 @@ const PackMetaSchema = z.object({
     provider: z.string().optional(),
   }).strict()),
   entities: z.record(z.string(), EntitySpecSchema),
+  status: z.enum(["draft", "ready"]).optional(),
+  mandates: z.record(z.string(), MandateSchema).optional(),
+  built_by: BuildInfoSchema.optional(),
 }).strict();
 
 const RowSchema = z.object({ id: z.string() }).catchall(z.unknown()) as z.ZodType<Row>;
@@ -291,7 +326,8 @@ const ScenarioSchema = z.object({
   id: z.string(),
   title: z.string(),
   task_brief: z.string(),
-  policy: z.object({ text: z.string() }).strict(),
+  // Inline text, or a citation of one of the pack's own Mandates — resolved to text by `resolvePolicy`.
+  policy: z.union([z.object({ text: z.string() }).strict(), z.object({ mandate: z.string() }).strict()]),
   checks: z.array(CheckSchema),
   attacks: z.array(AttackSchema),
   pass: PassSchema.optional(),
@@ -306,12 +342,30 @@ function capitalizeSingular(collection: string): string {
   return singular.length ? singular[0].toUpperCase() + singular.slice(1) : singular;
 }
 
-function fillEntityLabels(raw: z.infer<typeof PackMetaSchema>): PackMeta {
+/** Entity labels, `status` and `mandates` defaulted, so every consumer reads the same shape. */
+function fillMetaDefaults(raw: z.infer<typeof PackMetaSchema>): PackMeta {
   const entities: Record<string, EntitySpec> = {};
   for (const [key, entity] of Object.entries(raw.entities)) {
     entities[key] = { ...entity, label: entity.label ?? capitalizeSingular(key) } as EntitySpec;
   }
-  return { ...raw, entities };
+  const mandates: Record<string, Mandate> = {};
+  for (const [id, m] of Object.entries(raw.mandates ?? {})) mandates[id] = { id, ...m };
+  return { ...raw, entities, mandates, status: raw.status ?? "ready" };
+}
+
+/**
+ * A Scenario with its Mandate resolved. A citation of a Mandate the pack does not declare is an
+ * error rather than an empty policy: the agent would otherwise be handed a Task Brief with no
+ * limits in it, and every `policy_compliance` Check would be grading prose that was never shown.
+ */
+function resolvePolicy(file: string, raw: z.infer<typeof ScenarioSchema>, mandates: Record<string, Mandate>, errors: ValidationError[]): Scenario {
+  if ("text" in raw.policy) return { ...raw, policy: { text: raw.policy.text } };
+  const mandate = mandates[raw.policy.mandate];
+  if (!mandate) {
+    errors.push({ file, path: "policy.mandate", message: `mandate '${raw.policy.mandate}' is not declared in pack.yaml` });
+    return { ...raw, policy: { text: "", mandate: raw.policy.mandate } };
+  }
+  return { ...raw, policy: { text: mandate.text, mandate: raw.policy.mandate } };
 }
 
 /** Recursively parses every `${...}` template found in `value`, reporting expressions that fail to parse/evaluate. */
@@ -675,7 +729,7 @@ export function parsePackFiles(
   if (packRaw.errors.length === 0) {
     const r = PackMetaSchema.safeParse(packRaw.data);
     if (!r.success) errors.push(...zodIssues("pack.yaml", r.error));
-    else meta = fillEntityLabels(r.data);
+    else meta = fillMetaDefaults(r.data);
   }
 
   const seedRaw = parseYamlFile("seed.yaml", files["seed.yaml"] ?? "");
@@ -707,7 +761,7 @@ export function parsePackFiles(
   }
 
   const scenarioFileNames = Object.keys(files).filter((f) => f.startsWith("scenarios/") && f.endsWith(".yaml"));
-  const scenarioEntries: { file: string; scenario: Scenario }[] = [];
+  const rawScenarios: { file: string; raw: z.infer<typeof ScenarioSchema> }[] = [];
   for (const f of scenarioFileNames) {
     const raw = parseYamlFile(f, files[f]);
     errors.push(...raw.errors);
@@ -717,9 +771,9 @@ export function parsePackFiles(
       errors.push(...zodIssues(f, r.error));
       continue;
     }
-    scenarioEntries.push({ file: f, scenario: r.data });
+    rawScenarios.push({ file: f, raw: r.data });
   }
-  scenarioEntries.sort((a, b) => a.scenario.id.localeCompare(b.scenario.id));
+  rawScenarios.sort((a, b) => a.raw.id.localeCompare(b.raw.id));
 
   const agents: Record<string, string> = {};
   for (const f of Object.keys(files)) {
@@ -730,10 +784,19 @@ export function parsePackFiles(
     return { pack: null, errors };
   }
 
+  const scenarioEntries = rawScenarios.map(({ file, raw }) => ({ file, scenario: resolvePolicy(file, raw, meta.mandates, errors) }));
+
   validateEntities(meta, errors);
   validateSeed(meta, seed, errors);
   validateTools(meta, tools, errors);
   for (const { file, scenario } of scenarioEntries) validateScenario(file, scenario, meta, seed, tools, errors);
+
+  // The publish gate, enforced where every write path routes through: the plugin, the raw YAML
+  // editor and the Publish button all come past here. A World with nothing to test cannot claim to
+  // have been reviewed.
+  if (meta.status === "ready" && scenarioEntries.length === 0) {
+    errors.push({ file: "pack.yaml", path: "status", message: "a World marked ready must have at least one Scenario — leave it a draft until it has one" });
+  }
 
   if (errors.length > 0) return { pack: null, errors };
 
@@ -828,6 +891,12 @@ export function packWriteErrors(id: string, files: PackFiles): ValidationError[]
     errors.push({ file: "pack.yaml", path: "id", message: `Pack id '${declared}' does not match the world id '${id}'` });
   }
   return errors;
+}
+
+/** Removes a World pack directory. Whether removing it is allowed is the caller's call. */
+export function deletePack(id: string): void {
+  if (!PACK_ID_RE.test(id)) throw new Error(`Invalid pack id '${id}'`);
+  rmSync(path.join(packsDir(), id), { recursive: true, force: true });
 }
 
 /** Writes pack files atomically (tmp + rename); deletes scenario/agent files no longer present. */

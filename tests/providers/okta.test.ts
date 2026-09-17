@@ -41,7 +41,7 @@ function oktaFixturePack(rows: { memberships?: Row[]; issues?: Row[]; mfa_resets
 
   return {
     meta: {
-      id: "okta-fixture", name: "Okta Fixture", domain: "test", description: "test pack", principal: "employees",
+      id: "okta-fixture", name: "Okta Fixture", domain: "test", description: "test pack", principal: "employees", status: "ready", mandates: {},
       systems: { directory: { label: "Directory" } },
       entities: { employees, groups, memberships, issues, mfa_resets: mfaResets },
     },

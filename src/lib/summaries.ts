@@ -1,7 +1,7 @@
 // The two list-shaped views of a World pack the UI and the API both hand out. One definition, so a
 // pack card and a Launcher dropdown can never drift apart — plus the one tolerant loader every
 // list-shaped call site reads packs through.
-import { listPackIds, loadPack, type Scenario, type WorldPack } from "@/engine/pack";
+import { listPackIds, loadPack, type PackStatus, type Scenario, type WorldPack } from "@/engine/pack";
 import { DIMENSIONS, type Dimension } from "@/engine/dimensions";
 
 export type ScenarioSummary = {
@@ -13,6 +13,7 @@ export type ScenarioSummary = {
 
 export type PackSummary = {
   id: string;
+  status: PackStatus;
   name: string;
   domain: string;
   description: string;
@@ -76,6 +77,7 @@ export function toPackOption(p: WorldPack): PackOption {
 export function toPackSummary(p: WorldPack): PackSummary {
   return {
     id: p.meta.id,
+    status: p.meta.status,
     name: p.meta.name,
     domain: p.meta.domain,
     description: p.meta.description,

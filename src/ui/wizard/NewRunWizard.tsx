@@ -39,7 +39,7 @@ function initialState(packs: WizardPack[], agents: Agent[], searchParams: URLSea
   };
 }
 
-export function NewRunWizard({ packs, agents: initialAgents }: { packs: WizardPack[]; agents: Agent[] }) {
+export function NewRunWizard({ packs, agents: initialAgents, inReview = 0 }: { packs: WizardPack[]; agents: Agent[]; /** Worlds left out because they are still in review. */ inReview?: number }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [state, setState] = useState<WizardState>(() => initialState(packs, initialAgents, searchParams));
@@ -92,7 +92,7 @@ export function NewRunWizard({ packs, agents: initialAgents }: { packs: WizardPa
 
       <div id="stepBody">
         {state.step === 0 && <ConnectStep state={state} pack={pack} agents={agents} onChange={update} onAgentRegistered={(a) => setAgents((prev) => [...prev, a])} />}
-        {state.step === 1 && <WorldStep packs={packs} state={state} onChange={update} />}
+        {state.step === 1 && <WorldStep packs={packs} state={state} onChange={update} inReview={inReview} />}
         {state.step === 2 && pack && <ScenarioStep pack={pack} state={state} onChange={update} />}
         {state.step === 3 && scenario && <MandateStep scenario={scenario} />}
         {state.step === 4 && scenario && <AttackStep scenario={scenario} state={state} onChange={update} />}

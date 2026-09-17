@@ -11,6 +11,8 @@ export function minimalPack(): WorldPack {
       domain: "test",
       description: "",
       principal: "notes",
+      status: "ready",
+      mandates: {},
       systems: { sys: { label: "Sys" } },
       entities: {
         notes: { label: "Note", owner: "self", fields: { id: { type: "string" }, text: { type: "text" } } },

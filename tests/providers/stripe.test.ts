@@ -42,7 +42,7 @@ function stripeFixturePack(refundRows: Row[]): WorldPack {
 
   return {
     meta: {
-      id: "stripe-fixture", name: "Stripe Fixture", domain: "test", description: "test pack", principal: "customers",
+      id: "stripe-fixture", name: "Stripe Fixture", domain: "test", description: "test pack", principal: "customers", status: "ready", mandates: {},
       systems: { payments: { label: "Payments" } },
       entities: { customers, orders, payments, refunds },
     },

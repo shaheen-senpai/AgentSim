@@ -8,9 +8,9 @@ const files = { "pack.yaml": "id: x\nentities:\n  a: {}\n  b: {}\n", "tools.yaml
 
 describe("GET /api/worlds/drafts", () => {
   it("summarises drafts with tool and entity counts, and serves one draft's files", async () => {
-    const d = createDraft({ name: "Zed", domain: "support", description: "x" }, { files, errors: [{ file: "seed.yaml", path: "", message: "bad" }], attempts: 2 });
+    const d = createDraft({ name: "Zed", domain: "support", description: "x" }, { token: "wb_zed", client: "claude-code 2.0.9", repo: "github.com/zed/bot@abc1234" }, { files, errors: [{ file: "seed.yaml", path: "", message: "bad" }], attempts: 2 });
     const list = (await (await listRoute()).json()) as DraftSummary[];
-    expect(list.find((s) => s.id === d.id)).toMatchObject({ name: "Zed", domain: "support", valid: false, errorCount: 1, tools: 3, entities: 2 });
+    expect(list.find((s) => s.id === d.id)).toMatchObject({ name: "Zed", domain: "support", valid: false, errorCount: 1, tools: 3, entities: 2, token: "wb_zed", client: "claude-code 2.0.9", repo: "github.com/zed/bot@abc1234" });
 
     const one = await getRoute(new Request("http://x"), { params: Promise.resolve({ draftId: d.id }) });
     expect(one.status).toBe(200);
@@ -19,7 +19,7 @@ describe("GET /api/worlds/drafts", () => {
   });
 
   it("counts nothing for unparseable draft files instead of failing", async () => {
-    const d = createDraft({ name: "Broken", domain: "d", description: "x" }, { files: { "pack.yaml": "a: [" }, errors: [], attempts: 1 });
+    const d = createDraft({ name: "Broken", domain: "d", description: "x" }, { token: "wb_broken" }, { files: { "pack.yaml": "a: [" }, errors: [], attempts: 1 });
     const list = (await (await listRoute()).json()) as DraftSummary[];
     expect(list.find((s) => s.id === d.id)).toMatchObject({ valid: true, tools: 0, entities: 0 });
   });

@@ -6,10 +6,13 @@ import { NewRunWizard } from "@/ui/wizard/NewRunWizard";
 export const dynamic = "force-dynamic";
 
 export default function NewRun() {
-  const packs = loadPacks().packs.map(toWizardPack);
+  // Draft Worlds are not offered: `POST /api/runs` refuses them, so listing one here would only
+  // walk you through six steps to a 409.
+  const all = loadPacks().packs;
+  const packs = all.filter((p) => p.meta.status !== "draft").map(toWizardPack);
   return (
     <ConsoleShell>
-      <NewRunWizard packs={packs} agents={listAgents()} />
+      <NewRunWizard packs={packs} agents={listAgents()} inReview={all.length - packs.length} />
     </ConsoleShell>
   );
 }

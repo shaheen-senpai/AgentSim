@@ -217,7 +217,8 @@ describe("savePack", () => {
     savePack("copy", { ...f, "pack.yaml": f["pack.yaml"].replace("id: northwind", "id: copy") });
     expect(loadPack("copy").meta.id).toBe("copy");
     const { "scenarios/duplicate-charge-refund.yaml": _dropped, ...rest } = f;
-    savePack("copy", { ...rest, "pack.yaml": f["pack.yaml"].replace("id: northwind", "id: copy") });
+    // A World with no Scenarios is only valid as a draft, so dropping the last one means drafting it.
+    savePack("copy", { ...rest, "pack.yaml": `status: draft\n${f["pack.yaml"].replace("id: northwind", "id: copy")}` });
     expect(loadPack("copy").scenarios).toEqual([]);
     expect(listPackIds().sort()).toEqual(["copy", "northwind"]);
     expect(dir).toBeTruthy();

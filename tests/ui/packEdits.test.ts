@@ -64,3 +64,18 @@ describe("setMandateText", () => {
     expect(setMandateText(PACK, "no-such-mandate", "x")).toBe(PACK);
   });
 });
+
+// The generator stamps `status: draft` through `withPackStatus` *before* the draft is validated, so
+// a model reply that is not YAML used to throw "Document with errors cannot be stringified" out of
+// the retry loop — spending the operator's build token on a fault the second attempt could have
+// fixed. Every editor here now passes an unparseable file through untouched, for
+// `parsePackFiles` to report with a line number.
+describe("unparseable pack.yaml", () => {
+  const BROKEN = "id: northwind\nmandates:\n  bad:\n    text: naked: colon: in: a: scalar\n  { unclosed flow\n";
+
+  it("leaves it alone rather than throwing", () => {
+    expect(withPackStatus(BROKEN, "draft")).toBe(BROKEN);
+    expect(withBuiltBy(BROKEN, { source: "plugin", at: "2026-09-18T10:04:00Z" })).toBe(BROKEN);
+    expect(setMandateText(BROKEN, "bad", "replacement")).toBe(BROKEN);
+  });
+});

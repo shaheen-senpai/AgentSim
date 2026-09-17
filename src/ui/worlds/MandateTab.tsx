@@ -40,7 +40,7 @@ export function MandateTab({ worldId, files, mandates, scenarios }: { worldId: s
                   value={m.text.trim()}
                   quote
                   rows={4}
-                  onSave={(v) => save({ ...files, "pack.yaml": setMandateText(files["pack.yaml"] ?? "", m.id, v) })}
+                  onSave={async (v) => (await save({ ...files, "pack.yaml": setMandateText(files["pack.yaml"] ?? "", m.id, v) })) !== null}
                 />
                 <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 6 }}>
                   Cited by {citing.length > 0 ? citing.map((sc) => sc.title).join(" · ") : "no Scenario yet"}

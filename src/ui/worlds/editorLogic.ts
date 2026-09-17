@@ -68,6 +68,23 @@ export function packField(packYaml: string, field: string): string | null {
 }
 
 /**
+ * The requested id, or the first free `<id>-2`, `<id>-3`… when it is taken.
+ *
+ * Both creation paths dedupe through this: `create_world` on the worldbuilder MCP server, and the
+ * workspace wizard, which derives its id from the agent's name and so collides with any World of
+ * the same name. A taken id used to 409 there with no way to pick another, which stranded an
+ * imported agent — the World could not be created, so the agent was never registered either.
+ */
+export function freeWorldId(worldId: string, taken: string[]): string {
+  if (!taken.includes(worldId)) return worldId;
+  for (let n = 2; n < 100; n++) {
+    const candidate = `${worldId}-${n}`;
+    if (!taken.includes(candidate)) return candidate;
+  }
+  return `${worldId}-${Date.now()}`;
+}
+
+/**
  * `pack.yaml` with its `id:` set to `id` — what makes copying a template a new World rather than a
  * second copy of the old one. The directory name is the id every URL uses, and the API refuses a
  * `pack.yaml` that disagrees with it (`packWriteErrors`), so this runs on every create.

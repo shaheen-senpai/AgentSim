@@ -6,11 +6,13 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
+import { PUT as updateWorld } from "@/app/api/worlds/[id]/route";
 import { clientLabel, freeWorldId, POST as mcpWorldsRoute, renderRepo } from "@/app/mcp/worlds/route";
 import type { McpServer } from "@modelcontextprotocol/server";
 import { loadPack, packsDir, type PackFiles } from "@/engine/pack";
 import { issueToken } from "@/generate/buildTokens";
 import { createDraft } from "@/generate/draftRegistry";
+import { withPackStatus } from "@/ui/worlds/packEdits";
 import { usePacksDir } from "../helpers/packs";
 
 type Rpc = { status: number; sessionId: string | null; result: Record<string, unknown> };
@@ -65,20 +67,85 @@ describe("/mcp/worlds", () => {
 
   // The token is the gate, so it is checked before anything else — including the API key, which is
   // the guard that would otherwise be doing this job by accident.
-  it("register_agent refuses a token AgentSim never issued, and refuses to reuse a spent one", async () => {
+  it("register_agent refuses a token AgentSim never issued", async () => {
     process.env.ANTHROPIC_API_KEY = "sk-ant-not-a-real-key";
     const init = await initialize();
 
     const bogus = await call(init.sessionId, "register_agent", { token: "wb_nope", name: "A", domain: "d", description: "x" });
     expect(bogus.result.isError).toBe(true);
     expect(textOf(bogus.result)).toContain("not one AgentSim issued");
+  });
 
+  // An attempt that drafts nothing gives the token back. The operator is holding a token and a
+  // failure message; sending them to the console for a fresh one would charge them for our fault.
+  it("register_agent leaves a token usable when the attempt produced no draft", async () => {
+    const init = await initialize();
     const token = issueToken().token;
-    delete process.env.ANTHROPIC_API_KEY; // the first call gets past the token and stops at the key
-    await call(init.sessionId, "register_agent", { token, name: "A", domain: "d", description: "x" });
-    const reused = await call(init.sessionId, "register_agent", { token, name: "A", domain: "d", description: "x" });
-    expect(reused.result.isError).toBe(true);
-    expect(textOf(reused.result)).toContain("already been used");
+
+    delete process.env.ANTHROPIC_API_KEY; // gets past the token, stops at the key
+    const first = await call(init.sessionId, "register_agent", { token, name: "A", domain: "d", description: "x" });
+    expect(textOf(first.result)).toContain("ANTHROPIC_API_KEY");
+
+    const again = await call(init.sessionId, "register_agent", { token, name: "A", domain: "d", description: "x" });
+    expect(textOf(again.result)).not.toContain("already");
+    expect(textOf(again.result)).toContain("ANTHROPIC_API_KEY"); // the same wall, not a spent token
+  });
+
+  // A token owns one World for one review cycle: it may rewrite that World as often as the review
+  // needs, it may never be spent on a second one, and publishing it ends the token's life.
+  describe("a token owns one World", () => {
+    const seed = (token: string) =>
+      createDraft({ name: "Northwind", domain: "commerce", description: "d" }, { token }, { files: northwindFiles, errors: [], attempts: 1 });
+
+    it("writes a second create over the same World instead of making another", async () => {
+      const token = issueToken().token;
+      const init = await initialize();
+
+      const first = await call(init.sessionId, "create_world", { draftId: seed(token).id, worldId: "nw-owned" });
+      expect(JSON.parse(textOf(first.result)).worldId).toBe("nw-owned");
+
+      // A different requested id, the same token: the World it owns is what gets written.
+      const second = await call(init.sessionId, "create_world", { draftId: seed(token).id, worldId: "nw-somewhere-else" });
+      const body = JSON.parse(textOf(second.result)) as { worldId: string; updated?: boolean; note?: string };
+      expect(body.worldId).toBe("nw-owned");
+      expect(body.updated).toBe(true);
+      expect(body.note).toContain("nw-somewhere-else");
+      expect(existsSync(path.join(packsDir(), "nw-somewhere-else"))).toBe(false);
+      expect(loadPack("nw-owned").meta.status).toBe("draft"); // an update keeps it under review
+    });
+
+    it("refuses to write to that World once it is published, and the token is rotated", async () => {
+      const token = issueToken().token;
+      const init = await initialize();
+
+      const created = await call(init.sessionId, "create_world", { draftId: seed(token).id, worldId: "nw-publishing" });
+      expect(created.result.isError).toBeFalsy();
+
+      // Publish it the way the console does — a PUT with `status: ready` — and take the successor.
+      const files = loadPack("nw-publishing").files;
+      const res = await updateWorld(new Request("http://internal/api/worlds/nw-publishing", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ files: { ...files, "pack.yaml": withPackStatus(files["pack.yaml"] ?? "", "ready") } }),
+      }), { params: Promise.resolve({ id: "nw-publishing" }) });
+      const published = (await res.json()) as { rotatedToken?: string };
+      expect(res.status).toBe(200);
+      expect(published.rotatedToken).toMatch(/^wb_[0-9a-f]{8}$/);
+      expect(published.rotatedToken).not.toBe(token);
+
+      // Publication rotates before anything else can happen, so "rotated" is what a late write is
+      // told — and that message names the publication and where the successor is.
+      const blocked = await call(init.sessionId, "create_world", { draftId: seed(token).id, worldId: "nw-publishing" });
+      expect(blocked.result.isError).toBe(true);
+      expect(textOf(blocked.result)).toContain("rotated");
+      expect(textOf(blocked.result)).toContain("published");
+      expect(existsSync(path.join(packsDir(), "nw-publishing-2"))).toBe(false); // and it created nothing
+
+      process.env.ANTHROPIC_API_KEY = "sk-ant-not-a-real-key";
+      const redraft = await call(init.sessionId, "register_agent", { token, name: "A", domain: "d", description: "x" });
+      expect(redraft.result.isError).toBe(true);
+      expect(textOf(redraft.result)).toContain("rotated");
+    });
   });
 
   it("get_world_draft renders a seeded draft's files and its validation state", async () => {

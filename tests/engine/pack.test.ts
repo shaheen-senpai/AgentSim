@@ -268,3 +268,53 @@ describe("the pack file layout is the filesystem boundary", () => {
     expect(packWriteErrors("northwind", loadPack("northwind").files)).toEqual([]);
   });
 });
+
+// A write tool's `set`, against the collection it writes. Structurally `set` is just a map, so
+// before this every one of these authored clean and then failed at run time on every call — the
+// shape a generated pack fails in, and the one an operator cannot debug from the console.
+describe("set validation", () => {
+  const withEnumStatus = (f: PackFiles): PackFiles => {
+    const pack = f["pack.yaml"].replace("      status: string", "      status: { type: enum, values: [placed, shipped] }");
+    expect(pack).not.toBe(f["pack.yaml"]);
+    return { ...f, "pack.yaml": pack };
+  };
+
+  const shipTool = (set: string): string =>
+    `\nprobe_ship:\n  system: orders\n  kind: write\n  description: probe\n  input: { order_id: string }\n  op: update\n  collection: orders\n  id: "\${input.order_id}"\n  subject: { collection: orders, id: "\${input.order_id}" }\n  set: ${set}\n`;
+
+  it("rejects a literal the field's enum does not declare", () => {
+    const f = withEnumStatus(files());
+    const r = parsePackFiles({ ...f, "tools.yaml": f["tools.yaml"] + shipTool("{ status: awaiting_placeholder }") });
+    const err = r.errors.find((e) => e.file === "tools.yaml" && /awaiting_placeholder/.test(e.message));
+    expect(err?.path).toBe("tools.probe_ship.set.status");
+  });
+
+  it("accepts a literal the enum does declare", () => {
+    const f = withEnumStatus(files());
+    const r = parsePackFiles({ ...f, "tools.yaml": f["tools.yaml"] + shipTool("{ status: shipped }") });
+    expect(r.errors.filter((e) => e.path.startsWith("tools.probe_ship"))).toEqual([]);
+  });
+
+  it("leaves a templated value to the expression checker", () => {
+    const f = withEnumStatus(files());
+    const r = parsePackFiles({ ...f, "tools.yaml": f["tools.yaml"] + shipTool('{ status: "${input.order_id}" }') });
+    expect(r.errors.filter((e) => e.path.startsWith("tools.probe_ship"))).toEqual([]);
+  });
+
+  it("rejects a field the collection does not declare", () => {
+    const f = files();
+    const r = parsePackFiles({ ...f, "tools.yaml": f["tools.yaml"] + shipTool('{ no_such_field: "x" }') });
+    expect(r.errors.some((e) => e.path === "tools.probe_ship.set.no_such_field" && /not declared on 'orders'/.test(e.message))).toBe(true);
+  });
+
+  it("rejects a create that omits a field the entity requires", () => {
+    const f = files();
+    const create = `\nprobe_refund:\n  system: orders\n  kind: write\n  description: probe\n  input: { payment_id: string, amount: { type: int, min: 1 } }\n  op: create\n  collection: refunds\n  new_id: { prefix: ref_, width: 4 }\n  subject: { collection: payments, id: "\${input.payment_id}" }\n  set: { payment_id: "\${input.payment_id}", amount: "\${input.amount}" }\n`;
+    const r = parsePackFiles({ ...f, "tools.yaml": f["tools.yaml"] + create });
+    const missing = r.errors.filter((e) => e.path === "tools.probe_refund.set").map((e) => e.message);
+    expect(missing).toEqual([
+      "op 'create' on 'refunds' omits required field 'reason'",
+      "op 'create' on 'refunds' omits required field 'created_at'",
+    ]);
+  });
+});

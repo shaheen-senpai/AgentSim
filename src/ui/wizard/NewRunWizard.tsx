@@ -104,7 +104,7 @@ export function NewRunWizard({ packs, agents: initialAgents, inReview = 0 }: { p
           ← Back
         </button>
         <div className="right">
-          <button type="button" className="btn btn-ghost" onClick={() => router.push("/")}>Cancel</button>
+          <button type="button" className="btn btn-ghost" onClick={() => router.push("/runs")}>Cancel</button>
           {state.step < lastStep && (
             <button type="button" className="btn btn-primary" disabled={!canContinue} onClick={() => update({ step: state.step + 1 })}>
               Continue →

@@ -2,10 +2,10 @@ import { mkdtempSync, readdirSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { deleteAgent, getAgent, listAgents, saveAgent, type Agent } from "@/runner/agentRegistry";
+import { deleteAgent, getAgent, listAgents, saveAgent, type Agent, type AgentInput } from "@/runner/agentRegistry";
 import { dataDir } from "@/runner/store";
 
-function agent(over: Partial<Agent> = {}): Omit<Agent, "id" | "createdAt"> & Partial<Pick<Agent, "id" | "createdAt">> {
+function agent(over: Partial<Agent> = {}): AgentInput {
   return { name: "Codex", version: "1.0", shape: "forwarder", toolAliases: { fetch_ticket: "get_ticket" }, notes: "", ...over };
 }
 
@@ -75,5 +75,20 @@ describe("agentRegistry", () => {
     saveAgent(agent());
     expect(readdirSync(dataDir()).filter((f) => f.endsWith(".tmp"))).toEqual([]);
     expect(readdirSync(dataDir())).toContain("agents.json");
+  });
+});
+
+describe("a registry written before driven agents existed", () => {
+  it("reads back with url and authHeaderEnv filled to empty, and saving keeps them", () => {
+    // `readAll` normalises every record to the current shape, and `url` feeds a security decision,
+    // so the absent-field case is worth pinning: it must read as "" (no URL), never as undefined.
+    writeFileSync(
+      path.join(dataDir(), "agents.json"),
+      JSON.stringify([{ id: "agt_old", name: "Legacy", version: "1", shape: "forwarder", toolAliases: {}, notes: "", createdAt: "2026-01-01T00:00:00.000Z" }]),
+    );
+    const old = getAgent("agt_old")!;
+    expect(old.url).toBe("");
+    expect(old.authHeaderEnv).toBe("");
+    expect(saveAgent({ ...old, name: "Legacy" })).toMatchObject({ id: "agt_old", url: "", authHeaderEnv: "" });
   });
 });

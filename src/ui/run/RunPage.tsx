@@ -8,6 +8,7 @@ import { agentLabel } from "@/runner/agentRef";
 import type { RunRecord, ToolDef } from "@/ui/types";
 import { useReplay } from "@/ui/useReplay";
 import { useRun } from "@/ui/useRun";
+import { AgentReplyPanel } from "../AgentReplyPanel";
 import { ConnectionStrip } from "./ConnectionStrip";
 import { DiffPanel } from "./DiffPanel";
 import { EventDrawer } from "./EventDrawer";
@@ -71,7 +72,7 @@ export function RunPage({ id, initialRun, tools, systems, principalLabel, inject
           polling: {error}
         </div>
       )}
-      <Link className="back-link" href="/">← All runs</Link>
+      <Link className="back-link" href="/runs">← All runs</Link>
       <div className="crumb">
         Runs / <b>{run.scenarioTitle}</b>
       </div>
@@ -104,6 +105,7 @@ export function RunPage({ id, initialRun, tools, systems, principalLabel, inject
           {!running && run.events.length > 0 && <ReplayBar replay={replay} />}
         </div>
         <div>
+          <AgentReplyPanel run={displayRun} />
           <div className="panel card-pad" style={{ marginBottom: 14 }}>
             <div className="heading" style={{ marginBottom: 2 }}>Trust Score</div>
             <ScorePanel run={displayRun} replaying={replay.replaying} />

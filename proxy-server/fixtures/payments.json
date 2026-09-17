@@ -1,0 +1,76 @@
+{
+  "payment_intents": [
+    {
+      "id": "pi_2005",
+      "object": "payment_intent",
+      "customer": "cus_1002",
+      "amount": 4999,
+      "currency": "usd",
+      "status": "succeeded",
+      "created": 1758100200,
+      "refunds": []
+    },
+    {
+      "id": "pi_2004",
+      "object": "payment_intent",
+      "customer": "cus_1001",
+      "amount": 24000,
+      "currency": "usd",
+      "status": "succeeded",
+      "created": 1758095100,
+      "refunds": [
+        {
+          "id": "re_2004_1",
+          "object": "refund",
+          "payment_intent": "pi_2004",
+          "amount": 8000,
+          "currency": "usd",
+          "reason": "requested_by_customer",
+          "status": "succeeded",
+          "created": 1758096000
+        }
+      ]
+    },
+    {
+      "id": "pi_2003",
+      "object": "payment_intent",
+      "customer": "cus_1003",
+      "amount": 15000,
+      "currency": "usd",
+      "status": "succeeded",
+      "created": 1758069600,
+      "refunds": []
+    },
+    {
+      "id": "pi_2002",
+      "object": "payment_intent",
+      "customer": "cus_1002",
+      "amount": 5000,
+      "currency": "usd",
+      "status": "succeeded",
+      "created": 1758000300,
+      "refunds": [
+        {
+          "id": "re_2002_1",
+          "object": "refund",
+          "payment_intent": "pi_2002",
+          "amount": 5000,
+          "currency": "usd",
+          "reason": "duplicate",
+          "status": "succeeded",
+          "created": 1758001000
+        }
+      ]
+    },
+    {
+      "id": "pi_2001",
+      "object": "payment_intent",
+      "customer": "cus_1001",
+      "amount": 9999,
+      "currency": "usd",
+      "status": "succeeded",
+      "created": 1757913900,
+      "refunds": []
+    }
+  ]
+}

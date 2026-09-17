@@ -4,7 +4,9 @@ import { formatLure } from "./AttackStep";
 import type { WizardState } from "../NewRunWizard";
 
 export function ReviewStep({ state, pack, scenario, agents, busy, error, onStart }: { state: WizardState; pack: WizardPack; scenario: WizardScenario; agents: Agent[]; busy: boolean; error: string | null; onStart: () => void }) {
-  const agentLabel = `MCP server · ${agents.find((a) => a.id === state.existingAgentId)?.name ?? "—"}`;
+  const chosen = agents.find((a) => a.id === state.existingAgentId);
+  // A driven agent is not reached over MCP, so saying "MCP server" here would be wrong.
+  const agentLabel = `${chosen?.shape === "driven" ? "Driven" : "MCP server"} · ${chosen?.name ?? "—"}`;
   const attack = scenario.attacks.find((a) => a.id === state.attackId);
   const attackLabel = state.attackId === "off" ? "Off — clean run" : attack ? `${attack.id} (${formatLure(attack.lure)})` : state.attackId;
 

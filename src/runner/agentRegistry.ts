@@ -9,18 +9,42 @@ import { z } from "zod";
 import type { AgentShape } from "./agentRef";
 import { dataDir } from "./store";
 
+/** How an Agent entered the workspace: through the AgentSim MCP plugin, or typed in by hand. */
+export type AgentSource = "mcp" | "manual";
+
 export type Agent = {
   id: string;
   name: string;
   version: string;
   shape: AgentShape;
   toolAliases: Record<string, string>;
+  /** Shape "driven" only: the URL AgentSim POSTs the Task Brief to. Empty for every other shape. */
+  url: string;
+  /**
+   * Shape "driven" only: the NAME of an environment variable holding the Authorization header to
+   * send. The name, never the value — a registry file on disk must not become a place secrets live.
+   */
+  authHeaderEnv: string;
   notes: string;
   createdAt: string;
+  // Workspace fields (the `/agents` pages). All default, so records written before they existed
+  // still read back — see `normalize`.
+  source: AgentSource;
+  description: string;
+  mandate: string;
+  /** The agent's own tool names, as its MCP manifest (or its owner) lists them. */
+  tools: string[];
+  /** The business entities the agent touches. */
+  entities: string[];
+  /** World packs attached to this agent — the controlled companies it is examined in. */
+  worldIds: string[];
 };
 
+type WorkspaceField = "source" | "description" | "mandate" | "tools" | "entities" | "worldIds";
+
 /** What `saveAgent` accepts: a new agent (no id, no createdAt) or an existing one being replaced. */
-export type AgentInput = Omit<Agent, "id" | "createdAt"> & Partial<Pick<Agent, "id" | "createdAt">>;
+type OptionalField = "id" | "createdAt" | "url" | "authHeaderEnv" | WorkspaceField;
+export type AgentInput = Omit<Agent, OptionalField> & Partial<Pick<Agent, OptionalField>>;
 
 const AGENT_ID_RE = /^agt_[a-z0-9]+$/;
 
@@ -32,10 +56,47 @@ export const AgentInputSchema = z.object({
   id: z.string().regex(AGENT_ID_RE).optional(),
   name: z.string().min(1),
   version: z.string().min(1),
-  shape: z.enum(["mcp", "forwarder", "connector"]),
+  shape: z.enum(["mcp", "forwarder", "connector", "driven"]),
   toolAliases: z.record(z.string().min(1), z.string().min(1)).default({}),
+  // Refined on the field rather than the object so this stays a ZodObject — `/api/agents/[id]`
+  // calls `.omit({ id: true })` on it. The host allowlist is deliberately NOT checked here: it is
+  // enforced when the call is actually made, so an agent can be registered before its host is named.
+  url: z.string().refine((v) => v === "" || isHttpUrl(v), "must be an http or https URL").default(""),
+  authHeaderEnv: z.string().default(""),
   notes: z.string().default(""),
+  source: z.enum(["mcp", "manual"]).default("manual"),
+  description: z.string().max(4000).default(""),
+  mandate: z.string().max(4000).default(""),
+  tools: z.array(z.string().min(1).max(200)).max(200).default([]),
+  entities: z.array(z.string().min(1).max(200)).max(200).default([]),
+  worldIds: z.array(z.string().min(1).max(200)).max(50).default([]),
 });
+
+function isHttpUrl(raw: string): boolean {
+  try {
+    const u = new URL(raw);
+    return u.protocol === "http:" || u.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+/** A record written before the driven-shape or workspace fields existed, brought up to the current shape. */
+function normalize(a: Partial<Agent> & Pick<Agent, "id" | "name" | "version" | "shape" | "createdAt">): Agent {
+  return {
+    ...a,
+    toolAliases: a.toolAliases ?? {},
+    url: a.url ?? "",
+    authHeaderEnv: a.authHeaderEnv ?? "",
+    notes: a.notes ?? "",
+    source: a.source ?? "manual",
+    description: a.description ?? "",
+    mandate: a.mandate ?? "",
+    tools: a.tools ?? [],
+    entities: a.entities ?? [],
+    worldIds: a.worldIds ?? [],
+  };
+}
 
 const agentsFile = () => path.join(dataDir(), "agents.json");
 
@@ -54,7 +115,7 @@ function readAll(): Agent[] {
     console.warn(`[agentRegistry] skipping unreadable ${file}`);
     return [];
   }
-  return Array.isArray(parsed) ? (parsed as Agent[]) : [];
+  return Array.isArray(parsed) ? (parsed as Agent[]).map(normalize) : [];
 }
 
 function writeAll(agents: Agent[]): void {
@@ -88,8 +149,16 @@ export function saveAgent(input: AgentInput): Agent {
     version: input.version,
     shape: input.shape,
     toolAliases: input.toolAliases,
+    url: input.url ?? "",
+    authHeaderEnv: input.authHeaderEnv ?? "",
     notes: input.notes,
     createdAt: existing?.createdAt ?? input.createdAt ?? new Date().toISOString(),
+    source: input.source ?? "manual",
+    description: input.description ?? "",
+    mandate: input.mandate ?? "",
+    tools: input.tools ?? [],
+    entities: input.entities ?? [],
+    worldIds: input.worldIds ?? [],
   };
   const next = existing ? agents.map((a) => (a.id === id ? agent : a)) : [...agents, agent];
   writeAll(next);

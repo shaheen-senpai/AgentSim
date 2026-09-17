@@ -1,3 +1,5 @@
+// `/runs` — the console home: every Run, with the insights strip. The marketing landing page owns `/`.
+import type { Metadata } from "next";
 import { loadPacks } from "@/lib/summaries";
 import { listRuns, type RunSummary } from "@/runner/store";
 import { ConsoleShell } from "@/ui/ConsoleShell";
@@ -5,6 +7,8 @@ import { RunsPage } from "@/ui/runs/RunsPage";
 import { compareInsight, luresInsight, mandateInsight, runsSubline, toRunRow, type Insight } from "@/ui/runs/runsView";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = { title: "Runs · AgentSim" };
 
 type Packs = ReturnType<typeof loadPacks>["packs"];
 
@@ -19,7 +23,7 @@ function mandateInForce(packs: Packs, latest: RunSummary | undefined): string | 
   return packOf(packs, latest)?.scenarios.find((s) => s.id === latest.scenarioId)?.policy.text ?? null;
 }
 
-export default function Home() {
+export default function RunsRoute() {
   const { packs } = loadPacks();
   const runs = listRuns().map((r) => (r.packName ? r : { ...r, packName: packOf(packs, r)?.meta.name ?? r.packId }));
   // eslint-disable-next-line react-hooks/purity -- a Server Component renders once per request; one clock reading per page keeps every row's "when" consistent

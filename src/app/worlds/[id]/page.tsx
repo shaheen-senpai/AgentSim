@@ -5,8 +5,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { listPackIds, loadPack, PACK_ID_RE, type WorldPack } from "@/engine/pack";
+import { entityViews } from "@/lib/entityViews";
 import { ConsoleShell } from "@/ui/ConsoleShell";
+import { EntitiesTab } from "@/ui/worlds/EntitiesTab";
 import { OverviewTab } from "@/ui/worlds/OverviewTab";
+import { erdLayout } from "@/ui/worlds/ownership";
 import { WorldTabs } from "@/ui/worlds/WorldTabs";
 import { parseTab, type WorldTab } from "@/ui/worlds/packView";
 
@@ -19,6 +22,11 @@ function Body({ pack, tab }: { pack: WorldPack; tab: WorldTab }) {
   switch (tab) {
     case "overview":
       return <OverviewTab meta={pack.meta} tools={pack.tools} />;
+    case "entities": {
+      const v = entityViews(pack);
+      const principalLabel = pack.meta.entities[pack.meta.principal]?.label ?? pack.meta.principal;
+      return <EntitiesTab entities={v.entities} modes={v.modes} attackId={v.attackId} principalLabel={principalLabel} layout={erdLayout(pack.meta.entities)} />;
+    }
     default:
       return <p className="hint" style={{ margin: 0 }}>This tab is being rebuilt.</p>;
   }

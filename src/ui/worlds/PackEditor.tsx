@@ -18,7 +18,6 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { ValidationError } from "@/engine/pack";
-import { mono } from "@/ui/styles";
 import {
   filesEqual,
   groupErrorsByFile,
@@ -226,11 +225,11 @@ export function PackEditor({
         <ul className="flex flex-col gap-1">
           {Object.entries(errorsByFile).map(([file, fileErrors]) => (
             <li key={file}>
-              <span className={`${mono} text-[11px] font-semibold`}>{file}</span>
+              <span className={`mono text-[11px] font-semibold`}>{file}</span>
               <ul className="flex flex-col gap-0.5 pl-3">
                 {fileErrors.map((e, i) => (
                   <li key={`${file}-${i}`} className="text-[11px]">
-                    {e.path ? <span className={mono}>{e.path}</span> : null}
+                    {e.path ? <span className="mono">{e.path}</span> : null}
                     {e.path ? " — " : ""}
                     {e.message}
                   </li>
@@ -294,7 +293,7 @@ export function PackEditor({
                 {scenarioKeys.map((key) => (
                   <div key={key} className="flex flex-col gap-1.5 border border-[#E3E0D5] rounded p-2">
                     <div className="flex items-center justify-between">
-                      <span className={`${mono} text-[11px] text-[#6E6B60]`}>{key}</span>
+                      <span className={`mono text-[11px] text-[#6E6B60]`}>{key}</span>
                       <button type="button" onClick={() => handleDeleteScenario(key)} className={LINK_BUTTON}>
                         Delete scenario
                       </button>

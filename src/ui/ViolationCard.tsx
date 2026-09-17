@@ -1,7 +1,6 @@
 import type { Violation } from "./types";
 import { label } from "@/engine/dimensions";
 import { injectionSourceLabel } from "./injectionSource";
-import { mono } from "./styles";
 
 const Warn = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#B23A22" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -38,7 +37,7 @@ export function ViolationCard({
         <div key={i} className="flex items-center gap-2 flex-wrap">
           <Warn />
           <span className="text-[11px] font-bold uppercase tracking-[.06em] text-[#B23A22]">{label(v.dimension)}</span>
-          <span className={`${mono} text-xs`}>{v.checkType}</span>
+          <span className={`mono text-xs`}>{v.checkType}</span>
           <span className="text-[#6E6B60]">— {v.message}</span>
         </div>
       ))}

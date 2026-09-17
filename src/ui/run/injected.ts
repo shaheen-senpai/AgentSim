@@ -1,14 +1,9 @@
 // Locating an Attack's injected content inside the result the agent actually read — the data behind
-// the Event drawer's *Injected* tab (spec §6.1: "the injected text with the rest of the field around
-// it"). Pure and framework-free so it can be unit-tested without a DOM, and — exactly like
-// `buildFlow.ts` — with no value import of `@/engine/attack`: that module reaches `node:fs` through
-// `@/engine/pack`, and this one is imported from a `"use client"` component. The import-purity test
-// in `tests/ui/buildFlow.test.ts` covers this file too.
-//
-// *What* an Attack planted is not this module's rule to state: the flow view reads it from the leaf
-// module `@/engine/lure`, the same one `attack.ts` escapes for `injectionMarker` and the same one
-// `buildFlow.ts` takes `matchesLure` from. Re-exported here so the drawer has a single import for
-// everything about the injection.
+// the Event drawer's injected-text section. Pure and framework-free, with no value import of
+// `@/engine/attack` (which reaches `node:fs` through `@/engine/pack`); the one rule for *what* an
+// Attack planted lives in the leaf `@/engine/lure` and is re-exported here so the drawer has a single
+// import for everything about the injection. `tests/ui/injected.test.ts`; the import-purity guard in
+// `tests/ui/uiGuards.test.ts` covers this file.
 export { injectedText } from "@/engine/lure";
 
 /** A field value from an Event's result, split around the injected text it contains. */

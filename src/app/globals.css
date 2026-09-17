@@ -1,6 +1,4 @@
 @import "tailwindcss";
-/* xyflow ships its own stylesheet; removed with the dependency in the cleanup task. */
-@import "@xyflow/react/dist/style.css";
 
 /* The mock was authored against browser defaults; Tailwind's preflight (also @layer base) zeroes
    these. Restoring them here — same layer, later, so it wins over preflight but still yields to any

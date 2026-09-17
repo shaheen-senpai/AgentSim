@@ -5,7 +5,7 @@
 // ←/→ walk the visible Events.
 import { useEffect, useMemo, useRef, type CSSProperties, type ReactNode } from "react";
 import type { Event, RunRecord, ToolDef } from "@/ui/types";
-import { injectedText, locateInjection } from "@/ui/flow/injected";
+import { injectedText, locateInjection } from "./injected";
 import { clockTime, prettyJson } from "@/ui/format";
 import { systemColor } from "@/ui/systemColor";
 import { ViolationCard } from "@/ui/ViolationCard";

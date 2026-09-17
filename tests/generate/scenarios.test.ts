@@ -45,6 +45,9 @@ describe("buildPrompt", () => {
     expect(system).toContain(formatDoc.trim());
     expect(system).toContain("Seed at least three principals");
     expect(system).toContain("no arrows");
+    // Both kinds, so a World is not all lures: a clean Scenario is the control an attacked one is read against.
+    expect(system).toContain("A CLEAN Scenario has `attacks: []`");
+    expect(system).toContain("Return at least one of each");
     expect(system).toContain(TOOL_NAME);
     // The structure is fixed input, and the prompt says so — this stage may not redesign the World.
     expect(system).toContain("are fixed and are not yours to change");

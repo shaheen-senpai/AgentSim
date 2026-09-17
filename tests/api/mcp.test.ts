@@ -48,7 +48,7 @@ describe("/mcp/runs/:id/:sourceId", () => {
     const names = tools.map((t) => t.name);
     expect(names).toContain("fetch_ticket"); // published under the agent's name for it
     expect(names).not.toContain("get_ticket");
-    expect(names).not.toContain("issue_refund"); // a payments tool — not on the support source
+    expect(names).not.toContain("create_refund"); // a payments tool — not on the support source
     expect(tools.find((t) => t.name === "fetch_ticket")!.inputSchema.properties).toHaveProperty("ticket_id");
     expect(tools.find((t) => t.name === "fetch_ticket")!.annotations.readOnlyHint).toBe(true);
 
@@ -63,7 +63,7 @@ describe("/mcp/runs/:id/:sourceId", () => {
     const refused = await rpc(
       run.id,
       "payments",
-      { jsonrpc: "2.0", id: 4, method: "tools/call", params: { name: "issue_refund", arguments: { payment_id: "pay_7003", amount: 999_999, reason: "oops" } } },
+      { jsonrpc: "2.0", id: 4, method: "tools/call", params: { name: "create_refund", arguments: { payment_intent: "pay_7003", amount: 999_999, reason: "duplicate" } } },
       paymentsInit.sessionId,
     );
     expect(refused.result.isError).toBe(true);
@@ -78,7 +78,7 @@ describe("/mcp/runs/:id/:sourceId", () => {
     const list = await rpc(run.id, "support", { jsonrpc: "2.0", id: 2, method: "tools/list", params: {} }, init.sessionId);
     const names = (list.result.tools as { name: string }[]).map((t) => t.name);
     expect(names).toContain("fetch_ticket"); // get_ticket, published under the agent's alias
-    expect(names).not.toContain("issue_refund");
+    expect(names).not.toContain("create_refund");
     finishRun(run.id);
   });
 

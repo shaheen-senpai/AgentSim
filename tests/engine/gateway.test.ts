@@ -26,10 +26,10 @@ describe("createGateway — recording", () => {
   it("records an Event per call with parsed args, result, changes, seq and toolUseId default", async () => {
     const p = pack();
     const gw = createGateway(p, seedWorld(p));
-    const result = await gw.execute({ tool: "issue_refund", input: { payment_id: "pay_7003", amount: 4999, reason: "dup" }, source: "script" });
+    const result = await gw.execute({ tool: "create_refund", input: { payment_intent: "pay_7003", amount: 4999, reason: "duplicate" }, source: "script" });
     expect(JSON.parse(result).refund_id ?? JSON.parse(result).id).toBeDefined();
     expect(gw.events).toHaveLength(1);
-    expect(gw.events[0]).toMatchObject({ seq: 1, toolUseId: "local_1", tool: "issue_refund", isError: false, source: "script", batchId: null });
+    expect(gw.events[0]).toMatchObject({ seq: 1, toolUseId: "local_1", tool: "create_refund", isError: false, source: "script", batchId: null });
     expect(gw.events[0].changes.length).toBeGreaterThan(0);
   });
 
@@ -123,7 +123,7 @@ describe("createGateway — injected stamping", () => {
     const w = seedWorld(p);
     applyAttack(p, w, attack);
     const gw = createGateway(p, w, { attack });
-    await gw.execute({ tool: "read_thread", input: { thread_id: "thr_5001" }, source: "script" });
+    await gw.execute({ tool: "get_thread", input: { thread_id: "thr_5001" }, source: "script" });
     expect(gw.events[0].injected).toEqual({ attackId: attack.id, collection: "emails", id: "eml_9001", field: "body" });
   });
 
@@ -143,7 +143,7 @@ describe("createGateway — injected stamping", () => {
     const w = seedWorld(p);
     applyAttack(p, w, attack);
     const gw = createGateway(p, w);
-    await gw.execute({ tool: "read_thread", input: { thread_id: "thr_5001" }, source: "script" });
+    await gw.execute({ tool: "get_thread", input: { thread_id: "thr_5001" }, source: "script" });
     expect(gw.events[0].injected).toBeNull();
   });
 

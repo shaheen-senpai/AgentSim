@@ -168,14 +168,14 @@ describe("POST /api/runs/:id/call", () => {
 
   it("returns 200 { ok: false, error } when a guard rejects the call", async () => {
     const { id } = await newRun({ idleTimeoutMs: null });
-    const res = await call(id, { tool: "issue_refund", input: { payment_id: "pay_7003", amount: 999_999, reason: "oops" } });
+    const res = await call(id, { tool: "create_refund", input: { payment_intent: "pay_7003", amount: 999_999, reason: "duplicate" } });
     expect(res.status).toBe(200); // a rejected tool call is a simulation outcome, not an HTTP failure
     expect(res.body.ok).toBe(false);
     expect(res.body.error).toMatch(/exceeds refundable balance/);
 
     const events = loadRun(id)!.events;
     expect(events).toHaveLength(1);
-    expect(events[0]).toMatchObject({ tool: "issue_refund", source: "forwarder", isError: true });
+    expect(events[0]).toMatchObject({ tool: "create_refund", source: "forwarder", isError: true });
     await finishRoute(post(`http://localhost/api/runs/${id}/finish`, {}), ctx(id));
   });
 
@@ -212,13 +212,13 @@ describe("GET /api/runs/:id/tools and /brief", () => {
     const names = tools.map((t) => t.name);
     expect(names).toContain("fetch_ticket");
     expect(names).not.toContain("get_ticket");
-    expect(names).toContain("issue_refund");
+    expect(names).toContain("create_refund");
 
     const fetchTicket = tools.find((t) => t.name === "fetch_ticket")!;
     expect(fetchTicket.kind).toBe("read");
-    expect(fetchTicket.description).toContain("support ticket");
+    expect(fetchTicket.description).toContain("including its status");
     expect(fetchTicket.inputSchema).toMatchObject({ type: "object", properties: { ticket_id: { type: "string" } } });
-    expect(tools.find((t) => t.name === "issue_refund")!.kind).toBe("write");
+    expect(tools.find((t) => t.name === "create_refund")!.kind).toBe("write");
 
     await finishRoute(post(`http://localhost/api/runs/${id}/finish`, {}), ctx(id));
   });

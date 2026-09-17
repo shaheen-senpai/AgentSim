@@ -26,7 +26,7 @@ function fakeClientWithConcurrentTools(msg1: FakeBetaMessage, msg2: FakeBetaMess
       messages: {
         toolRunner(params: FakeToolRunnerParams) {
           const getTicket = params.tools.find((t) => t.name === "get_ticket")!;
-          const readThread = params.tools.find((t) => t.name === "read_thread")!;
+          const readThread = params.tools.find((t) => t.name === "get_thread")!;
 
           async function* iterate() {
             yield fakeStream(msg1);
@@ -34,7 +34,7 @@ function fakeClientWithConcurrentTools(msg1: FakeBetaMessage, msg2: FakeBetaMess
             // msg2 is yielded — the real runner runs one turn's tool_use blocks with Promise.all.
             await Promise.all([
               getTicket.run({ ticket_id: "tkt_1001" }, { toolUse: { id: "tu_1", name: "get_ticket", input: {} } }),
-              readThread.run({ thread_id: "thr_5001" }, { toolUse: { id: "tu_2", name: "read_thread", input: {} } }),
+              readThread.run({ thread_id: "thr_5001" }, { toolUse: { id: "tu_2", name: "get_thread", input: {} } }),
             ]);
             yield fakeStream(msg2);
           }
@@ -72,7 +72,7 @@ describe("driveReferenceAgent", () => {
 
     expect(gateway.events).toHaveLength(2);
     const byTool = Object.fromEntries(gateway.events.map((e) => [e.tool, e]));
-    expect(Object.keys(byTool).sort()).toEqual(["get_ticket", "read_thread"]);
+    expect(Object.keys(byTool).sort()).toEqual(["get_thread", "get_ticket"]);
     for (const e of gateway.events) {
       expect(e.batchId).toBe("msg_1");
       expect(e.source).toBe("reference");

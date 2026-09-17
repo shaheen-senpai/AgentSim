@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
-import { inputJsonSchema, inputZod, listPackIds, loadPack, packWriteErrors, parsePackFiles, savePack, type PackFiles } from "@/engine/pack";
+import { inputJsonSchema, inputZod, listPackIds, loadPack, loadProviderTools, packWriteErrors, parsePackFiles, savePack, type PackFiles } from "@/engine/pack";
 import { usePacksDir } from "../helpers/packs";
 
 let dir: string;
@@ -25,8 +25,8 @@ describe("loadPack", () => {
     expect(Object.keys(p.meta.entities)).toHaveLength(7);
     expect(p.seed.rows.customers).toHaveLength(3);
     expect(p.seed.rows.refunds).toEqual([]);
-    expect(Object.keys(p.tools)).toHaveLength(10);
-    expect(p.tools.issue_refund.guards).toHaveLength(1);
+    expect(Object.keys(p.tools)).toHaveLength(9);
+    expect(p.tools.create_refund.guards).toHaveLength(1);
     expect(p.scenarios[0].id).toBe("duplicate-charge-refund");
     expect(p.scenarios[0].checks).toHaveLength(8);
     expect(p.scenarios[0].attacks[0].mutation.type).toBe("append_to_field");
@@ -35,13 +35,13 @@ describe("loadPack", () => {
   });
   it("tool input → zod and JSON schema", () => {
     const p = loadPack("northwind");
-    const z = inputZod(p.tools.issue_refund);
-    expect(z.safeParse({ payment_id: "pay_1", amount: 5, reason: "x" }).success).toBe(true);
-    expect(z.safeParse({ payment_id: "pay_1", amount: 0, reason: "x" }).success).toBe(false);
-    expect(inputZod(p.tools.set_ticket_status).safeParse({ ticket_id: "t", status: "closed" }).success).toBe(false);
-    const js = inputJsonSchema(p.tools.issue_refund) as { properties: Record<string, unknown>; required: string[] };
-    expect(Object.keys(js.properties).sort()).toEqual(["amount", "payment_id", "reason"]);
-    expect(js.required.sort()).toEqual(["amount", "payment_id", "reason"]);
+    const z = inputZod(p.tools.create_refund);
+    expect(z.safeParse({ payment_intent: "pay_1", amount: 5, reason: "duplicate" }).success).toBe(true);
+    expect(z.safeParse({ payment_intent: "pay_1", amount: 5, reason: "goodwill" }).success).toBe(false);
+    expect(inputZod(p.tools.update_ticket).safeParse({ ticket_id: "t", status: "resolved" }).success).toBe(false);
+    const js = inputJsonSchema(p.tools.create_refund) as { properties: Record<string, unknown>; required: string[] };
+    expect(Object.keys(js.properties).sort()).toEqual(["amount", "payment_intent", "reason"]);
+    expect(js.required.sort()).toEqual(["payment_intent"]);
   });
 });
 
@@ -51,18 +51,26 @@ describe("parsePackFiles validation", () => {
   it("parses a systems entry with kind/mode/provider", () => {
     const f = files();
     const packYaml = f["pack.yaml"].replace(
-      "  payments: { label: Payments }\nentities:",
-      "  payments: { label: Payments }\n  stripe:   { label: Stripe, kind: mcp, mode: shadowed, provider: stripe }\nentities:",
+      "  payments: { label: Payments, kind: mcp, mode: shadowed, provider: stripe }\nentities:",
+      "  payments: { label: Payments, kind: mcp, mode: shadowed, provider: stripe }\n  slack:    { label: Slack, kind: mcp, mode: shadowed, provider: slack }\nentities:",
     );
     expect(packYaml).not.toBe(f["pack.yaml"]);
-    // Stub the provider loader: this test is about pack.yaml's systems schema round-tripping
-    // kind/mode/provider, not about resolving a real `src/providers/stripe` catalog (Task 5+).
-    const { pack, errors } = parsePackFiles({ ...f, "pack.yaml": packYaml }, () => ({}));
+    // Stub only the newly added `slack` provider: this test is about pack.yaml's systems schema
+    // round-tripping kind/mode/provider, not about resolving a real `src/providers/slack` catalog
+    // (Task 5+) — the pack's other shadowed systems (stripe/zendesk/google-workspace) still need
+    // their real catalogs resolved so the scenario's checks/lure keep validating.
+    const { pack, errors } = parsePackFiles(
+      { ...f, "pack.yaml": packYaml },
+      (id) => (id === "slack" ? {} : loadProviderTools(id)),
+    );
     expect(errors).toEqual([]);
-    expect(pack!.meta.systems.stripe).toEqual({ label: "Stripe", kind: "mcp", mode: "shadowed", provider: "stripe" });
+    expect(pack!.meta.systems.slack).toEqual({ label: "Slack", kind: "mcp", mode: "shadowed", provider: "slack" });
   });
   it("still parses a systems entry with only a label (backward compatible)", () => {
-    const { pack, errors } = parsePackFiles(files());
+    const f = files();
+    const stripped = f["pack.yaml"].replace("  orders:   { label: Orders,   kind: db,  mode: mocked }", "  orders:   { label: Orders }");
+    expect(stripped).not.toBe(f["pack.yaml"]);
+    const { pack, errors } = parsePackFiles({ ...f, "pack.yaml": stripped });
     expect(errors).toEqual([]);
     expect(pack!.meta.systems.orders).toEqual({ label: "Orders" });
   });
@@ -75,12 +83,12 @@ describe("parsePackFiles validation", () => {
     expect(r.errors.some((e) => /usr_001/.test(e.message) && /cus_/.test(e.message))).toBe(true);
   });
   it("rejects an enum value outside `values`", () => {
-    const r = withSeed((s) => s.replace("status: open", "status: closed"));
-    expect(r.errors.some((e) => e.file === "seed.yaml" && /closed/.test(e.message))).toBe(true);
+    const r = withSeed((s) => s.replace("status: open", "status: resolved"));
+    expect(r.errors.some((e) => e.file === "seed.yaml" && /resolved/.test(e.message))).toBe(true);
   });
   it("rejects a scenario referencing an unknown entity, tool or field", () => {
     const f = files();
-    const bad = f["scenarios/duplicate-charge-refund.yaml"].replace("id: tkt_1001, field: status", "id: tkt_9999, field: status").replace("tool: issue_refund, arg: amount", "tool: issue_money, arg: amount");
+    const bad = f["scenarios/duplicate-charge-refund.yaml"].replace("id: tkt_1001, field: status", "id: tkt_9999, field: status").replace("tool: create_refund, arg: amount", "tool: issue_money, arg: amount");
     const r = parsePackFiles({ ...f, "scenarios/duplicate-charge-refund.yaml": bad });
     expect(r.errors.map((e) => e.message).join("\n")).toMatch(/tkt_9999/);
     expect(r.errors.map((e) => e.message).join("\n")).toMatch(/issue_money/);
@@ -98,7 +106,7 @@ describe("parsePackFiles validation", () => {
   it("rejects an ownership cycle and a tool over an unknown collection", () => {
     const f = files();
     const pack = f["pack.yaml"].replace("owner: { via: customer_id }             # follow this ref field to reach the principal", "owner: { via: customer_id }").replace(/customers:\n    label: Customer\n    id_prefix: cus_\n    owner: self/, "customers:\n    label: Customer\n    id_prefix: cus_\n    owner: { via: id }");
-    const r = parsePackFiles({ ...f, "pack.yaml": pack, "tools.yaml": f["tools.yaml"].replace("collection: refunds\n  new_id", "collection: rebates\n  new_id") });
+    const r = parsePackFiles({ ...f, "pack.yaml": pack, "tools.yaml": f["tools.yaml"].replace("collection: orders\n  id: \"${input.order_id}\"", "collection: rebates\n  id: \"${input.order_id}\"") });
     const all = r.errors.map((e) => e.message).join("\n");
     expect(all).toMatch(/ownership|principal|cycle/i);
     expect(all).toMatch(/rebates/);
@@ -119,29 +127,28 @@ describe("parsePackFiles validation", () => {
   });
 
   it("rejects an unresolvable key in a tool's `lookup.where` and `include.where` too", () => {
+    // Northwind's own tools.yaml no longer declares a `lookup`/`include` tool of its own (both
+    // moved into the shadowed stripe/google-workspace/zendesk catalogs) — probe tools appended
+    // here exercise the same `checkWhereKeys` path against `lookup.where`/`include.where` directly.
     const f = files();
-    const lookup = f["tools.yaml"].replace(
-      "    thread: { collection: threads, id: \"${input.thread_id}\" }",
-      "    thread: { collection: threads, where: { not_a_field: \"${input.thread_id}\" } }",
-    );
+    const lookup = `${f["tools.yaml"]}\nprobe_lookup:\n  system: orders\n  kind: read\n  description: probe\n  input: { order_id: string }\n  op: get\n  collection: orders\n  id: "\${input.order_id}"\n  subject: { collection: orders, id: "\${input.order_id}" }\n  lookup:\n    cust: { collection: customers, where: { not_a_field: "\${input.order_id}" } }\n`;
     expect(lookup).not.toBe(f["tools.yaml"]);
     expect(parsePackFiles({ ...f, "tools.yaml": lookup }).errors.some((e) => /not_a_field/.test(e.message))).toBe(true);
 
-    const include = f["tools.yaml"].replace(
-      "    emails: { collection: emails, where: { thread_id: \"${entity.id}\" }, order_by: sent_at }",
-      "    emails: { collection: emails, where: { nope: \"${entity.id}\" }, order_by: sent_at }",
-    );
+    const include = `${f["tools.yaml"]}\nprobe_include:\n  system: orders\n  kind: read\n  description: probe\n  input: { order_id: string }\n  op: get\n  collection: orders\n  id: "\${input.order_id}"\n  subject: { collection: orders, id: "\${input.order_id}" }\n  include:\n    xs: { collection: orders, where: { nope: "\${input.order_id}" } }\n`;
     expect(include).not.toBe(f["tools.yaml"]);
     expect(parsePackFiles({ ...f, "tools.yaml": include }).errors.some((e) => /'nope'/.test(e.message))).toBe(true);
   });
 
   it("rejects `type: enum` with no `values` — structurally fine, then rejects every row with \"expected one of \"", () => {
     const f = files();
-    const entity = f["pack.yaml"].replace("status: { type: enum, values: [open, pending, resolved] }", "status: { type: enum }");
+    const entity = f["pack.yaml"].replace("status: { type: enum, values: [new, open, pending, hold, solved, closed] }", "status: { type: enum }");
     expect(entity).not.toBe(f["pack.yaml"]);
     expect(parsePackFiles({ ...f, "pack.yaml": entity }).errors.some((e) => e.file === "pack.yaml" && /non-empty 'values'/.test(e.message))).toBe(true);
 
-    const input = f["tools.yaml"].replace("status: { type: enum, values: [open, pending, resolved] }", "status: { type: enum, values: [] }");
+    // Northwind's own tools.yaml no longer declares an enum input of its own — a probe tool
+    // appended here exercises the same `checkFieldSpec` path against a tool's `input`.
+    const input = `${f["tools.yaml"]}\nprobe_enum:\n  system: orders\n  kind: read\n  description: probe\n  input: { status: { type: enum, values: [] } }\n  op: get\n  collection: orders\n  id: "\${input.status}"\n  subject: { collection: orders, id: "\${input.status}" }\n`;
     expect(input).not.toBe(f["tools.yaml"]);
     const r = parsePackFiles({ ...f, "tools.yaml": input });
     expect(r.errors.some((e) => e.file === "tools.yaml" && /non-empty 'values'/.test(e.message))).toBe(true);

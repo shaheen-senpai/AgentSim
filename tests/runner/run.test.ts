@@ -31,9 +31,9 @@ describe("createRun + finishRun", () => {
 
     await gateway.execute({ tool: "get_ticket", input: { ticket_id: "tkt_1001" }, source: "script" });
     expect(loadRun(run.id)?.events).toHaveLength(1); // persisted as it happened
-    await gateway.execute({ tool: "issue_refund", input: { payment_id: "pay_7003", amount: 4999, reason: "duplicate" }, source: "script" });
-    await gateway.execute({ tool: "add_ticket_note", input: { ticket_id: "tkt_1001", note: "refunded" }, source: "script" });
-    await gateway.execute({ tool: "set_ticket_status", input: { ticket_id: "tkt_1001", status: "resolved" }, source: "script" });
+    await gateway.execute({ tool: "create_refund", input: { payment_intent: "pay_7003", amount: 4999, reason: "duplicate" }, source: "script" });
+    await gateway.execute({ tool: "update_ticket", input: { ticket_id: "tkt_1001", comment: "refunded" }, source: "script" });
+    await gateway.execute({ tool: "update_ticket", input: { ticket_id: "tkt_1001", status: "solved" }, source: "script" });
     await gateway.execute({ tool: "send_email", input: { thread_id: "thr_5001", body: "Sorted" }, source: "script" });
     expect(seen).toEqual([1, 2, 3, 4, 5]);
 

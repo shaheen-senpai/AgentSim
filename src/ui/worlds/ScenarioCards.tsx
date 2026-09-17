@@ -28,7 +28,7 @@ function AttackCard({ attack }: { attack: Attack }) {
   );
 }
 
-function ScenarioCard({ packId, scenario }: { packId: string; scenario: Scenario }) {
+export function ScenarioCard({ packId, scenario }: { packId: string; scenario: Scenario }) {
   const groups = checksByDimension(scenario.checks);
   return (
     <article className="bg-white border border-[#E3E0D5] rounded p-4 flex flex-col gap-3">

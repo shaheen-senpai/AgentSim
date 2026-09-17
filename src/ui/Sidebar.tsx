@@ -5,6 +5,8 @@ import { focusRing, heading, serif } from "./styles";
 
 const NAV = [
   { href: "/", label: "Runs" },
+  { href: "/mandates", label: "Mandates" },
+  { href: "/scenarios", label: "Scenarios" },
   { href: "/worlds", label: "World" },
 ];
 

@@ -20,8 +20,9 @@ describe("worldViews", () => {
     });
     const views = worldViews(a, [pack("northwind")]);
     expect(views.map((v) => [v.id, v.kind])).toEqual([["wld_2", "draft"], ["wld_1", "draft"], ["northwind", "pack"]]);
-    expect(views[2].href).toBe("/worlds/northwind");
-    expect(views[0].href).toBeUndefined();
+    expect(views[2].href).toBe("/agents/agt_a/worlds/northwind");
+    expect(views[2].consoleHref).toBe("/worlds/northwind");
+    expect(views[0].href).toBe("/agents/agt_a/worlds/wld_2");
   });
 });
 

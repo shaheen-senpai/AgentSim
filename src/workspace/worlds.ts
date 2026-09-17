@@ -3,6 +3,7 @@
 import type { DraftWorld } from "@/runner/agentRegistry";
 import type { Agent, PackSummary } from "@/ui/types";
 import type { HandshakeStep } from "./handshake";
+import { detailsFromTools } from "./worldDetail";
 
 export type DraftWorldInput = Omit<DraftWorld, "id" | "createdAt">;
 
@@ -15,8 +16,10 @@ export type WorldView = {
   scenarios: number;
   tools: number;
   rows: number;
-  /** Where "Open world" goes; drafts have no page yet. */
-  href?: string;
+  /** The themed World page under the agent. */
+  href: string;
+  /** The console's own page, for an installed pack. */
+  consoleHref?: string;
 };
 
 /** Drafts newest first, then attached packs in attachment order; a pack no longer on disk is skipped. */
@@ -24,11 +27,11 @@ export function worldViews(agent: Agent, packs: PackSummary[]): WorldView[] {
   const byId = new Map(packs.map((p) => [p.id, p]));
   const drafts: WorldView[] = [...agent.worlds]
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-    .map((w) => ({ id: w.id, kind: "draft", name: w.name, domain: w.domain, description: w.description, scenarios: w.scenarios, tools: w.tools, rows: w.rows }));
+    .map((w) => ({ id: w.id, kind: "draft", name: w.name, domain: w.domain, description: w.description, scenarios: w.scenarios, tools: w.tools, rows: w.rows, href: `/agents/${agent.id}/worlds/${w.id}` }));
   const attached: WorldView[] = agent.worldIds
     .map((id) => byId.get(id))
     .filter((p): p is PackSummary => !!p)
-    .map((p) => ({ id: p.id, kind: "pack", name: p.name, domain: p.domain, description: p.description, scenarios: p.scenarios, tools: p.tools, rows: p.rows, href: `/worlds/${p.id}` }));
+    .map((p) => ({ id: p.id, kind: "pack", name: p.name, domain: p.domain, description: p.description, scenarios: p.scenarios, tools: p.tools, rows: p.rows, href: `/agents/${agent.id}/worlds/${p.id}`, consoleHref: `/worlds/${p.id}` }));
   return [...drafts, ...attached];
 }
 
@@ -60,6 +63,7 @@ export function nextDraftWorld(agent: Agent): DraftWorldInput {
     tools,
     scenarios: Math.max(2, Math.min(8, Math.round(tools * 0.8))),
     rows: 12 + tools * 4,
+    details: detailsFromTools(agent.tools, agent.entities, agent.mandate),
   };
 }
 

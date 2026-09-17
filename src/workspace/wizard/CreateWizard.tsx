@@ -55,7 +55,7 @@ export function CreateWizard({ target, providers, packs, agent }: Props) {
   const tools = useMemo(() => composedTools(sources, providers), [sources, providers]);
   const entities = useMemo(() => composedEntities(sources), [sources]);
   const draft = useMemo(() => (agent ? nextDraftWorld(agent) : null), [agent]);
-  const composedWorld = useMemo(() => worldDraftFromComposition(name, description, sources, providers, packs), [name, description, sources, providers, packs]);
+  const composedWorld = useMemo(() => worldDraftFromComposition(name, description, sources, providers, packs, { entities, mandate }), [name, description, sources, providers, packs, entities, mandate]);
   const chosenPack = packs.find((p) => p.id === packId) ?? null;
   const ok = canContinue(step, how, { name, sources, packId });
 
@@ -95,11 +95,13 @@ export function CreateWizard({ target, providers, packs, agent }: Props) {
 
   const create = () => {
     if (target === "agent") {
-      const body = { name: name.trim(), version: "1.0", shape: "mcp" as const, toolAliases: {}, notes: "Composed in the workspace", source: "manual" as const, description: description.trim(), mandate: mandate.trim(), tools, entities, worldIds: [], worlds: [] };
+      // The same sources that describe the agent seed its first World, so the agent page has one to open.
+      const firstWorld = { ...worldDraftFromComposition(`${name.trim()} World`, description, sources, providers, packs, { entities, mandate: mandate.trim() }), id: newWorldId(), createdAt: new Date().toISOString() };
+      const body = { name: name.trim(), version: "1.0", shape: "mcp" as const, toolAliases: {}, notes: "Composed in the workspace", source: "manual" as const, description: description.trim(), mandate: mandate.trim(), tools, entities, worldIds: [], worlds: [firstWorld] };
       return play(buildAgentCreateScript(body.name, tools.length), async () => {
         const result = await createAgent(body);
         if (result.agent === null) return fail(result.error);
-        router.push(`/agents/${result.agent.id}`);
+        router.push(`/agents/${result.agent.id}?fresh=${firstWorld.id}`);
       });
     }
     if (!agent) return;

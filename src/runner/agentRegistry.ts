@@ -16,6 +16,18 @@ export type AgentSource = "mcp" | "manual";
  * A World drafted for one agent (by the MCP plugin from its tools, or from the agent page) that has
  * not been promoted to a pack on disk. Numbers are the draft's shape, not a pack's counts.
  */
+export type DraftSystem = { key: string; label: string; kind: "mcp" | "tools" | "db" | "s3"; mode: "shadowed" | "pasted" | "mocked" | "copied"; provider?: string; tools: number };
+export type DraftTool = { name: string; system: string; kind: "read" | "write"; description: string };
+/** What the World page shows for a draft: its sources, its ownership, its tools and its policies. */
+export type DraftDetails = {
+  systems: DraftSystem[];
+  principal: string;
+  entities: { name: string; label: string }[];
+  toolDefs: DraftTool[];
+  mandate: string;
+  scenarioTitles: string[];
+};
+
 export type DraftWorld = {
   id: string;
   name: string;
@@ -25,6 +37,8 @@ export type DraftWorld = {
   tools: number;
   rows: number;
   createdAt: string;
+  /** Absent on drafts written before the World page existed; the page then derives them from the agent. */
+  details?: DraftDetails;
 };
 
 export type Agent = {
@@ -98,6 +112,16 @@ export const AgentInputSchema = z.object({
         tools: z.number().int().min(0),
         rows: z.number().int().min(0),
         createdAt: z.string().min(1),
+        details: z
+          .object({
+            systems: z.array(z.object({ key: z.string(), label: z.string(), kind: z.enum(["mcp", "tools", "db", "s3"]), mode: z.enum(["shadowed", "pasted", "mocked", "copied"]), provider: z.string().optional(), tools: z.number().int().min(0) })).max(50),
+            principal: z.string(),
+            entities: z.array(z.object({ name: z.string(), label: z.string() })).max(200),
+            toolDefs: z.array(z.object({ name: z.string(), system: z.string(), kind: z.enum(["read", "write"]), description: z.string() })).max(400),
+            mandate: z.string(),
+            scenarioTitles: z.array(z.string()).max(50),
+          })
+          .optional(),
       }),
     )
     .max(50)

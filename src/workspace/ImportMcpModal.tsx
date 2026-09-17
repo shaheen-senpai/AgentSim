@@ -9,6 +9,7 @@ import { createAgent } from "./api";
 import { buildHandshake, INSTALL_COMMAND, INSTALL_URL, nextImportCandidate, type HandshakeStep } from "./handshake";
 import { Modal } from "./Modal";
 import { newWorldId } from "./worlds";
+import { detailsFromTools } from "./worldDetail";
 import { eyebrow, hint } from "./ui";
 
 type Phase = "idle" | "running" | "saving" | "done" | "error";
@@ -62,7 +63,7 @@ export function ImportMcpModal({ open, onClose, existingNames, onImported }: { o
             tools: candidate.tools,
             entities: candidate.entities,
             worldIds: [],
-            worlds: candidate.worlds.map((w) => ({ ...w, id: newWorldId(), createdAt: new Date().toISOString() })),
+            worlds: candidate.worlds.map((w) => ({ ...w, id: newWorldId(), createdAt: new Date().toISOString(), details: detailsFromTools(candidate.tools, candidate.entities, candidate.mandate) })),
           });
           if (result.agent === null) {
             setError(result.error);

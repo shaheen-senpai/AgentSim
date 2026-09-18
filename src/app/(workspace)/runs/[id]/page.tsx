@@ -2,7 +2,7 @@
 // still link here, so the URL is unchanged; only the page around it moved.
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { entityLabel, seedWorld } from "@/engine/world";
+import { entityLabel } from "@/engine/world";
 import { packForRun, withPackName } from "@/lib/runPack";
 import { getAgent } from "@/runner/agentRegistry";
 import { isGoldenRun, loadRun } from "@/runner/store";
@@ -38,10 +38,7 @@ export default async function RunRoute({ params }: { params: Promise<{ id: strin
       principalLabel={pack ? entityLabel(pack, pack.meta.principal) : ""}
       injectedLabel={pack && injectedCollection ? entityLabel(pack, injectedCollection) : ""}
       golden={isGoldenRun(id)}
-      // The Seed is not on the record — the start Snapshot is taken after the Attack — so it is
-      // rebuilt here with the same `seedWorld` a Run calls, giving the comparison its third ledger.
-      seedSnapshot={pack ? seedWorld(pack) : null}
-      entities={pack ? Object.entries(pack.meta.entities).map(([name, spec]) => ({ name, label: spec.label })) : []}
+      hasSeed={pack !== null}
     />
   );
 }

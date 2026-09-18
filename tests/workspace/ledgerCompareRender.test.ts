@@ -1,4 +1,4 @@
-// The ledger-comparison modal rendered to static markup against a recorded golden Run whose agent
+// The ledger-comparison page rendered to static markup against a recorded golden Run whose agent
 // took the Lure — the one place the three highlights (injection point, Violation, Lure taken) must
 // all appear together. Server-rendered, so no DOM is needed; `tests/ui/ledgerCompare.test.ts`
 // covers the data underneath.
@@ -9,7 +9,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import type { Snapshot } from "@/engine/types";
 import { normalizeRun, type RunRecord } from "@/runner/store";
-import { LedgerCompare } from "@/workspace/run/LedgerCompare";
+import { LedgerComparePage } from "@/workspace/run/LedgerCompare";
 
 const GOLDEN = path.join(process.cwd(), "data", "golden", "run_mtztrgl69wo.json");
 
@@ -37,11 +37,26 @@ const entities = [
   { name: "tickets", label: "Ticket" },
 ];
 
-function render(run: RunRecord, seed: Snapshot | null): string {
-  return renderToStaticMarkup(createElement(LedgerCompare, { open: true, onClose: () => {}, run, seedSnapshot: seed, entities }));
+function render(run: RunRecord, seed: Snapshot | null, initialMode: string | null = null): string {
+  return renderToStaticMarkup(createElement(LedgerComparePage, { run, seedSnapshot: seed, entities, agent: null, initialMode }));
 }
 
-describe("LedgerCompare (static render)", () => {
+describe("LedgerComparePage (static render)", () => {
+  it("has a back link to the Run and a breadcrumb ending here", () => {
+    const run = attackedRun();
+    const html = render(run, seedFor(run));
+    expect(html).toContain(`href="/runs/${run.id}"`);
+    expect(html).toContain("Back to run");
+    expect(html).toContain("Compare ledgers");
+  });
+
+  it("opens on the mode the URL names when it is available, else Start → End", () => {
+    const run = attackedRun();
+    expect(render(run, seedFor(run), "seed-start")).toMatch(/aria-selected="true"[^>]*>Seed → Start/);
+    expect(render(run, seedFor(run), "nonsense")).toMatch(/aria-selected="true"[^>]*>Start → End/);
+    expect(render(run, null, "seed-start")).toMatch(/aria-selected="true"[^>]*>Start → End/);
+  });
+
   it("opens on Start → End and marks the refund the Lure produced as both a Violation and the Lure", () => {
     const run = attackedRun();
     const html = render(run, seedFor(run));

@@ -1,8 +1,9 @@
 "use client";
-// The hero's animated diagram: records flow in from the left, pass through the Mandate prism, and
-// come out as three scores. It runs by itself — while it scans, the injected record reaches the
-// core and the verdict flips red (Mandate and Integrity fall, Task holds), then the clean replay
-// verifies and the cycle restarts. The whole product in one loop.
+// The hero's animated diagram: the agent's reads and writes flow in from the left, pass through
+// the Gateway, and come out as the five Dimensions. It runs by itself — the injected email reaches
+// the Gateway, the Lure is taken and the verdict flips red (Task Completion holds; Correctness,
+// Policy Compliance and Safety fall; the cap makes it 40), then the clean Run scores 100 and the
+// cycle restarts. The whole product in one loop.
 import type { CSSProperties } from "react";
 import { HERO } from "./content";
 import { Icon } from "./icons";
@@ -18,8 +19,8 @@ export function MandatePrism({ phase, progress }: { phase: PrismPhase; progress:
 
   return (
     <figure
-      className="relative mx-auto min-h-[510px] w-full max-w-[620px] overflow-hidden border-y border-border bg-surface/35 px-4 py-10 sm:px-8"
-      aria-label={`Mandate prism diagram: ${PHASE_STATUS[phase]}, trust score ${scores.trust}`}
+      className="relative mx-auto w-full max-w-[620px] overflow-hidden border-y border-border bg-surface/35 px-4 py-8 sm:px-8"
+      aria-label={`Run diagram: ${PHASE_STATUS[phase]}, Trust Score ${scores.trust}`}
     >
       <div className="prism-field absolute inset-0 opacity-70" aria-hidden />
 
@@ -31,18 +32,18 @@ export function MandatePrism({ phase, progress }: { phase: PrismPhase; progress:
         </span>
       </div>
 
-      <div className="relative mt-16 grid grid-cols-[1fr_110px_1.15fr] items-center gap-2 sm:grid-cols-[1fr_150px_1.2fr]">
+      <div className="relative mt-10 grid grid-cols-[1fr_110px_1.15fr] items-center gap-2 sm:grid-cols-[1fr_150px_1.2fr]">
         {/* Records flowing in */}
-        <ul className="relative h-52 overflow-hidden" aria-label="Records read during the shift">
+        <ul className="relative h-52 overflow-hidden" aria-label="Tool calls during the Run">
           {PACKETS.map((p, i) => {
             const hot = poisoned && p.danger;
             return (
               <li
                 key={p.id}
-                className={`animate-prism-packet absolute right-1 flex items-center gap-2 border bg-background/90 px-2.5 py-2 font-label text-[9px] transition-colors duration-500 sm:text-label ${hot ? "border-danger/60 text-danger" : "border-border text-muted-foreground"}`}
+                className={`animate-prism-packet absolute right-1 flex items-center gap-2 rounded-control border bg-background/90 px-2.5 py-2 font-label text-label-sm transition-colors duration-500 sm:text-label ${hot ? "border-danger/60 text-danger" : "border-border text-muted-foreground"}`}
                 style={{ top: `${i * 25}%`, animationDelay: `${i * 0.7}s` }}
               >
-                <span className={`size-1.5 transition-colors duration-500 ${hot ? "bg-danger" : "bg-primary"}`} aria-hidden />
+                <span className={`size-1.5 rounded-full transition-colors duration-500 ${hot ? "bg-danger" : "bg-primary"}`} aria-hidden />
                 <span>{p.verb} · {p.detail}</span>
               </li>
             );
@@ -57,17 +58,17 @@ export function MandatePrism({ phase, progress }: { phase: PrismPhase; progress:
           >
             <div className="absolute inset-3 border border-primary/20" aria-hidden />
             <Icon name="diamond" className={`relative z-10 size-8 transition-colors duration-500 ${toneText}`} />
-            <span className="absolute bottom-7 font-label text-[8px] uppercase tracking-widest text-muted-foreground sm:bottom-9">{HERO.prism.core}</span>
+            <span className="absolute bottom-6 font-label text-label-sm uppercase text-muted-foreground sm:bottom-8">{HERO.prism.core}</span>
           </div>
           <span className={`animate-prism-scan absolute h-px w-28 transition-colors duration-500 sm:w-36 ${toneBg}`} aria-hidden />
         </div>
 
         {/* Scores coming out */}
-        <dl className="space-y-5">
+        <dl className="space-y-3">
           {scores.dimensions.map((d, i) => {
             const bad = d.tone === "danger";
             return (
-              <div key={d.label} className="animate-prism-output relative border-l border-border pl-4" style={{ animationDelay: `${i * 0.25}s` }}>
+              <div key={d.label} className="animate-prism-output relative border-l border-border pl-4" style={{ animationDelay: `${i * 0.18}s` }}>
                 <div className="flex items-center justify-between font-label text-label-sm uppercase text-muted-foreground">
                   <dt>{d.label}</dt>
                   <dd className={`transition-colors duration-500 ${bad ? "text-danger" : "text-safe"}`}>{d.value}</dd>
@@ -84,10 +85,13 @@ export function MandatePrism({ phase, progress }: { phase: PrismPhase; progress:
         </dl>
       </div>
 
-      <figcaption className="relative mt-14 border-t border-border pt-5">
+      <figcaption className="relative mt-10 border-t border-border pt-5">
         <div className="flex items-end justify-between">
           <div>
-            <div className={`font-heading text-metric font-semibold transition-colors duration-500 ${toneText}`}>{scores.trust}</div>
+            <div className={`font-heading text-metric font-semibold tracking-tight transition-colors duration-500 ${toneText}`}>
+              {scores.trust}
+              {scores.capped && <span className="ml-2 align-middle font-label text-label uppercase">capped</span>}
+            </div>
             <div className="mt-1 font-label text-label-sm uppercase text-muted-foreground">{HERO.prism.trust}</div>
           </div>
           <div className="text-right font-label text-label-sm uppercase text-muted-foreground">

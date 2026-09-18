@@ -6,15 +6,16 @@ export function Cta() {
   return (
     <section id={SECTION_IDS.cta} className="scroll-mt-16 py-section">
       <Reveal className="mx-auto max-w-page px-gutter lg:px-gutter-lg">
-        <div className="rounded-panel bg-primary px-6 py-16 text-center text-primary-foreground sm:px-12">
-          <p className="font-label text-label-sm uppercase">{CTA.eyebrow}</p>
-          <h2 className="mx-auto mt-5 max-w-2xl font-heading text-h2 font-semibold">{CTA.title}</h2>
-          <p className="mx-auto mt-5 max-w-xl text-body opacity-75">{CTA.lead}</p>
-          <div className="mt-8 flex flex-wrap justify-center gap-3">
-            <LinkButton href={CTA.primary.href} variant="inverse">{CTA.primary.label}</LinkButton>
-            <LinkButton href={CTA.secondary.href} variant="outline" className="border-background/30 text-primary-foreground hover:bg-background/10 hover:border-background/60">
-              {CTA.secondary.label}
-            </LinkButton>
+        <div className="relative overflow-hidden rounded-panel border border-border bg-surface px-6 py-16 text-center sm:px-12">
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_120%,color-mix(in_oklab,var(--color-primary)_18%,transparent),transparent_60%)]" aria-hidden />
+          <div className="relative">
+            <p className="font-label text-label uppercase text-primary">{CTA.eyebrow}</p>
+            <h2 className="mx-auto mt-5 max-w-2xl font-heading text-h2 font-semibold text-balance">{CTA.title}</h2>
+            <p className="mx-auto mt-5 max-w-xl text-body text-muted-foreground">{CTA.lead}</p>
+            <div className="mt-8 flex flex-wrap justify-center gap-3">
+              <LinkButton href={CTA.primary.href}>{CTA.primary.label}</LinkButton>
+              <LinkButton href={CTA.secondary.href} variant="outline">{CTA.secondary.label}</LinkButton>
+            </div>
           </div>
         </div>
       </Reveal>

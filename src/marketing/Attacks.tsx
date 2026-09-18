@@ -26,7 +26,7 @@ export function Attacks() {
                     <h3 className="mt-2 font-heading text-body font-semibold">{a.title}</h3>
                     <p className="mt-2 text-caption text-muted-foreground">{a.body}</p>
                   </div>
-                  <span className="h-fit shrink-0 bg-danger px-2 py-1 font-label text-[8px] font-semibold uppercase tracking-widest text-background">{a.badge}</span>
+                  <span className="h-fit shrink-0 rounded-control border border-danger/30 bg-danger/10 px-2 py-1 font-label text-label text-danger">{a.badge}</span>
                 </div>
               </article>
             </li>

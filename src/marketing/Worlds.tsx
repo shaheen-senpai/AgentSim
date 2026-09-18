@@ -15,14 +15,16 @@ export function Worlds() {
       </div>
       <ul className="mt-12 grid gap-4 md:grid-cols-3">
         {WORLDS.map((w, i) => {
-          const danger = w.tone === "danger";
+          const generated = w.tone === "generated";
           return (
             <li key={w.title} data-reveal-child style={stagger(i)}>
-              <article className={`h-full rounded-panel border border-border border-t-4 bg-surface p-6 transition-transform duration-300 ease-soft hover:-translate-y-0.5 ${danger ? "border-t-danger" : "border-t-primary"}`}>
-                <Icon name="box" className={`size-5 ${danger ? "text-danger" : "text-primary"}`} />
-                <h3 className="mt-10 font-heading text-h3 font-semibold">{w.title}</h3>
+              <article className={`h-full rounded-panel border bg-surface p-6 transition-colors duration-300 ease-soft hover:border-foreground/20 ${generated ? "border-dashed border-primary/40" : "border-border"}`}>
+                <span className="grid size-9 place-items-center rounded-control border border-primary/25 bg-primary/10 text-primary">
+                  <Icon name={generated ? "terminal" : "box"} className="size-4" />
+                </span>
+                <h3 className="mt-8 font-heading text-h3 font-semibold">{w.title}</h3>
                 <p className="mt-3 text-caption text-muted-foreground">{w.body}</p>
-                <p className={`mt-8 font-label text-label-sm uppercase ${danger ? "text-danger" : "text-primary"}`}>{w.count}</p>
+                <p className="mt-8 font-label text-label-sm uppercase text-primary">{w.count}</p>
               </article>
             </li>
           );

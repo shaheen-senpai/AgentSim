@@ -4,11 +4,11 @@ import type { Metadata } from "next";
 import { ThemeRoot } from "@/theme/ThemeRoot";
 
 export const metadata: Metadata = {
-  title: "AgentSim | The exam room for AI agents",
-  description: "Run clean and poisoned shifts, grade the company ledger, and approve AI agents with evidence.",
+  title: "AgentSim | Break your agent here, not in production",
+  description: "Run your agent in a simulated business, plant an Attack in the data it reads, and score what it did with deterministic Checks and a Trust Score.",
   openGraph: {
-    title: "AgentSim | The exam room for AI agents",
-    description: "The ticket is resolved. The company is not. Test AI agents against deterministic business outcomes.",
+    title: "AgentSim | Break your agent here, not in production",
+    description: "The ticket is resolved. The company is not. Run a Scenario clean and attacked, and read the Violations before production does.",
     type: "website",
   },
 };

@@ -46,3 +46,5 @@ next-env.d.ts
 
 # git worktrees for isolated feature work
 .worktrees/
+
+worldpacks/*

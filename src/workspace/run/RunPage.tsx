@@ -33,11 +33,13 @@ export type RunPageProps = {
   injectedLabel: string;
   /** A golden Run is recorded demo data: never narrated, never written. */
   golden: boolean;
+  /** Whether the Run's pack still loads — the ledger comparison needs it for its Seed ledger. */
+  hasSeed: boolean;
 };
 
 type View = "flow" | "list";
 
-export function RunPage({ id, initialRun, agent, tools, systems, principalLabel, injectedLabel, golden }: RunPageProps) {
+export function RunPage({ id, initialRun, agent, tools, systems, principalLabel, injectedLabel, golden, hasSeed }: RunPageProps) {
   const { run: polled, error } = useRun(id);
   // The record `POST /finish` hands back — fresher than the last poll until the poller catches up.
   const [finished, setFinished] = useState<RunRecord | null>(null);
@@ -72,6 +74,8 @@ export function RunPage({ id, initialRun, agent, tools, systems, principalLabel,
 
   const selectedEvent = selected === null ? null : (shown.find((e) => e.seq === selected) ?? null);
   const isByo = run.agent.kind === "byo";
+  // Seed → Start needs the pack; Start → End needs a finished Run. Either one is enough to compare.
+  const compareHref = hasSeed || run.endSnapshot !== null ? `/runs/${run.id}/compare` : null;
   const nav = runNav(run, agent);
   const status = runStatusTag(run.status);
 
@@ -147,7 +151,7 @@ export function RunPage({ id, initialRun, agent, tools, systems, principalLabel,
         <div className="animate-reveal flex min-w-0 flex-col gap-4 [animation-delay:160ms]">
           <ConversationPanel run={displayRun} />
           <ScorePanel run={displayRun} replaying={replay.replaying} />
-          <DiffPanel run={run} principalLabel={principalLabel} />
+          <DiffPanel run={run} principalLabel={principalLabel} compareHref={compareHref} />
         </div>
       </div>
 

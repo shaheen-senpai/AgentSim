@@ -38,6 +38,7 @@ export default async function RunRoute({ params }: { params: Promise<{ id: strin
       principalLabel={pack ? entityLabel(pack, pack.meta.principal) : ""}
       injectedLabel={pack && injectedCollection ? entityLabel(pack, injectedCollection) : ""}
       golden={isGoldenRun(id)}
+      hasSeed={pack !== null}
     />
   );
 }

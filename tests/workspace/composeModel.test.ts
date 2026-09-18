@@ -53,9 +53,9 @@ describe("canContinue", () => {
     expect(canContinue(1, "compose", { name: "X", sources: [], packId: null })).toBe(false);
     expect(canContinue(1, "compose", { name: "X", sources: [{ kind: "mcp", provider: "stripe" }], packId: null })).toBe(true);
     expect(canContinue(1, "attach", { name: "", sources: [], packId: "northwind" })).toBe(true);
+    // The plugin creates the World itself; nothing comes back through the wizard to review.
     expect(canContinue(1, "plugin", { name: "", sources: [], packId: null })).toBe(false);
-    expect(canContinue(1, "plugin", { name: "", sources: [], packId: null, hasDraft: true })).toBe(true);
-    expect(stepLabels("plugin")).toEqual(["How", "Generate", "Review"]);
+    expect(stepLabels("plugin")).toEqual(["How", "Generate"]);
     expect(stepLabels("compose")).toEqual(["How", "Compose", "Review"]);
   });
 });

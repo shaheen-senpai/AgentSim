@@ -1,25 +1,29 @@
 // A second MCP server, alongside /mcp/runs/[runId]: not scoped to a Run, scoped to *building* a
 // World. A developer's own MCP client (Claude Code, or any other) connects here from inside their
-// agent's repo and hands over what is true about that agent — the "Figma plugin" pattern: the
-// client pushes its manifest to us, we never scrape it.
+// agent's repo — the "Figma plugin" pattern: the client pushes what it knows to us, we never scrape it.
 //
-// What the plugin captures is the World's *structure*: the agent's tools, its database schema, the
+// **The client writes the YAML.** It is the one party with the repo open, and it is already a model,
+// so there is nothing for a model call on our side to add: it reads `get_world_format`, writes the
+// pack files against what the codebase actually says, checks them with `validate_world_files` (the
+// platform's own Zod validator, no model, no cost) and submits them with `create_world`. AgentSim
+// spends nothing here and needs no API key for this route — and the validator is still the only way
+// a World gets written, so a client cannot talk its way past it.
+//
+// What the client captures is the World's *structure*: the agent's tools, its database schema, the
 // third-party MCP servers it integrates (shadowed here), and the Mandates its own policy states.
 // What the World is *tested* with — seed rows, Scenarios, Attacks — is generated on the platform
-// afterwards, because the plugin has no business inventing the test from inside the repo.
+// afterwards, because the client has no business inventing the test from inside the repo.
 //
-// `register_agent` spends a build token and drafts the structure; get_world_draft/refine_world let
-// the connecting client review and iterate in its own chat; `create_world` persists it through the
-// exact path POST /api/worlds already uses — as a **draft** World, which cannot be run until a
-// human reviews it on the platform and publishes it.
+// `create_world` spends a build token and persists the files through the exact path
+// POST /api/worlds already uses — as a **draft** World, which cannot be run until a human reviews
+// it on the platform and publishes it.
 import { CLIENT_INFO_META_KEY, createMcpHandler, McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { PUT as updateWorldRoute } from "@/app/api/worlds/[id]/route";
 import { POST as createWorldRoute } from "@/app/api/worlds/route";
-import { bindToken, boundWorldId, CLAIM_MESSAGE, claimToken, releaseToken, tokenStatus } from "@/generate/buildTokens";
-import { createDraft, getDraft, updateDraft, type Draft } from "@/generate/draftRegistry";
-import { generateStructure, toolsToText, type StructureInput } from "@/generate/structure";
-import { listPackIds, loadPack, parsePackFiles, type BuildInfo } from "@/engine/pack";
+import { bindToken, boundWorldId, CLAIM_MESSAGE, tokenStatus } from "@/generate/buildTokens";
+import { loadFormatDoc } from "@/generate/formatDoc";
+import { listPackIds, loadPack, parsePackFiles, type BuildInfo, type ValidationError } from "@/engine/pack";
 import { guardMcpRequest } from "@/lib/mcpAccess";
 import { loadPacks } from "@/lib/summaries";
 import { freeWorldId, isValidWorldId, withPackId } from "@/ui/worlds/editorLogic";
@@ -27,36 +31,6 @@ import { withBuiltBy, withPackStatus } from "@/ui/worlds/packEdits";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-// Generation is a long Opus call with a retry. Kept at or above the plugin's own timeout
-// (`claude-plugin/.mcp.json`, 600_000ms): a shorter budget here means the platform kills the
-// request while the client is still waiting, and the caller learns nothing about why.
-export const maxDuration = 600;
-
-const MAX_TOOLS = 200;
-const MAX_INPUT_SCHEMA_JSON_CHARS = 5_000;
-const ToolSchema = z.object({
-  name: z.string().min(1).max(200),
-  description: z.string().max(2000).optional(),
-  inputSchema: z
-    .unknown()
-    .optional()
-    .refine((v) => v === undefined || JSON.stringify(v).length <= MAX_INPUT_SCHEMA_JSON_CHARS, {
-      message: `inputSchema is too large (max ${MAX_INPUT_SCHEMA_JSON_CHARS} characters as JSON)`,
-    }),
-});
-
-const McpServerSchema = z.object({
-  name: z.string().min(1).max(200),
-  url: z.string().max(2000).optional(),
-  command: z.string().max(2000).optional(),
-  tools: z.array(z.object({ name: z.string().min(1).max(200), description: z.string().max(2000).optional() })).max(MAX_TOOLS).optional(),
-});
-
-const MandateSchema = z.object({
-  title: z.string().max(200).optional(),
-  text: z.string().min(1).max(10_000),
-  source: z.string().max(400).optional(),
-});
 
 const RepoSchema = z.object({
   remote: z.string().max(400).optional(),
@@ -64,22 +38,13 @@ const RepoSchema = z.object({
   branch: z.string().max(200).optional(),
 });
 
-const RegisterInput = {
-  token: z.string().min(1).max(100),
-  name: z.string().min(1).max(200),
-  domain: z.string().min(1).max(200),
-  description: z.string().min(1).max(4000),
-  tools: z.array(ToolSchema).max(MAX_TOOLS).optional(),
-  schema: z.string().max(50_000).optional(),
-  openapi: z.string().max(50_000).optional(),
-  mcp_servers: z.array(McpServerSchema).max(50).optional(),
-  mandates: z.array(MandateSchema).max(50).optional(),
-  repo: RepoSchema.optional(),
-};
-const RefineInput = { draftId: z.string().min(1), note: z.string().min(1).max(4000) };
-const ValidateInput = { files: z.record(z.string().min(1).max(200), z.string().max(200_000)) };
-const GetDraftInput = { draftId: z.string().min(1) };
-const CreateWorldInput = { draftId: z.string().min(1), worldId: z.string().min(1) };
+/** A pack as files: `pack.yaml`, `tools.yaml`, `seed.yaml`. Same shape validate and create take. */
+const Files = z.record(z.string().min(1).max(200), z.string().max(200_000));
+
+const FormatInput = { repo: RepoSchema.optional() };
+const ValidateInput = { files: Files };
+const CreateWorldInput = { token: z.string().min(1).max(100), worldId: z.string().min(1), files: Files, repo: RepoSchema.optional() };
+
 
 // ───────────────────────────── the run's identity ─────────────────────────────
 
@@ -140,129 +105,60 @@ export { freeWorldId } from "@/ui/worlds/editorLogic";
 
 // ───────────────────────────── replies ─────────────────────────────
 
-/** At most this many errors are returned inline; the rest are read with `get_world_draft`. */
+/** At most this many errors are returned inline — enough to fix a file, short of flooding a reply. */
 const MAX_INLINE_ERRORS = 20;
 
-export function draftSummary(draft: Draft, existingWorlds: { id: string; status: string }[]): string {
-  const owned = boundWorldId(draft.meta.token);
-  return JSON.stringify({
-    draftId: draft.id,
-    valid: draft.errors.length === 0,
-    errorCount: draft.errors.length,
-    // The errors themselves, not just how many. A count alone told the caller its draft was broken
-    // and nothing about how, so the only way forward was another round trip — or, worse, reporting
-    // a dead end to the operator when the fix was one `refine_world` away.
-    ...(draft.errors.length > 0
-      ? {
-          errors: draft.errors.slice(0, MAX_INLINE_ERRORS).map((e) => `${e.file}${e.path ? ` · ${e.path}` : ""}: ${e.message}`),
-          ...(draft.errors.length > MAX_INLINE_ERRORS ? { moreErrors: draft.errors.length - MAX_INLINE_ERRORS } : {}),
-          fix: "Call refine_world with a note naming these, or read the whole draft with get_world_draft. create_world refuses a draft that still has errors.",
-        }
-      : {}),
-    // Distinct keys: both of these used to be `note`, and object spread let the second silently
-    // overwrite the first — so the "this updates World X" warning vanished in exactly the case it
-    // mattered, a re-run against a repo that already has Worlds.
-    ...(owned ? { updatesWorld: owned, updatesNote: `This token already built World '${owned}', so create_world writes this draft over it rather than creating another.` } : {}),
-    ...(existingWorlds.length > 0
-      ? {
-          existingWorlds,
-          existingNote: "This repo already built a World. A draft one can be refined and re-created; a published one must not be replaced — create a second World instead.",
-        }
-      : {}),
-  });
-}
-
-function renderDraft(draft: Draft): string {
-  const files = Object.entries(draft.files).map(([name, body]) => `## ${name}\n\n\`\`\`yaml\n${body}\`\`\``).join("\n\n");
-  const errors = draft.errors.length === 0 ? "Valid — no outstanding errors." : draft.errors.map((e) => `- ${e.file}${e.path ? ` · ${e.path}` : ""}: ${e.message}`).join("\n");
-  return [
-    `# World structure draft ${draft.id}`,
-    "",
-    "This is the World only — its systems, entities, tools and Mandates, with an empty Seed. The rows, the Scenarios and the Attacks are generated on the platform once the World has been reviewed.",
-    "",
-    files,
-    "",
-    "## Validation",
-    "",
-    errors,
-  ].join("\n");
-}
+const inlineErrors = (errors: ValidationError[]) => errors.slice(0, MAX_INLINE_ERRORS).map((e) => `${e.file}${e.path ? ` · ${e.path}` : ""}: ${e.message}`);
 
 const text = (body: string, isError = false) => ({ content: [{ type: "text" as const, text: body }], isError });
-
-const NO_KEY = "ANTHROPIC_API_KEY is not set on the AgentSim server, so a World cannot be drafted.";
 
 const handler = createMcpHandler(
   () => {
     const server = new McpServer(
-      { name: "agentsim-worldbuilder", version: "0.2.0" },
+      { name: "agentsim-worldbuilder", version: "0.3.0" },
       {
         instructions:
           "Builds a simulated test World for an agent, from what is true about it — you are running inside that agent's own repo, so gather this " +
           "yourself rather than asking the user for it: read the agent's tool definitions, its database schema or ORM models, any OpenAPI spec, the " +
           "third-party MCP servers its client config points at, and the rules its own system prompt or policy docs state. The one thing to ask the " +
-          "user for is a build token, from /worlds/new on the AgentSim console. Then call register_agent with all of it — this drafts the World's " +
-          "structure with Claude. Then get_world_draft to read it, refine_world with a plain-language change, and create_world once it looks right. " +
-          "One token covers one World's review cycle: an attempt that drafts nothing does not spend it, the first create_world binds the token to " +
-          "the World it makes so every later one updates that same World in place, and publishing that World rotates the token. " +
+          "user for is a build token, from /worlds/new on the AgentSim console. You write the World yourself: call get_world_format for the format " +
+          "reference, write pack.yaml, tools.yaml and an empty seed.yaml against what the repo actually says, check them with validate_world_files " +
+          "until it reports valid, then submit them with create_world. Nothing here costs a model call on AgentSim's side, so iterate as much as the " +
+          "World needs. One token covers one World's review cycle: the first create_world binds the token to the World it makes so every later one " +
+          "updates that same World in place, and publishing that World rotates the token. " +
           "The World is created as a draft: do not write Scenarios, seed rows or Attacks yourself, and tell the user to review it and generate those " +
           "on the World's page, which is where they are written.",
       },
     );
 
     server.registerTool(
-      "register_agent",
+      "get_world_format",
       {
-        description: "Registers an agent and what it integrates, and drafts the structure of a World for testing it. Needs a build token from /worlds/new.",
-        inputSchema: RegisterInput,
+        description:
+          "The World pack format reference — write your files against this. Pass `repo` to be told whether this repo already built a World. Costs nothing.",
+        inputSchema: FormatInput,
       },
-      async (args, ctx) => {
-        const claim = claimToken(args.token, isPublishedWorld);
-        if (claim !== "ok") return text(CLAIM_MESSAGE[claim], true);
-        if (!process.env.ANTHROPIC_API_KEY) {
-          releaseToken(args.token);
-          return text(NO_KEY, true);
-        }
-
-        const input: StructureInput = {
-          name: args.name,
-          domain: args.domain,
-          description: args.description,
-          schema: args.schema,
-          tools: toolsToText(args.tools),
-          openapi: args.openapi,
-          mcpServers: args.mcp_servers,
-          mandates: args.mandates,
-        };
-        const repo = renderRepo(args.repo);
-        // A drafting attempt that produces nothing hands the token back: the operator got no draft,
-        // so making them fetch a fresh token punishes them for our fault. Only `create_world`
-        // spends one for good.
-        let result;
-        try {
-          result = await generateStructure(input);
-        } catch (e) {
-          releaseToken(args.token);
-          return text(`${e instanceof Error ? e.message : String(e)}\n\nYour build token was not spent — call register_agent again with the same one.`, true);
-        }
-        const draft = createDraft(input, { token: args.token, client: clientLabel(ctx, server), repo }, result);
-        return text(draftSummary(draft, worldsBuiltFrom(repo)));
-      },
-    );
-
-    server.registerTool(
-      "refine_world",
-      { description: "Regenerates a draft's structure with a plain-language change, keeping everything the change does not touch.", inputSchema: RefineInput },
       async (args) => {
-        if (!process.env.ANTHROPIC_API_KEY) return text(NO_KEY, true);
-        const draft = getDraft(args.draftId);
-        // The draft id is the authorisation here: its token was already spent to create it.
-        if (!draft) return text(`Unknown draft ${args.draftId}`, true);
-        const result = await generateStructure(draft.input, undefined, { note: args.note, previousFiles: draft.files });
-        // generateStructure can run for minutes; the draft can cross its TTL while it's in flight.
-        const updated = updateDraft(draft.id, result);
-        if (!updated) return text(`Draft ${draft.id} expired while refining — start over with register_agent.`, true);
-        return text(draftSummary(updated, []));
+        const existing = worldsBuiltFrom(renderRepo(args.repo));
+        return text(
+          [
+            "Write three files, and submit them with `create_world`:",
+            "",
+            "- `pack.yaml` — the systems, the entities, the ownership chain between them, and the Mandates the repo's own policy states.",
+            "- `tools.yaml` — one entry per tool the agent really has, against those entities. Do not invent a tool, and do not invent a guard the code does not enforce.",
+            "- `seed.yaml` — `now`, `currency`, and an **empty array for every entity** `pack.yaml` declares. No rows: those are generated on the platform, against this structure.",
+            "",
+            "Write no `scenarios/` file and no `agents/` file. The Scenarios, the Checks and the Attacks are claims about what the agent *should* do — they are generated on the World's page, where a human reviews them.",
+            "Check your files with `validate_world_files` first; it is the same validator `create_world` runs, and it costs nothing to press.",
+            ...(existing.length > 0
+              ? ["", `**This repo already built a World:** ${existing.map((w) => `${w.id} (${w.status})`).join(", ")}. A draft one is updated by the token that built it; a published one must not be replaced — build a second World instead.`]
+              : []),
+            "",
+            "---",
+            "",
+            loadFormatDoc(),
+          ].join("\n"),
+        );
       },
     );
 
@@ -281,7 +177,7 @@ const handler = createMcpHandler(
           JSON.stringify({
             valid: pack !== null && errors.length === 0,
             errorCount: errors.length,
-            errors: errors.slice(0, MAX_INLINE_ERRORS).map((e) => `${e.file}${e.path ? ` · ${e.path}` : ""}: ${e.message}`),
+            errors: inlineErrors(errors),
             ...(errors.length > MAX_INLINE_ERRORS ? { moreErrors: errors.length - MAX_INLINE_ERRORS } : {}),
           }),
         );
@@ -289,53 +185,55 @@ const handler = createMcpHandler(
     );
 
     server.registerTool(
-      "get_world_draft",
-      { description: "Returns a draft's current files and outstanding validation errors.", inputSchema: GetDraftInput },
-      async (args) => {
-        const draft = getDraft(args.draftId);
-        return draft ? text(renderDraft(draft)) : text(`Unknown draft ${args.draftId}`, true);
-      },
-    );
-
-    server.registerTool(
       "create_world",
       {
-        description: "Persists a draft as a draft World, at worldId. Fails if the draft still has validation errors. The World is not runnable until a human reviews it and publishes it.",
+        description:
+          "Persists your pack files as a draft World at worldId. Needs a build token from /worlds/new, and refuses files that do not validate. The World is not runnable until a human reviews it and publishes it.",
         inputSchema: CreateWorldInput,
       },
-      async (args) => {
-        const draft = getDraft(args.draftId);
-        if (!draft) return text(`Unknown draft ${args.draftId}`, true);
+      async (args, ctx) => {
+        // `tokenStatus`, not a claim: nothing here spends a model call, so the only rules left are
+        // about ownership — this token was rotated, or the World it owns has already gone live.
+        const status = tokenStatus(args.token, isPublishedWorld);
+        if (status !== "ok") return text(CLAIM_MESSAGE[status], true);
+
+        // Validated before anything is written, so a bad pack comes back in `validate_world_files`'
+        // words rather than as an HTTP body from the create route.
+        const { pack, errors } = parsePackFiles(args.files);
+        if (!pack || errors.length > 0) {
+          return text(
+            JSON.stringify({
+              valid: false,
+              errorCount: errors.length,
+              errors: inlineErrors(errors),
+              ...(errors.length > MAX_INLINE_ERRORS ? { moreErrors: errors.length - MAX_INLINE_ERRORS } : {}),
+              fix: "Nothing was written. Fix these and call create_world again.",
+            }),
+            true,
+          );
+        }
 
         // A token owns one World. The first create takes an id — deduped, so a name already in use
         // does not strand the caller — and binds the token to it; every create after that writes
         // over that same World, for as long as it is still a draft under review.
-        const owned = boundWorldId(draft.meta.token);
-        const status = tokenStatus(draft.meta.token, isPublishedWorld);
-        if (status === "published") {
-          return text(
-            `World '${owned}' — the one this token built — has been published, so the plugin cannot write to it again. Publishing rotated the token; its replacement is on /worlds/${owned}. Use a fresh token from /worlds/new to build a different World.`,
-            true,
-          );
-        }
-        // A rotated token is finished: it must not fall through and quietly create a second World.
-        if (status === "rotated") return text(CLAIM_MESSAGE.rotated, true);
+        const owned = boundWorldId(args.token);
         if (!owned && !isValidWorldId(args.worldId)) {
           return text("worldId must be 2-41 characters: lowercase letters, digits and hyphens, starting with a letter or digit.", true);
         }
 
         const taken = listPackIds();
         const id = owned ?? freeWorldId(args.worldId, taken);
+        const client = clientLabel(ctx, server);
+        const repo = renderRepo(args.repo);
         const builtBy: BuildInfo = {
           source: "plugin",
-          run: draft.id,
-          token: draft.meta.token,
-          ...(draft.meta.client ? { client: draft.meta.client } : {}),
-          ...(draft.meta.repo ? { repo: draft.meta.repo } : {}),
+          token: args.token,
+          ...(client ? { client } : {}),
+          ...(repo ? { repo } : {}),
           at: new Date().toISOString(),
         };
-        const packYaml = withPackId(draft.files["pack.yaml"] ?? "", id);
-        const files = { ...draft.files, "pack.yaml": packYaml };
+        const packYaml = withPackId(args.files["pack.yaml"] ?? "", id);
+        const files = { ...args.files, "pack.yaml": packYaml };
 
         // An update, when the token already owns a World that is still there. `PUT` writes the
         // files as given, so the draft status and the build record are stamped here — the same two
@@ -355,7 +253,7 @@ const handler = createMcpHandler(
             );
         const data = (await res.json()) as { error?: string; errors?: unknown[] };
         if (!res.ok) return text(JSON.stringify(data), true);
-        bindToken(draft.meta.token, id);
+        bindToken(args.token, id);
         return text(
           JSON.stringify({
             worldId: id,

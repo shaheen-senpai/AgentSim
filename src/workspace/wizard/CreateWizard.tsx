@@ -50,8 +50,11 @@ export function CreateWizard({ target, providers, packs, takenWorldIds, agent, i
   const router = useRouter();
   const id = useId();
   const copy = COPY[target];
+  // The recommended route is pre-selected so the first step needs one click, not two. A `?how=`
+  // deep link still skips the choice entirely.
+  const recommended = HOW_OPTIONS[target].find((o) => o.badge === "Recommended")?.id ?? null;
   const [step, setStep] = useState(initialHow ? 1 : 0);
-  const [how, setHow] = useState<How | null>(initialHow);
+  const [how, setHow] = useState<How | null>(initialHow ?? recommended);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [mandate, setMandate] = useState("");

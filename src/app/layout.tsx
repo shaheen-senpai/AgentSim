@@ -1,14 +1,13 @@
 import type { Metadata } from "next";
-import { Fraunces, Geist, Geist_Mono } from "next/font/google";
+import { Fraunces } from "next/font/google";
+import { geistMono, geistSans } from "@/theme/fonts";
 import "./globals.css";
 
-const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
-const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 const fraunces = Fraunces({ variable: "--font-fraunces", subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: { default: "AgentSim", template: "%s" },
-  description: "The exam room for AI agents: run clean and poisoned shifts, grade the company ledger, approve with evidence.",
+  description: "Adversarial simulation for AI agents: run your agent in a simulated business, attack the data it reads, and score what it did with deterministic Checks.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

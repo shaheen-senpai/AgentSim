@@ -31,9 +31,6 @@ export function AgentsPage({ initialAgents, runs }: { initialAgents: Agent[]; ru
 
   return (
     <main id="main" className={`${container} pb-20 pt-8`}>
-      <Link href="/" className={`${eyebrow} mb-6 inline-flex items-center gap-2 hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring`}>
-        <Icon name="arrow-left" className="size-3.5" /> Home
-      </Link>
       <header className="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-end">
         <div className="animate-reveal">
           <p className={eyebrow}>Workspace</p>
@@ -43,13 +40,6 @@ export function AgentsPage({ initialAgents, runs }: { initialAgents: Agent[]; ru
           </p>
         </div>
         <div className="animate-reveal flex flex-wrap gap-2 [animation-delay:120ms]">
-          {/* Temporary: the previous console still owns Runs, Compare and the World editor. */}
-          <LinkButton href="/runs" variant="ghost">
-            Switch to old UI <Icon name="external" className="size-4" />
-          </LinkButton>
-          <LinkButton href="/agents/new?how=plugin" variant="outline">
-            <Icon name="plug" className="size-4" /> Import via MCP
-          </LinkButton>
           <LinkButton href="/agents/new">
             <Icon name="plus" className="size-4" /> Create agent
           </LinkButton>
@@ -62,9 +52,8 @@ export function AgentsPage({ initialAgents, runs }: { initialAgents: Agent[]; ru
 
       {agents.length === 0 ? (
         <div className="mt-8">
-          <EmptyState icon="box" title="No agents yet" body="Import one with the worldbuilder plugin from the agent's own repo, or compose one by hand from the tools it can reach.">
-            <LinkButton href="/agents/new?how=plugin" variant="outline"><Icon name="plug" className="size-4" /> Import via MCP</LinkButton>
-            <LinkButton href="/agents/new" variant="outline"><Icon name="plus" className="size-4" /> Create agent</LinkButton>
+          <EmptyState icon="box" title="No agents yet" body="Compose one from the tools it can reach, then drop it into a World.">
+            <LinkButton href="/agents/new"><Icon name="plus" className="size-4" /> Create agent</LinkButton>
           </EmptyState>
         </div>
       ) : (

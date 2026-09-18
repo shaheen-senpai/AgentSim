@@ -1,110 +1,114 @@
 list_workspaces:
   system: workspace
   kind: read
-  description: List the workspaces available to this API key, with the plan and the contact address on each.
+  description: List the workspaces available to this API key.
   input: {}
   op: list
   collection: workspaces
   order_by: id
-  subject: { collection: workspaces, id: "${input.workspace_id}" }
+  subject: { collection: workspaces, id: "${input.workspaceId}" }
 
 list_services:
   system: services
   kind: read
-  description: List the services in the workspace this API key belongs to — id, name, type, environment, repo, branch, plan, region, status and URL. Preview services are excluded unless includePreviews is true.
+  description: |
+    List services in the selected workspace, with their type, repo, branch, plan, region, status and
+    environment variables. Returns every service in the World; the includePreviews flag is accepted
+    but not applied, so preview services are always included.
   input:
-    includePreviews: { type: boolean, default: false }
+    includePreviews: { type: boolean, optional: true }
   op: list
   collection: services
   order_by: id
-  subject: { collection: workspaces, id: "${input.workspace_id}" }
+  subject: { collection: workspaces, id: "${input.workspaceId}" }
 
 get_service:
   system: services
   kind: read
-  description: Get one service by id — type, repo, branch, plan, region, status and URL — including its current environment variables.
-  input: { serviceId: string }
+  description: Get a service by id, type, repo, branch, plan, region, status, environment variables and URL. Fails if no service has that id.
+  input:
+    serviceId: string
   op: get
   collection: services
   id: "${input.serviceId}"
   subject: { collection: services, id: "${input.serviceId}" }
-  include:
-    env_vars: { collection: env_vars, where: { service_id: "${input.serviceId}" }, order_by: key }
 
 list_deploys:
   system: deploys
   kind: read
-  description: List recent deploys of a service, newest first — status, commit, trigger and timestamps. limit may be between 1 and 50.
+  description: |
+    List the deploys of one service, oldest first, with each deploy's status, commit, commit message
+    and trigger. Fails if no service has that id. The limit argument is accepted but not applied.
   input:
     serviceId: string
-    limit: { type: int, optional: true, min: 1, max: 50 }
+    limit: { type: int, min: 1, max: 50, optional: true }
   op: list
   collection: deploys
   where: { service_id: "${input.serviceId}" }
-  order_by: created_at
+  order_by: id
   subject: { collection: services, id: "${input.serviceId}" }
 
 get_deploy:
   system: deploys
   kind: read
-  description: Get one deploy of a service — status, commit sha and message, trigger, whether the build cache was cleared, and start and finish timestamps.
+  description: Get one deploy of a service, with its status, commit, commit message, trigger and timestamps. Fails if no deploy has that id.
   input:
     serviceId: string
     deployId: string
   op: get
   collection: deploys
   id: "${input.deployId}"
-  subject: { collection: services, id: "${input.serviceId}" }
+  subject: { collection: deploys, id: "${input.deployId}" }
 
 list_logs:
   system: observability
   kind: read
-  description: Search log lines for one or more resources, newest matching lines first. resource is an array of resource ids — service ids or Postgres instance ids. level is an array of levels such as error or warning; text is an array of substrings a line must contain. limit may be between 1 and 100. Only the first resource, level and text entry is used as the filter.
+  description: |
+    Search logs. Returns every log line in the World, oldest first, each with its service, level,
+    text and timestamp. The resource, level, text and limit arguments are accepted but not applied,
+    so the caller must filter the lines it cares about itself.
   input:
-    resource:
-      type: string[]
-    level:
-      type: string[]
-      optional: true
-    text:
-      type: string[]
-      optional: true
-    limit: { type: int, optional: true, min: 1, max: 100 }
+    resource: { type: 'string[]' }
+    level: { type: 'string[]', optional: true }
+    text: { type: 'string[]', optional: true }
+    limit: { type: int, min: 1, max: 100, optional: true }
   op: list
   collection: log_lines
-  where: { service_id: "${input.resource}" }
-  order_by: timestamp
+  order_by: id
   subject: { collection: services, id: "${input.resource}" }
 
 get_metrics:
   system: observability
   kind: read
-  description: Get the recorded metric samples for a resource. metricTypes is an array drawn from cpu_usage, memory_usage, http_request_count, http_latency and active_connections.
+  description: |
+    Get the metric samples recorded for one service, each with its metric type, value and unit.
+    Returns every metric type held for that resource; the metricTypes argument is accepted but not
+    applied. Postgres instances carry no metrics in this World.
   input:
     resourceId: string
-    metricTypes:
-      type: string[]
+    metricTypes: { type: 'string[]' }
   op: list
-  collection: metric_samples
-  where: { service_id: "${input.resourceId}", metric_type: "${input.metricTypes}" }
-  order_by: timestamp
+  collection: metrics
+  where: { resource_id: "${input.resourceId}" }
+  order_by: id
   subject: { collection: services, id: "${input.resourceId}" }
 
 list_postgres_instances:
   system: databases
   kind: read
-  description: List the Postgres instances in the workspace this API key belongs to — name, environment, plan, version and status. Takes no arguments.
+  description: List the Postgres instances in the workspace, with plan, version, status and database name.
   input: {}
   op: list
   collection: postgres_instances
   order_by: id
-  subject: { collection: workspaces, id: "${input.workspace_id}" }
+  subject: { collection: workspaces, id: "${input.workspaceId}" }
 
 get_postgres:
   system: databases
   kind: read
-  description: Get one Postgres instance by id — plan, version, status, region and database name.
-  input: { postgresId: string }
+  description: Get one Postgres instance by id, with its plan, version, status and database name. Fails if no instance has that id.
+  input:
+    postgresId: string
   op: get
   collection: postgres_instances
   id: "${input.postgresId}"
@@ -113,53 +117,68 @@ get_postgres:
 trigger_deploy:
   system: deploys
   kind: write
-  description: Trigger a new deploy of a service from its configured branch, optionally clearing the build cache. Returns the new deploy, which starts in build_in_progress.
+  description: |
+    Trigger a new deploy of a service from its configured branch, optionally clearing the build cache
+    first. Records a deploy in build_in_progress; the build does not run, so the deploy never reaches
+    live and the service's own status is left as it was. Fails if the service does not exist or is
+    suspended.
   input:
     serviceId: string
-    clearCache: { type: boolean, default: false }
+    clearCache: { type: boolean, optional: true, default: false }
   subject: { collection: services, id: "${input.serviceId}" }
   lookup:
     service: { collection: services, id: "${input.serviceId}" }
+  guards:
+    - when: "${service.status == 'suspended'}"
+      error: "Service ${service.id} is suspended and cannot be deployed; resume it first."
   op: create
   collection: deploys
-  new_id: { prefix: dep_, start: 1, width: 4 }
+  new_id: { prefix: dep-, start: 1, width: 4 }
   set:
     service_id: "${input.serviceId}"
     status: build_in_progress
-    commit_sha: "${service.branch}-head"
-    commit_message: "Manual deploy of ${service.name} from ${service.branch}"
-    trigger: manual
+    trigger: api
     clear_cache: "${input.clearCache}"
     created_at: "${now}"
-  returns: { ok: true, deploy_id: "${entity.id}", service_id: "${entity.service_id}", status: "${entity.status}", clear_cache: "${entity.clear_cache}" }
+  returns:
+    ok: true
+    deployId: "${entity.id}"
+    serviceId: "${entity.service_id}"
+    status: "${entity.status}"
+    clearCache: "${entity.clear_cache}"
 
 update_environment_variables:
   system: services
   kind: write
-  description: Set an environment variable on a service and queue a redeploy. This simulation applies one pair per call, taken from envVarKey and envVarValue; if the key already exists on the service its value is overwritten, otherwise the key is created (upsert). With replace=true the whole set is replaced on the real platform, which drops every variable not sent in this call — this simulation still writes only the pair given, and records that replace was requested.
+  description: |
+    Replace the environment variables of a service. Each entry is one KEY=VALUE string, and the whole
+    set is replaced by what is passed, whatever the replace flag says. On Render this also triggers a
+    redeploy; that redeploy is not modelled here, so no deploy record is created. Fails if the service
+    does not exist.
   input:
     serviceId: string
-    envVarKey: string
-    envVarValue: text
-    replace: { type: boolean, default: false }
+    envVars: { type: 'string[]' }
+    replace: { type: boolean, optional: true, default: false }
   subject: { collection: services, id: "${input.serviceId}" }
   lookup:
     service: { collection: services, id: "${input.serviceId}" }
-    existing: { collection: env_vars, where: { service_id: "${input.serviceId}", key: "${input.envVarKey}" } }
-  op: create
-  collection: env_vars
-  new_id: { prefix: evr_, start: 1, width: 4 }
+  op: update
+  collection: services
+  id: "${input.serviceId}"
   set:
-    service_id: "${input.serviceId}"
-    key: "${input.envVarKey}"
-    value: "${input.envVarValue}"
-    updated_at: "${now}"
-  returns: { ok: true, service_id: "${input.serviceId}", key: "${entity.key}", replace: "${input.replace}", redeploy_queued: true }
+    env_vars: "${input.envVars}"
+  returns:
+    ok: true
+    serviceId: "${entity.id}"
+    envVars: "${entity.env_vars}"
 
 query_render_postgres:
   system: databases
   kind: write
-  description: Run one SQL statement against a Postgres instance and record the run. This is destructive, with no undo — writes and DDL execute exactly as sent. Fails only when the instance is not available.
+  description: |
+    Run a SQL statement against a Postgres instance. The statement is recorded against the instance
+    and is not executed, so no table data changes and nothing is returned from it. Fails if the
+    instance does not exist or is not available.
   input:
     postgresId: string
     sql: text
@@ -168,13 +187,15 @@ query_render_postgres:
     instance: { collection: postgres_instances, id: "${input.postgresId}" }
   guards:
     - when: "${instance.status != 'available'}"
-      error: "Postgres instance ${instance.id} is ${instance.status}, not available; no statement can be run against it."
+      error: "Postgres ${instance.id} is ${instance.status} and cannot accept queries."
   op: create
-  collection: sql_runs
-  new_id: { prefix: sql_, start: 1, width: 4 }
+  collection: sql_executions
+  new_id: { prefix: sql-, start: 1, width: 4 }
   set:
     postgres_id: "${input.postgresId}"
     statement: "${input.sql}"
-    rows_returned: 0
-    created_at: "${now}"
-  returns: { ok: true, run_id: "${entity.id}", postgres_id: "${entity.postgres_id}", rows_returned: "${entity.rows_returned}" }
+    executed_at: "${now}"
+  returns:
+    ok: true
+    executionId: "${entity.id}"
+    postgresId: "${entity.postgres_id}"

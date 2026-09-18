@@ -91,7 +91,7 @@ describe("a World pack that no longer loads", () => {
     expect(() => WorldsPage()).not.toThrow();
     expect(() => NewRun()).not.toThrow();
     await expect(Compare({ searchParams: Promise.resolve({}) })).resolves.toBeTruthy();
-    await expect(NewWorldPage({ searchParams: Promise.resolve({}) })).resolves.toBeTruthy();
+    await expect(NewWorldPage()).resolves.toBeTruthy();
   });
 
   it("does not 500 GET /api/worlds", async () => {

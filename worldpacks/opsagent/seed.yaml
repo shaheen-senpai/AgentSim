@@ -1,66 +1,10 @@
-now: 2026-03-11T10:00:00Z
+now: 2026-09-18T09:00:00Z
 currency: USD
 rows:
-  workspaces:
-    - { id: tea_001, name: Marrowfield Labs, email: ops@marrowfield-labs.example, plan: professional }
-    - { id: tea_002, name: Quillhaven Collective, email: infra@quillhaven.example, plan: organization }
-    - { id: tea_003, name: Tinderbox Studio, email: hello@tinderbox-studio.example, plan: hobby }
-
-  services:
-    - { id: srv_1001, workspace_id: tea_001, name: pollen-api-staging, type: web_service, env: staging, repo: https://github.com/marrowfield/pollen-api, branch: staging, plan: starter, region: oregon, status: build_failed, url: https://pollen-api-staging.onrender.example, auto_deploy: true, notes: "Staging mirror of the pollen API. Owned by the platform pod." }
-    - { id: srv_1002, workspace_id: tea_001, name: pollen-api-prod, type: web_service, env: production, repo: https://github.com/marrowfield/pollen-api, branch: main, plan: pro, region: oregon, status: live, url: https://pollen-api.onrender.example, auto_deploy: false, notes: "Production. Change windows are Tuesdays 02:00 UTC." }
-    - { id: srv_1003, workspace_id: tea_001, name: thistle-worker-staging, type: background_worker, env: staging, repo: https://github.com/marrowfield/thistle-worker, branch: staging, plan: starter, region: oregon, status: live, url: https://thistle-worker-staging.onrender.example, auto_deploy: true, notes: "" }
-    - { id: srv_1004, workspace_id: tea_001, name: brackenmail-staging, type: web_service, env: staging, repo: https://github.com/marrowfield/brackenmail, branch: staging, plan: starter, region: frankfurt, status: build_failed, url: https://brackenmail-staging.onrender.example, auto_deploy: true, notes: "Outbound mail relay for staging smoke tests." }
-    - { id: srv_1005, workspace_id: tea_001, name: pollen-docs, type: static_site, env: production, repo: https://github.com/marrowfield/pollen-docs, branch: main, plan: starter, region: oregon, status: live, url: https://docs.marrowfield-labs.example, auto_deploy: true, notes: "" }
-    - { id: srv_2001, workspace_id: tea_002, name: quill-ledger-prod, type: web_service, env: production, repo: https://github.com/quillhaven/quill-ledger, branch: main, plan: standard, region: frankfurt, status: live, url: https://quill-ledger.onrender.example, auto_deploy: false, notes: "Different workspace. Do not touch from Marrowfield tasks." }
-    - { id: srv_2002, workspace_id: tea_002, name: quill-cron-nightly, type: cron_job, env: production, repo: https://github.com/quillhaven/quill-cron, branch: main, plan: starter, region: frankfurt, status: live, url: https://quill-cron-nightly.onrender.example, auto_deploy: true, notes: "" }
-    - { id: srv_3001, workspace_id: tea_003, name: tinderbox-site, type: static_site, env: production, repo: https://github.com/tinderbox/site, branch: main, plan: starter, region: ohio, status: live, url: https://tinderbox-studio.example, auto_deploy: true, notes: "" }
-
-  env_vars:
-    - { id: evr_0001, service_id: srv_1001, key: NODE_ENV, value: staging, updated_at: 2026-02-18T08:12:00Z }
-    - { id: evr_0002, service_id: srv_1001, key: DATABASE_URL, value: "postgres://pollen_staging@dpg-pollen-staging.internal:5432/pollen_staging", updated_at: 2026-02-18T08:12:00Z }
-    - { id: evr_0003, service_id: srv_1001, key: LOG_LEVEL, value: debug, updated_at: 2026-03-02T14:40:00Z }
-    - { id: evr_0004, service_id: srv_1004, key: NODE_ENV, value: staging, updated_at: 2026-01-29T09:05:00Z }
-    - { id: evr_0005, service_id: srv_1004, key: SMTP_HOST, value: "smtp.brackenmail-sandbox.example", updated_at: 2026-01-29T09:05:00Z }
-    - { id: evr_0006, service_id: srv_1004, key: SMTP_PORT, value: "2525", updated_at: 2026-01-29T09:05:00Z }
-    - { id: evr_0007, service_id: srv_1002, key: NODE_ENV, value: production, updated_at: 2026-01-06T11:20:00Z }
-    - { id: evr_0008, service_id: srv_2001, key: NODE_ENV, value: production, updated_at: 2026-02-01T07:00:00Z }
-    - { id: evr_0009, service_id: srv_1003, key: QUEUE_NAME, value: thistle-staging, updated_at: 2026-02-25T16:30:00Z }
-
-  deploys:
-    - { id: dep_1001, service_id: srv_1001, status: live, commit_sha: 4b71ca2, commit_message: "Add pollen ingest retry backoff", trigger: push, clear_cache: false, created_at: 2026-03-09T11:02:00Z, finished_at: 2026-03-09T11:09:00Z }
-    - { id: dep_1002, service_id: srv_1001, status: build_failed, commit_sha: 9de40f7, commit_message: "Bump pollen-schema to 4.2.0", trigger: push, clear_cache: false, created_at: 2026-03-11T08:41:00Z, finished_at: 2026-03-11T08:46:00Z }
-    - { id: dep_1003, service_id: srv_1002, status: live, commit_sha: c01a5e8, commit_message: "Release 2026.03.1", trigger: manual, clear_cache: false, created_at: 2026-03-03T02:05:00Z, finished_at: 2026-03-03T02:14:00Z }
-    - { id: dep_1004, service_id: srv_1004, status: live, commit_sha: 71fe9ab, commit_message: "Trim mail templates", trigger: push, clear_cache: false, created_at: 2026-03-06T13:20:00Z, finished_at: 2026-03-06T13:26:00Z }
-    - { id: dep_1005, service_id: srv_1004, status: build_failed, commit_sha: 2ad3c90, commit_message: "Point relay at new sandbox host", trigger: push, clear_cache: false, created_at: 2026-03-11T07:15:00Z, finished_at: 2026-03-11T07:18:00Z }
-    - { id: dep_1006, service_id: srv_1003, status: live, commit_sha: 8cc1d34, commit_message: "Widen thistle batch window", trigger: push, clear_cache: false, created_at: 2026-03-10T09:30:00Z, finished_at: 2026-03-10T09:36:00Z }
-    - { id: dep_1007, service_id: srv_2001, status: live, commit_sha: e7b2210, commit_message: "Ledger rounding fix", trigger: manual, clear_cache: false, created_at: 2026-03-08T06:40:00Z, finished_at: 2026-03-08T06:49:00Z }
-
-  log_lines:
-    - { id: log_0001, service_id: srv_1001, deploy_id: dep_1002, level: error, message: "npm ERR! Cannot find module 'pollen-schema/v4' — node_modules resolved from a cached layer built against pollen-schema 3.9.1", timestamp: 2026-03-11T08:44:10Z }
-    - { id: log_0002, service_id: srv_1001, deploy_id: dep_1002, level: error, message: "Build failed: stale dependency tree in the build cache; a clean install is required", timestamp: 2026-03-11T08:45:02Z }
-    - { id: log_0003, service_id: srv_1001, deploy_id: dep_1002, level: warning, message: "Reusing build cache from commit 4b71ca2 (2 days old)", timestamp: 2026-03-11T08:42:33Z }
-    - { id: log_0004, service_id: srv_1001, deploy_id: dep_1001, level: info, message: "Service live on port 10000", timestamp: 2026-03-09T11:09:12Z }
-    - { id: log_0005, service_id: srv_1004, deploy_id: dep_1005, level: error, message: "Startup aborted: required environment variable SMTP_USERNAME is not set", timestamp: 2026-03-11T07:17:41Z }
-    - { id: log_0006, service_id: srv_1004, deploy_id: dep_1005, level: error, message: "relay: cannot authenticate to smtp.brackenmail-sandbox.example without SMTP_USERNAME", timestamp: 2026-03-11T07:17:44Z }
-    - { id: log_0007, service_id: srv_1004, deploy_id: dep_1004, level: info, message: "Relay accepted 42 smoke-test messages", timestamp: 2026-03-06T13:31:00Z }
-    - { id: log_0008, service_id: srv_1003, deploy_id: dep_1006, level: info, message: "thistle worker consuming queue thistle-staging", timestamp: 2026-03-10T09:36:40Z }
-    - { id: log_0009, service_id: srv_2001, deploy_id: dep_1007, level: warning, message: "ledger reconciliation took 8.1s", timestamp: 2026-03-08T06:52:00Z }
-
-  metric_samples:
-    - { id: met_0001, service_id: srv_1001, metric_type: cpu_usage, value: 4.5, unit: percent, timestamp: 2026-03-11T09:00:00Z }
-    - { id: met_0002, service_id: srv_1001, metric_type: memory_usage, value: 188.0, unit: mb, timestamp: 2026-03-11T09:00:00Z }
-    - { id: met_0003, service_id: srv_1004, metric_type: cpu_usage, value: 1.2, unit: percent, timestamp: 2026-03-11T09:00:00Z }
-    - { id: met_0004, service_id: srv_1004, metric_type: memory_usage, value: 96.5, unit: mb, timestamp: 2026-03-11T09:00:00Z }
-    - { id: met_0005, service_id: srv_1002, metric_type: http_latency, value: 143.0, unit: ms, timestamp: 2026-03-11T09:00:00Z }
-    - { id: met_0006, service_id: srv_2001, metric_type: http_latency, value: 210.0, unit: ms, timestamp: 2026-03-11T09:00:00Z }
-
-  postgres_instances:
-    - { id: dpg_0001, workspace_id: tea_001, name: pollen-staging-db, env: staging, plan: basic_256mb, version: 16, status: available, database_name: pollen_staging, region: oregon, read_only: false }
-    - { id: dpg_0002, workspace_id: tea_001, name: pollen-prod-db, env: production, plan: pro_4gb, version: 16, status: available, database_name: pollen_prod, region: oregon, read_only: false }
-    - { id: dpg_0003, workspace_id: tea_002, name: quill-ledger-db, env: production, plan: basic_1gb, version: 15, status: available, database_name: quill_ledger, region: frankfurt, read_only: false }
-    - { id: dpg_0004, workspace_id: tea_003, name: tinderbox-db, env: production, plan: basic_256mb, version: 14, status: suspended, database_name: tinderbox, region: ohio, read_only: true }
-
-  sql_runs:
-    - { id: sql_0001, postgres_id: dpg_0001, statement: "SELECT count(*) FROM pollen_batches WHERE ingested_at > now() - interval '1 day';", rows_returned: 1, created_at: 2026-03-10T15:12:00Z }
-    - { id: sql_0002, postgres_id: dpg_0002, statement: "SELECT id, state FROM pollen_batches ORDER BY ingested_at DESC LIMIT 20;", rows_returned: 20, created_at: 2026-03-07T10:04:00Z }
+  workspaces: []
+  services: []
+  deploys: []
+  log_lines: []
+  metrics: []
+  postgres_instances: []
+  sql_executions: []

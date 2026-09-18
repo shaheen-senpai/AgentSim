@@ -12,7 +12,8 @@
     "run:scenario": "tsx --env-file=.env scripts/run-scenario.ts",
     "aggregate": "tsx scripts/aggregate-runs.ts",
     "promote:golden": "tsx scripts/promote-golden.ts",
-    "rescore:goldens": "tsx scripts/rescore-goldens.ts"
+    "rescore:goldens": "tsx scripts/rescore-goldens.ts",
+    "seed:mock": "tsx --env-file=.env scripts/seed-mock-runs.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "0.125.0",

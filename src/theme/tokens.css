@@ -11,44 +11,46 @@
   per family); change the family there, then point the `--font-*` tokens at its variable.
 */
 @theme {
-  /* ---- Colour: deep green terminal. Keep foreground/background ≥ 4.5:1 for body text. ---- */
-  --color-background: oklch(16% 0.025 158);
-  --color-foreground: oklch(98% 0.025 160);
+  /* ---- Colour: a neutral near-black with one emerald accent. The surfaces are uncoloured so the
+     accent, the pass green and the violation red are the only hues on the page; borders are
+     hairlines of the foreground rather than a tinted grey. Keep body text ≥ 4.5:1 on background. ---- */
+  --color-background: oklch(12% 0.006 250);
+  --color-foreground: oklch(96.5% 0.004 250);
 
-  --color-surface: oklch(19.5% 0.035 158);          /* section bands, cards */
-  --color-surface-raised: oklch(25% 0.05 158);      /* hover / raised chips */
-  --color-card: oklch(20.5% 0.035 158);
-  --color-card-foreground: oklch(98% 0.025 160);
+  --color-surface: oklch(15% 0.007 250);            /* section bands, cards */
+  --color-surface-raised: oklch(20% 0.009 250);     /* hover / raised chips */
+  --color-card: oklch(15.5% 0.007 250);
+  --color-card-foreground: oklch(96.5% 0.004 250);
 
-  --color-primary: oklch(74% 0.15 163);             /* emerald (≈ #2fc48a): CTAs, accents, "safe" */
-  --color-primary-foreground: oklch(14% 0.035 163);
-  --color-secondary: oklch(27% 0.05 158);
-  --color-secondary-foreground: oklch(98% 0.025 160);
+  --color-primary: oklch(76% 0.15 163);             /* emerald (≈ #2fc48a): CTAs, accents, "safe" */
+  --color-primary-foreground: oklch(15% 0.03 163);
+  --color-secondary: oklch(21% 0.01 250);
+  --color-secondary-foreground: oklch(96.5% 0.004 250);
 
-  --color-muted: oklch(23% 0.035 158);
-  --color-muted-foreground: oklch(72% 0.045 160);   /* body copy on dark */
+  --color-muted: oklch(18% 0.008 250);
+  --color-muted-foreground: oklch(71% 0.012 250);   /* body copy on dark */
 
-  --color-border: oklch(42% 0.065 158 / 0.5);
-  --color-input: oklch(27% 0.05 158);
-  --color-ring: oklch(74% 0.15 163);
+  --color-border: oklch(96.5% 0.004 250 / 0.09);    /* hairline */
+  --color-input: oklch(17% 0.008 250);
+  --color-ring: oklch(76% 0.15 163);
 
-  --color-safe: oklch(74% 0.15 163);                /* verdict: pass */
-  --color-danger: oklch(70% 0.2 28);                /* verdict: violation */
+  --color-safe: oklch(76% 0.15 163);                /* verdict: pass */
+  --color-danger: oklch(68% 0.19 25);               /* verdict: violation */
   --color-warning: oklch(82% 0.15 85);              /* verdict: needs a look */
-  --color-signal: oklch(74% 0.15 163);              /* glows */
+  --color-signal: oklch(76% 0.15 163);              /* the prism's glow; buttons no longer read it */
 
   /* ---- Typography. Roles, not families: swap the family in fonts.ts. ---- */
-  --font-heading: var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif;
-  --font-body: var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif;
-  --font-label: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-heading: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-body: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-label: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
 
   /* Type scale (size + matching line-height). `text-display` etc. */
-  --text-display: clamp(3rem, 6.2vw, 4.5rem);
-  --text-display--line-height: 0.98;
-  --text-display--letter-spacing: -0.02em;
-  --text-h2: clamp(1.875rem, 3.2vw, 2.25rem);
+  --text-display: clamp(2.75rem, 5.6vw, 4.25rem);
+  --text-display--line-height: 1.02;
+  --text-display--letter-spacing: -0.035em;
+  --text-h2: clamp(1.75rem, 3vw, 2.25rem);
   --text-h2--line-height: 1.15;
-  --text-h2--letter-spacing: -0.015em;
+  --text-h2--letter-spacing: -0.025em;
   --text-h3: 1.125rem;
   --text-h3--line-height: 1.35;
   --text-lead: 1.125rem;
@@ -57,10 +59,10 @@
   --text-body--line-height: 1.6;
   --text-caption: 0.75rem;
   --text-caption--line-height: 1.55;
-  --text-label: 0.625rem;        /* 10px mono eyebrows */
+  --text-label: 0.6875rem;       /* 11px mono eyebrows */
   --text-label--line-height: 1.4;
   --text-label--letter-spacing: 0.08em;
-  --text-label-sm: 0.5625rem;    /* 9px mono meta */
+  --text-label-sm: 0.625rem;     /* 10px mono meta */
   --text-label-sm--line-height: 1.4;
   --text-label-sm--letter-spacing: 0.08em;
   --text-metric: 3rem;
@@ -70,8 +72,8 @@
   --text-metric-sm--line-height: 1;
 
   /* ---- Shape, layout, motion ---- */
-  --radius-panel: 0.4rem;
-  --radius-control: 0.375rem;
+  --radius-panel: 0.75rem;
+  --radius-control: 0.5rem;
   --container-page: 1240px;      /* max-w-page */
   --spacing-section: 6rem;       /* py-section */
   --spacing-gutter: 1.25rem;     /* px-gutter */
@@ -114,7 +116,7 @@
   --color-secondary: oklch(24% 0.01 250);
   --color-muted: oklch(20% 0.008 250);
   --color-muted-foreground: oklch(68% 0.012 250);
-  --color-border: oklch(33% 0.012 250 / 0.6);
+  --color-border: oklch(96% 0.004 250 / 0.1);
   --color-input: oklch(19% 0.01 250);
   --color-primary: oklch(70% 0.14 163);
   --color-primary-foreground: oklch(14% 0.035 163);

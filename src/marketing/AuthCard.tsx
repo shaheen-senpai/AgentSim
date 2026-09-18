@@ -27,11 +27,11 @@ export function AuthCard({ mode }: { mode: "signin" | "signup" }) {
 
   return (
     <main className="grid-field relative flex min-h-screen items-center justify-center px-gutter py-16">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,color-mix(in_oklab,var(--color-safe)_8%,transparent),transparent_45%)]" aria-hidden />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_0%,color-mix(in_oklab,var(--color-primary)_9%,transparent),transparent_55%)]" aria-hidden />
       <div className="animate-reveal relative w-full max-w-md">
         <div className="mb-8 flex justify-center"><Logo /></div>
-        <section className="rounded-panel border border-border bg-surface p-7 shadow-[0_0_80px_color-mix(in_oklab,var(--color-signal)_8%,transparent)]" aria-labelledby={`${id}-title`}>
-          <p className="font-label text-label uppercase text-primary">{signup ? "Create your exam room" : "Welcome back"}</p>
+        <section className="rounded-panel border border-border bg-surface p-7" aria-labelledby={`${id}-title`}>
+          <p className="font-label text-label uppercase text-primary">{signup ? "Create your account" : "Welcome back"}</p>
           <h1 id={`${id}-title`} className="mt-2 font-heading text-h2 font-medium">{signup ? "Sign up" : "Sign in"}</h1>
           <p className="mt-2 text-caption text-muted-foreground">
             {signup ? "Run your first clean-versus-poisoned shift in minutes." : "Pick up where your last Run left off."}

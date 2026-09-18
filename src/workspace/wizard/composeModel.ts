@@ -13,9 +13,9 @@ export { FORMAT_LABEL, SRC_KIND, srcLabel, srcMode, srcToolCount } from "@/ui/wo
 export type Target = "agent" | "world";
 export type How = "plugin" | "compose" | "attach";
 
-/** The middle step is what the chosen path does: the plugin generates, everything else composes. */
+/** The plugin path ends at its own step — the plugin creates the World itself, there is nothing to review here. */
 export function stepLabels(how: How | null): readonly string[] {
-  return how === "plugin" ? ["How", "Generate", "Review"] : STEPS;
+  return how === "plugin" ? ["How", "Generate"] : STEPS;
 }
 export type ToolFormat = Extract<Source, { kind: "tools" }>["format"];
 
@@ -25,11 +25,11 @@ export type HowOption = { id: How; title: string; body: string; badge?: string }
 
 export const HOW_OPTIONS: Record<Target, HowOption[]> = {
   agent: [
-    { id: "plugin", title: "Import with the worldbuilder plugin", body: "Run the plugin from the agent's own repo. It reads the tools, schema and policies there and drafts the agent and its first World here for review.", badge: "Recommended" },
+    { id: "plugin", title: "Build it with the worldbuilder plugin", body: "Run the plugin from the agent's own repo. It reads the tools, schema and policies there, writes the World and creates it here as a draft for you to review.", badge: "Recommended" },
     { id: "compose", title: "Compose it yourself", body: "Pick the third-party MCPs and tools the agent can reach, and write its mandate." },
   ],
   world: [
-    { id: "plugin", title: "Generate with the worldbuilder plugin", body: "Run the plugin from the agent's own repo. It reads the tools, schema and policies there and drafts the World's structure here for review.", badge: "Recommended" },
+    { id: "plugin", title: "Build it with the worldbuilder plugin", body: "Run the plugin from the agent's own repo. It reads the tools, schema and policies there, writes the World and creates it here as a draft for you to review.", badge: "Recommended" },
     { id: "compose", title: "Compose from sources", body: "Several third-party MCPs, your own tool definitions, a database. One sandbox with one ownership graph." },
     { id: "attach", title: "Attach an installed World", body: "Use one of the packs already on disk as this agent's exam room." },
   ],
@@ -140,7 +140,7 @@ export function canContinue(step: number, how: How | null, s: { name: string; so
   if (step === 1) {
     if (how === "attach") return s.packId !== null;
     if (how === "compose") return s.name.trim() !== "" && s.sources.length > 0;
-    if (how === "plugin") return s.hasDraft === true;
+    if (how === "plugin") return false; // the plugin writes the World directly; nothing comes back through the wizard
     return true;
   }
   return true;

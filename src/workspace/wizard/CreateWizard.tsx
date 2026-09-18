@@ -18,20 +18,10 @@ import {
   type How, type PackPick, type ProviderInfo, type Source, type Target,
 } from "./composeModel";
 import { PackTiles, SourceComposer } from "./SourceComposer";
-import { PluginGenerate, type PluginDraft } from "./PluginGenerate";
-import { agentFromDraft } from "./draftAgent";
-import { draftEntities, draftTools } from "@/ui/worlds/newWorld/draftView";
-import { freeWorldId, isValidWorldId, withPackId } from "@/ui/worlds/editorLogic";
-import { slugify } from "@/ui/worlds/newWorld/sources";
+import { PluginGenerate } from "./PluginGenerate";
 import { WizardShell } from "./WizardShell";
 
-/**
- * `takenWorldIds` is every id `POST /api/worlds` would refuse — `listPackIds()`, the directory
- * names. Deliberately not derived from `packs`: `loadPacks()` drops a pack that fails to load, so
- * a broken World's id is absent there and present on disk, and deduping against `packs` alone
- * would hand back an id the server still 409s.
- */
-type Props = { target: Target; providers: ProviderInfo[]; packs: PackPick[]; takenWorldIds: string[]; agent?: Agent; initialHow?: How | null };
+type Props = { target: Target; providers: ProviderInfo[]; packs: PackPick[]; agent?: Agent; initialHow?: How | null };
 
 const COPY: Record<Target, { title: string; lead: string; noun: "Agent" | "World" }> = {
   agent: {
@@ -46,7 +36,7 @@ const COPY: Record<Target, { title: string; lead: string; noun: "Agent" | "World
   },
 };
 
-export function CreateWizard({ target, providers, packs, takenWorldIds, agent, initialHow = null }: Props) {
+export function CreateWizard({ target, providers, packs, agent, initialHow = null }: Props) {
   const router = useRouter();
   const id = useId();
   const copy = COPY[target];
@@ -60,7 +50,6 @@ export function CreateWizard({ target, providers, packs, takenWorldIds, agent, i
   const [mandate, setMandate] = useState("");
   const [sources, setSources] = useState<Source[]>([]);
   const [packId, setPackId] = useState<string | null>(null);
-  const [pluginDraft, setPluginDraft] = useState<PluginDraft | null>(null);
   const [script, setScript] = useState<HandshakeStep[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -86,7 +75,7 @@ export function CreateWizard({ target, providers, packs, takenWorldIds, agent, i
   const entities = useMemo(() => composedEntities(sources), [sources]);
   const composedWorld = useMemo(() => worldDraftFromComposition(name, description, sources, providers, packs, { entities, mandate }), [name, description, sources, providers, packs, entities, mandate]);
   const chosenPack = packs.find((p) => p.id === packId) ?? null;
-  const ok = canContinue(step, how, { name, sources, packId, hasDraft: pluginDraft !== null });
+  const ok = canContinue(step, how, { name, sources, packId });
   const steps = stepLabels(how);
 
   const back = target === "agent" ? { label: "All agents", href: "/agents" } : { label: agent?.name ?? "Agent", href: `/agents/${agent?.id}` };
@@ -97,7 +86,6 @@ export function CreateWizard({ target, providers, packs, takenWorldIds, agent, i
     if (step === 1) return setStep(2);
   };
   const previous = () => {
-    if (step === 2 && how === "plugin") setPluginDraft(null);
     setStep((s) => Math.max(0, s - 1));
   };
 
@@ -122,39 +110,7 @@ export function CreateWizard({ target, providers, packs, takenWorldIds, agent, i
     setBusy(false);
   };
 
-  /** The draft becomes a World on disk (built by the plugin), and for an agent import, the agent too. */
-  const createFromPluginDraft = (d: PluginDraft) => {
-    // Deduped, not just slugified: two agents may share a name, and an agent may be imported
-    // alongside a World already built from it. A taken id 409s on POST /api/worlds, and since the
-    // agent is only registered after that POST succeeds, a collision used to strand the whole
-    // import on this screen with no field to edit and nothing to retry.
-    const worldId = freeWorldId(slugify(d.input.name) || `world-${Date.now().toString(36)}`, takenWorldIds);
-    if (!isValidWorldId(worldId)) return fail("The draft's name does not make a valid World id.");
-    const files = { ...d.files, "pack.yaml": withPackId(d.files["pack.yaml"] ?? "", worldId) };
-    const builtBy = { source: "plugin" as const, ...(d.token ? { token: d.token } : {}), ...(d.client ? { client: d.client } : {}), ...(d.repo ? { repo: d.repo } : {}) };
-    const steps: HandshakeStep[] = target === "agent"
-      ? [{ text: `creating World ${worldId} from draft ${d.id}`, at: 0 }, { text: `registering ${d.input.name} with ${draftTools(d.files).length} tools`, at: 800 }, { text: `imported ${d.input.name}`, at: 1400, done: true }]
-      : [{ text: `creating World ${worldId} from draft ${d.id}`, at: 0 }, { text: `attaching it to ${agent?.name}`, at: 700 }, { text: `created ${d.input.name}`, at: 1200, done: true }];
-    return play(steps, async () => {
-      const res = await fetch("/api/worlds", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ id: worldId, files, builtBy }) });
-      if (!res.ok) {
-        const data = (await res.json().catch(() => ({}))) as { error?: string; errors?: { file: string; path: string; message: string }[] };
-        return fail(data.error ?? (data.errors?.length ? `${data.errors.length} validation error${data.errors.length === 1 ? "" : "s"}: ${data.errors.map((e) => `${e.file}${e.path ? ` · ${e.path}` : ""}: ${e.message}`).join(" · ")}` : `The World was not created (HTTP ${res.status}).`));
-      }
-      if (target === "agent") {
-        const result = await createAgent(agentFromDraft(d, worldId));
-        if (result.agent === null) return fail(result.error);
-        return go(`/agents/${result.agent.id}?fresh=${worldId}`);
-      }
-      if (!agent) return;
-      const result = await updateAgent({ ...agent, worldIds: [...agent.worldIds, worldId] });
-      if (result.agent === null) return fail(result.error);
-      go(`/agents/${agent.id}?fresh=${worldId}`);
-    });
-  };
-
   const create = () => {
-    if (how === "plugin" && pluginDraft) return createFromPluginDraft(pluginDraft);
     if (target === "agent") {
       // The same sources that describe the agent seed its first World, so the agent page has one to open.
       const firstWorld = { ...worldDraftFromComposition(`${name.trim()} World`, description, sources, providers, packs, { entities, mandate: mandate.trim() }), id: newWorldId(), createdAt: new Date().toISOString() };
@@ -186,13 +142,13 @@ export function CreateWizard({ target, providers, packs, takenWorldIds, agent, i
       <Button variant="ghost" onClick={previous} disabled={step === 0 || busy} className={step === 0 ? "invisible" : ""}>
         <Icon name="arrow-left" className="size-4" /> Back
       </Button>
-      {step < 2 ? (
+      {how === "plugin" && step === 1 ? null : step < 2 ? (
         <Button onClick={next} disabled={!ok}>
           Continue <Icon name="arrow-right" className="size-4" />
         </Button>
       ) : (
-        <Button onClick={create} disabled={busy || (how === "plugin" ? !pluginDraft || pluginDraft.errors.length > 0 : target === "agent" && !name.trim())}>
-          {busy ? (how === "plugin" ? (target === "agent" ? "Importing…" : "Creating…") : target === "agent" ? "Creating…" : how === "attach" ? "Attaching…" : "Drafting…") : how === "plugin" && target === "agent" ? "Import agent" : `Create ${copy.noun}`}
+        <Button onClick={create} disabled={busy || (target === "agent" && !name.trim())}>
+          {busy ? (target === "agent" ? "Creating…" : how === "attach" ? "Attaching…" : "Drafting…") : `Create ${copy.noun}`}
         </Button>
       )}
     </>
@@ -227,7 +183,7 @@ export function CreateWizard({ target, providers, packs, takenWorldIds, agent, i
         )}
 
         {step === 1 && how === "plugin" && (
-          <PluginGenerate agentName={agent?.name ?? "this agent"} onReview={(d) => { setPluginDraft(d); setStep(2); }} />
+          <PluginGenerate agentName={agent?.name ?? "this agent"} />
         )}
 
         {step === 1 && how === "attach" && (
@@ -265,30 +221,7 @@ export function CreateWizard({ target, providers, packs, takenWorldIds, agent, i
         {step === 2 && (
           <div>
             <h2 className="font-heading text-h3 font-semibold">Review the {copy.noun}</h2>
-            {how === "plugin" && pluginDraft ? (
-              <>
-                <Summary
-                  rows={[
-                    ["World", pluginDraft.input.name],
-                    ["Domain", pluginDraft.input.domain],
-                    ["Description", pluginDraft.input.description],
-                    ["Draft", `${pluginDraft.id}${pluginDraft.repo ? ` · ${pluginDraft.repo}` : ""}${pluginDraft.client ? ` · ${pluginDraft.client}` : ""}`],
-                    ["Shape", `${draftTools(pluginDraft.files).length} tools · ${draftEntities(pluginDraft.files).length} entities`],
-                    ["Validation", pluginDraft.errors.length === 0 ? "Valid — created as a draft World, published once it has Scenarios" : `${pluginDraft.errors.length} error${pluginDraft.errors.length === 1 ? "" : "s"}`],
-                    ...(target === "agent" ? ([["Agent", `${pluginDraft.input.name} · registered from this draft, attached to the World`]] as [string, string][]) : []),
-                  ]}
-                />
-                {pluginDraft.errors.length > 0 && (
-                  <ul className="mt-4 flex flex-col gap-1 rounded-control border border-danger/40 bg-danger/10 px-4 py-3 font-label text-caption text-danger">
-                    {pluginDraft.errors.map((e, i) => <li key={i}>{e.file}{e.path ? ` · ${e.path}` : ""}: {e.message}</li>)}
-                  </ul>
-                )}
-                <div className="mt-5 grid gap-5 sm:grid-cols-2">
-                  <TagBlock label={`Tools · ${draftTools(pluginDraft.files).length}`} items={draftTools(pluginDraft.files).map((t) => t.name)} />
-                  <TagBlock label={`Entities · ${draftEntities(pluginDraft.files).length}`} items={draftEntities(pluginDraft.files).map((e) => e.name)} />
-                </div>
-              </>
-            ) : how === "attach" && chosenPack ? (
+            {how === "attach" && chosenPack ? (
               <Summary rows={[["World", chosenPack.name], ["Domain", chosenPack.domain], ["Description", chosenPack.description], ["Shape", `${chosenPack.entities} entities · ${chosenPack.tools} tools`]]} />
             ) : (
               <>

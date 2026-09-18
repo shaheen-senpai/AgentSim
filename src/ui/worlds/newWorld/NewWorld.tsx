@@ -1,15 +1,14 @@
 "use client";
 // The New world flow (design/agentsim-console.html `renderNewWorld` 2001-2245): How → Compose or
 // Generate → Review. Composed sources feed `POST /api/worlds/generate`; a copied pack is created
-// as-is; a worldbuilder draft (from `/mcp/worlds`) is reviewed and created. Nothing is written
-// until "Create World".
+// as-is. Nothing is written until "Create World". The worldbuilder plugin does not come back
+// through here: its client writes the pack files itself and `create_world` makes the World
+// directly, so this step hands out the token and the World appears in the Worlds list.
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Fragment, useEffect, useState } from "react";
 import type { ValidationError } from "@/engine/pack";
-import type { DraftSummary } from "@/lib/draftSummary";
 import { CopyButton } from "@/ui/connect/CopyButton";
-import { relativeTime } from "@/ui/relativeTime";
 import { systemColor } from "@/ui/systemColor";
 import { useOrigin } from "@/ui/useOrigin";
 import { isValidWorldId, withPackId } from "../editorLogic";
@@ -18,13 +17,13 @@ import { FORMAT_LABEL, isCopyOnly, slugify, SRC_KIND, srcLabel, srcMode, srcTool
 
 export type DraftForReview = { id?: string; files: Record<string, string>; errors: ValidationError[]; input?: { name: string; domain: string; description: string } };
 
-export type NewWorldProps = { providers: ProviderInfo[]; packs: PackPick[]; drafts: DraftSummary[]; initialDraft: DraftForReview | null; now: number };
+export type NewWorldProps = { providers: ProviderInfo[]; packs: PackPick[] };
 
 type Adding = "mcp" | "tools" | "db" | "pack";
 type Format = Extract<Source, { kind: "tools" }>["format"];
 
 const ADD_TYPES: [Adding, string][] = [["mcp", "+ Third-party MCP"], ["tools", "+ Your own tools"], ["db", "+ Database"], ["pack", "+ Copy a pack"]];
-const WB_TOOLS = ["register_agent", "get_world_draft", "refine_world", "create_world"];
+const WB_TOOLS = ["get_world_format", "validate_world_files", "create_world"];
 
 const PASTE_SAMPLES: Record<Format, string> = {
   mcp: '[\n  { "name": "get_invoice",\n    "description": "Fetch an invoice by id.",\n    "inputSchema": { "type": "object",\n      "properties": { "invoice_id": { "type": "string" } },\n      "required": ["invoice_id"] } },\n  { "name": "issue_credit_note",\n    "description": "Credit an invoice, in minor units.",\n    "inputSchema": { "type": "object",\n      "properties": { "invoice_id": { "type": "string" },\n                      "amount_minor": { "type": "integer" } },\n      "required": ["invoice_id", "amount_minor"] } }\n]',
@@ -37,26 +36,24 @@ const JSON_HEADERS = { "content-type": "application/json" };
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 const DANGER_NOTE = { borderLeftColor: "var(--danger-fg)", color: "var(--danger-fg)" } as const;
 
-export function NewWorld({ providers, packs, drafts, initialDraft, now: initialNow }: NewWorldProps) {
+export function NewWorld({ providers, packs }: NewWorldProps) {
   const router = useRouter();
   const origin = useOrigin();
-  const [step, setStep] = useState<0 | 1 | 2>(initialDraft ? 2 : 0);
-  const [mode, setMode] = useState<"manual" | "plugin">(initialDraft ? "plugin" : "manual");
+  const [step, setStep] = useState<0 | 1 | 2>(0);
+  const [mode, setMode] = useState<"manual" | "plugin">("manual");
   const [adding, setAdding] = useState<Adding | null>(null);
   const [sources, setSources] = useState<Source[]>([]);
-  const [draft, setDraft] = useState<DraftForReview | null>(initialDraft);
+  const [draft, setDraft] = useState<DraftForReview | null>(null);
   const [form, setForm] = useState<{ vendor: string; format: Format; text: string; ddl: string; pack: string }>({ vendor: providers[0]?.id ?? "", format: "mcp", text: "", ddl: "", pack: packs[0]?.id ?? "" });
-  const [fields, setFields] = useState<ReviewFields>({ name: initialDraft?.input?.name ?? "", domain: initialDraft?.input?.domain ?? "", principal: "", description: initialDraft?.input?.description ?? "" });
-  const [worldId, setWorldId] = useState(slugify(initialDraft?.input?.name ?? ""));
+  const [fields, setFields] = useState<ReviewFields>({ name: "", domain: "", principal: "", description: "" });
+  const [worldId, setWorldId] = useState("");
   const [idTouched, setIdTouched] = useState(false);
-  const [liveDrafts, setLiveDrafts] = useState<DraftSummary[]>(drafts);
   const [token, setToken] = useState<string | null>(null);
-  const [now, setNow] = useState(initialNow);
   const [busy, setBusy] = useState<"generate" | "create" | "open" | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
-  /** A build token for one plugin run. `register_agent` refuses without a live one. */
+  /** A build token for one plugin run. `create_world` refuses without a live one. */
   async function newToken() {
     try {
       const res = await fetch("/api/worlds/build-tokens", { method: "POST" });
@@ -65,23 +62,6 @@ export function NewWorld({ providers, packs, drafts, initialDraft, now: initialN
       /* the field stays empty; the copy says where it comes from */
     }
   }
-
-  // The plugin step watches the draft registry: a draft the plugin just made appears within 5 s.
-  useEffect(() => {
-    if (step !== 1 || mode !== "plugin") return;
-    const tick = async () => {
-      try {
-        const res = await fetch("/api/worlds/drafts", { cache: "no-store" });
-        if (res.ok) setLiveDrafts((await res.json()) as DraftSummary[]);
-        setNow(Date.now());
-      } catch {
-        /* keep the last list */
-      }
-    };
-    void tick();
-    const t = setInterval(tick, 5000);
-    return () => clearInterval(t);
-  }, [step, mode]);
 
   useEffect(() => {
     if (busy !== "generate") return;
@@ -130,26 +110,6 @@ export function NewWorld({ providers, packs, drafts, initialDraft, now: initialN
     setAdding(null);
   }
 
-  async function openDraft(id: string) {
-    setBusy("open");
-    setError(null);
-    try {
-      const res = await fetch(`/api/worlds/drafts/${encodeURIComponent(id)}`, { cache: "no-store" });
-      if (!res.ok) {
-        setError("That draft has expired — drafts live in memory for two hours. Run the plugin again.");
-        return;
-      }
-      const d = (await res.json()) as { id: string; files: Record<string, string>; errors: ValidationError[]; input: { name: string; domain: string; description: string } };
-      setDraft({ id: d.id, files: d.files, errors: d.errors, input: d.input });
-      setFields((f) => ({ ...f, name: d.input.name, domain: d.input.domain, description: d.input.description }));
-      if (!idTouched) setWorldId(slugify(d.input.name));
-      setStep(2);
-    } catch {
-      setError("Network error — the draft could not be loaded.");
-    } finally {
-      setBusy(null);
-    }
-  }
 
   async function generate() {
     setBusy("generate");
@@ -312,26 +272,10 @@ export function NewWorld({ providers, packs, drafts, initialDraft, now: initialN
                 <span key={k} className="chip">{k}</span>
               ))}
             </div>
-            <div style={{ marginTop: 26, borderTop: "1px solid var(--border)", paddingTop: 16 }}>
-              <span className="field-label">Drafts · one per plugin run · refreshes every 5 s</span>
-              {liveDrafts.length === 0 && <div className="empty-src">No drafts yet. When the plugin calls <span className="mono">register_agent</span>, its draft appears here.</div>}
-              {liveDrafts.map((d) => (
-                <div key={d.id} className={`draft-row${d.token === token ? " mine" : ""}`}>
-                  <div style={{ minWidth: 0 }}>
-                    <div>
-                      <span className="draft-id">{d.id}</span>
-                      <span className={`pill-badge ${d.valid ? "badge-warning" : "badge-danger"}`} style={{ marginLeft: 6 }}>{d.valid ? "awaiting review" : plural(d.errorCount, "error")}</span>
-                    </div>
-                    <div className="draft-meta">
-                      {d.repo ?? d.name} · {d.client ?? "unknown client"} · {relativeTime(new Date(d.createdAt).toISOString(), now)} · {plural(d.tools, "tool")}, {plural(d.entities, "entity", "entities")}, {plural(d.mandates, "Mandate")}
-                    </div>
-                  </div>
-                  <div className="draft-actions">
-                    <button type="button" className="btn btn-ghost" style={{ height: 30, fontSize: 12 }} disabled={busy !== null} onClick={() => openDraft(d.id)}>Review →</button>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <p style={{ fontSize: 11, color: "var(--muted)", margin: "20px 0 0" }}>
+              The plugin writes the World itself — it reads the format, writes the pack files against your repo, validates them here and creates the
+              World as a draft. It appears in <span className="mono">Worlds</span> when it does; review and publish it there.
+            </p>
           </>
         )}
 

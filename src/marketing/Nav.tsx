@@ -39,16 +39,23 @@ function scrollHomeIfHere(e: React.MouseEvent<HTMLAnchorElement>) {
 }
 
 /**
- * The mark: a World drawn as a rounded frame with one edge left open, the agent as the node inside
- * it, and a probe coming in through the gap. Frame and node take the primary colour; the probe is
- * the text colour, so it reads against the green at 16px as well as at 32px.
+ * The mark is the product in three shapes: a hexagonal World (the sealed, seeded business), the
+ * agent as the node inside it, and the Attack as a red wedge coming in through a gap in the wall,
+ * aimed at the agent. The wall is the primary colour, the node the text colour and the wedge the
+ * violation red, so the story survives at 16px; src/app/icon.svg is the same drawing.
  */
 export function LogoMark({ className = "size-8" }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" className={`${className} shrink-0 drop-shadow-[0_0_10px_color-mix(in_oklab,var(--color-signal)_35%,transparent)]`} fill="none" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M6 3h9M3 6v12M6 21h12a3 3 0 0 0 3-3V9M3 6a3 3 0 0 1 3-3M3 18a3 3 0 0 0 3 3" className="stroke-primary" strokeWidth="1.8" />
-      <circle cx="12" cy="12" r="3.2" className="fill-primary" />
-      <path d="M18.5 5.5 21 3" className="stroke-foreground" strokeWidth="1.8" />
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={`${className} shrink-0`} fill="none" strokeLinecap="round" strokeLinejoin="round">
+      <defs>
+        <linearGradient id="agentsim-wall" x1="4" y1="3" x2="20" y2="21" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stopColor="color-mix(in oklab, var(--color-primary) 70%, white)" />
+          <stop offset="1" stopColor="var(--color-primary)" />
+        </linearGradient>
+      </defs>
+      <path d="M9.95 3.69 12 2.5l8.2 4.75v9.5L12 21.5l-8.2-4.75v-9.5l2.05-1.19" stroke="url(#agentsim-wall)" strokeWidth="1.9" />
+      <circle cx="12.8" cy="13.4" r="2.9" className="fill-foreground" />
+      <path d="M10.25 8.95 7.63 0.41 4.17 2.41Z" className="fill-danger" />
     </svg>
   );
 }

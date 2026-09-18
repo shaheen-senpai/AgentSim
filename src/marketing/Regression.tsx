@@ -26,17 +26,17 @@ export function Regression() {
         <div data-reveal-child style={stagger(1)} className="rounded-panel border border-border bg-background p-6">
           <div className="flex items-center justify-between font-label text-label-sm uppercase text-muted-foreground">
             <span>{card.kicker}</span>
-            <span className="bg-primary px-2 py-1 text-primary-foreground">{card.badge}</span>
+            <span className="rounded-control bg-primary px-2 py-1 text-primary-foreground">{card.badge}</span>
           </div>
           <dl className="mt-8 grid grid-cols-3 gap-3">
             {card.scores.map((s) => (
-              <div key={s.label} className="bg-surface p-4">
-                <dt className="font-label text-[8px] uppercase tracking-widest text-muted-foreground">{s.label}</dt>
-                <dd className="mt-2 font-heading text-metric-sm font-semibold text-primary">{s.value}</dd>
+              <div key={s.label} className="rounded-control border border-border bg-surface p-4">
+                <dt className="font-label text-label-sm uppercase text-muted-foreground">{s.label}</dt>
+                <dd className="mt-2 font-heading text-metric-sm font-semibold tracking-tight text-foreground">{s.value}</dd>
               </div>
             ))}
           </dl>
-          <div className="mt-5 flex items-center gap-3 border border-border bg-surface p-4">
+          <div className="mt-5 flex items-center gap-3 rounded-control border border-border bg-surface p-4">
             <Icon name="check" className="size-5 shrink-0 text-primary" />
             <div>
               <p className="text-body font-semibold">{card.evidenceTitle}</p>

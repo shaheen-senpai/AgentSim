@@ -2,6 +2,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { listProviders } from "@/lib/providers";
+import { listPackIds } from "@/engine/pack";
 import { loadPacks } from "@/lib/summaries";
 import { getAgent } from "@/runner/agentRegistry";
 import { CreateWizard } from "@/workspace/wizard/CreateWizard";
@@ -18,5 +19,5 @@ export default async function NewWorldForAgentRoute({ params }: { params: Promis
   const { id } = await params;
   const agent = getAgent(id);
   if (!agent) notFound();
-  return <CreateWizard target="world" agent={agent} providers={listProviders()} packs={toPackPicks(loadPacks().packs)} />;
+  return <CreateWizard target="world" agent={agent} providers={listProviders()} packs={toPackPicks(loadPacks().packs)} takenWorldIds={listPackIds()} />;
 }
